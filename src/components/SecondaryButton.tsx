@@ -35,7 +35,7 @@ export function SecondaryButton({ label, onPress }: ButtonProps) {
       style={[styles.button, animatedStyle]}
     >
       <View style={styles.inner}>
-        <FontAwesome name="apple" size={19} color={Colors.white} />
+        <FontAwesome name="google" size={18} color={Colors.white} />
         <Text style={styles.label}>{label}</Text>
       </View>
     </AnimatedPressable>
@@ -44,7 +44,7 @@ export function SecondaryButton({ label, onPress }: ButtonProps) {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: Colors.secondaryButton,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)', // Premium subtle glassmorphism background
     borderRadius: 100,
     paddingVertical: 17,
     paddingHorizontal: 24,
@@ -52,17 +52,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
     borderWidth: 1,
-    borderColor: Colors.secondaryButtonBorder,
+    borderColor: 'rgba(255, 255, 255, 0.12)', // Dynamic translucent border
+    shadowColor: Colors.white,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
   },
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   label: {
     color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 });
