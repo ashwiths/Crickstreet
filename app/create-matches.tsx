@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   Platform,
@@ -46,6 +47,7 @@ export default function CreateMatchesScreen() {
   ]);
   const [mySubs, setMySubs] = useState<string[]>(['Shubman Gill', 'Axar Patel']);
   const [newMySub, setNewMySub] = useState('');
+  const [newMyPlayer, setNewMyPlayer] = useState('');
   const [showMyXI, setShowMyXI] = useState(false);
 
   const [oppTeamName, setOppTeamName] = useState('Royal Strikers');
@@ -58,6 +60,7 @@ export default function CreateMatchesScreen() {
   ]);
   const [oppSubs, setOppSubs] = useState<string[]>(['Cameron Green', 'Nathan Lyon']);
   const [newOppSub, setNewOppSub] = useState('');
+  const [newOppPlayer, setNewOppPlayer] = useState('');
   const [showOppXI, setShowOppXI] = useState(false);
 
   // Helper to handle playing XI name editing
@@ -70,6 +73,32 @@ export default function CreateMatchesScreen() {
       const updated = [...oppPlayers];
       updated[index] = value;
       setOppPlayers(updated);
+    }
+  };
+
+  const handleAddPlayer = (team: 'my' | 'opp') => {
+    if (team === 'my') {
+      if (newMyPlayer.trim() && myPlayers.length < 11) {
+        setMyPlayers([...myPlayers, newMyPlayer.trim()]);
+        setNewMyPlayer('');
+      } else if (myPlayers.length >= 11) {
+        Alert.alert('Roster Full', 'You can only have 11 players in the Playing XI.');
+      }
+    } else {
+      if (newOppPlayer.trim() && oppPlayers.length < 11) {
+        setOppPlayers([...oppPlayers, newOppPlayer.trim()]);
+        setNewOppPlayer('');
+      } else if (oppPlayers.length >= 11) {
+        Alert.alert('Roster Full', 'You can only have 11 players in the Playing XI.');
+      }
+    }
+  };
+
+  const handleRemovePlayer = (team: 'my' | 'opp', index: number) => {
+    if (team === 'my') {
+      setMyPlayers(myPlayers.filter((_, idx) => idx !== index));
+    } else {
+      setOppPlayers(oppPlayers.filter((_, idx) => idx !== index));
     }
   };
 
@@ -97,6 +126,18 @@ export default function CreateMatchesScreen() {
     }
   };
 
+  const handleSubNameChange = (team: 'my' | 'opp', index: number, value: string) => {
+    if (team === 'my') {
+      const updated = [...mySubs];
+      updated[index] = value;
+      setMySubs(updated);
+    } else {
+      const updated = [...oppSubs];
+      updated[index] = value;
+      setOppSubs(updated);
+    }
+  };
+
   // ─── STEP 2: MATCH SETTINGS STATE ──────────────────────────────────────────
   const [format, setFormat] = useState<'T5' | 'T10' | 'T15' | 'T20' | 'Custom'>('T20');
   const [customOvers, setCustomOvers] = useState('12');
@@ -115,6 +156,15 @@ export default function CreateMatchesScreen() {
     longitudeDelta: 0.0121,
   });
 
+  interface SearchResultType {
+    latitude: number;
+    longitude: number;
+    displayName: string;
+    city: string;
+    state: string;
+    country: string;
+  }
+
   const [venueName, setVenueName] = useState('SO/Uptown Dubai');
   const [groundName, setGroundName] = useState('Turf Ground 1');
   const [manualAddress, setManualAddress] = useState('First Al Khail St, JLT, Dubai');
@@ -123,6 +173,9 @@ export default function CreateMatchesScreen() {
   const [selectedLng, setSelectedLng] = useState<number>(55.1486);
   const [isVenueConfirmed, setIsVenueConfirmed] = useState<boolean>(false);
   const [mapLayout, setMapLayout] = useState<{ width: number; height: number }>({ width: 320, height: 160 });
+
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [searchResult, setSearchResult] = useState<SearchResultType | null>(null);
 
   const syncLocationDetails = async (lat: number, lng: number) => {
     setSelectedLat(lat);
@@ -196,13 +249,22 @@ export default function CreateMatchesScreen() {
   };
 
   const handleMapPress = (e: any) => {
-    const { locationX, locationY } = e.nativeEvent;
+    // Support both native and web event coordinate properties
+    const locX = e.nativeEvent.locationX ?? e.nativeEvent.offsetX;
+    const locY = e.nativeEvent.locationY ?? e.nativeEvent.offsetY;
+    
+    if (locX === undefined || locY === undefined) return;
+
     const { width, height } = mapLayout;
+    if (!width || !height) return;
+
     const latDelta = mapRegion.latitudeDelta || 0.0122;
     const lngDelta = mapRegion.longitudeDelta || 0.0121;
 
-    const clickLat = mapRegion.latitude - (locationY - height / 2) * (latDelta / height);
-    const clickLng = mapRegion.longitude + (locationX - width / 2) * (lngDelta / width);
+    const clickLat = mapRegion.latitude - (locY - height / 2) * (latDelta / height);
+    const clickLng = mapRegion.longitude + (locX - width / 2) * (lngDelta / width);
+
+    if (isNaN(clickLat) || isNaN(clickLng)) return;
 
     setMapRegion({
       ...mapRegion,
@@ -212,7 +274,31 @@ export default function CreateMatchesScreen() {
     syncLocationDetails(clickLat, clickLng);
   };
 
-  const requestLocation = async () => {
+  const handleZoomIn = () => {
+    setMapRegion(prev => {
+      const newLatDelta = Math.max(prev.latitudeDelta / 2, 0.0005);
+      const newLngDelta = Math.max(prev.longitudeDelta / 2, 0.0005);
+      return {
+        ...prev,
+        latitudeDelta: newLatDelta,
+        longitudeDelta: newLngDelta,
+      };
+    });
+  };
+
+  const handleZoomOut = () => {
+    setMapRegion(prev => {
+      const newLatDelta = Math.min(prev.latitudeDelta * 2, 0.2);
+      const newLngDelta = Math.min(prev.longitudeDelta * 2, 0.2);
+      return {
+        ...prev,
+        latitudeDelta: newLatDelta,
+        longitudeDelta: newLngDelta,
+      };
+    });
+  };
+
+  const requestLocation = async (isManual = false) => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setPermissionStatus(status);
@@ -228,9 +314,17 @@ export default function CreateMatchesScreen() {
         });
 
         await syncLocationDetails(lat, lng);
+      } else if (isManual) {
+        Alert.alert(
+          'Location Permission Denied 📍',
+          'Please enable location permissions in your browser or device settings to automatically detect your current coordinates.'
+        );
       }
     } catch (error) {
       console.log('Error requesting location:', error);
+      if (isManual) {
+        Alert.alert('Location Error', 'Unable to fetch your current location. Please try manually selecting on the map or searching.');
+      }
     }
   };
 
@@ -240,23 +334,83 @@ export default function CreateMatchesScreen() {
   }, []);
 
   const handleSearchVenue = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      Alert.alert('Empty Search', 'Please type in a city, ground name, or venue to search.');
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchResult(null);
+
     try {
-      const results = await Location.geocodeAsync(searchQuery);
-      if (results && results.length > 0) {
-        const res = results[0];
-        setMapRegion({
-          latitude: res.latitude,
-          longitude: res.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
-        await syncLocationDetails(res.latitude, res.longitude);
-      } else {
-        Alert.alert('No Results', 'No locations matched your search query.');
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1&addressdetails=1`;
+      console.log('Fetching Nominatim API:', url);
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'CrickstreetApp/1.0 (infan@users.noreply.github.com)',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Nominatim API returned HTTP status ${response.status}`);
       }
-    } catch (e) {
-      console.log('Error searching location:', e);
+
+      const results = await response.json();
+      console.log('Nominatim API Response:', JSON.stringify(results, null, 2));
+
+      if (results && results.length > 0) {
+        const item = results[0];
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+
+        if (isNaN(lat) || isNaN(lon)) {
+          throw new Error('Invalid coordinates returned from Nominatim.');
+        }
+
+        // Extract detailed address parameters
+        const addr = item.address || {};
+        const city = addr.city || addr.town || addr.village || addr.suburb || addr.municipality || 'N/A';
+        const state = addr.state || addr.region || 'N/A';
+        const country = addr.country || 'N/A';
+        const displayName = item.display_name;
+
+        // Auto-fill coordinates and input fields
+        setSelectedLat(lat);
+        setSelectedLng(lon);
+        setMapRegion({
+          latitude: lat,
+          longitude: lon,
+          latitudeDelta: 0.0122,
+          longitudeDelta: 0.0121,
+        });
+
+        // Set text inputs automatically
+        // First part of the displayName usually has the landmark/venue name
+        const displayParts = displayName.split(',');
+        const firstPart = displayParts[0] ? displayParts[0].trim() : searchQuery;
+        setVenueName(firstPart);
+        setGroundName('Ground 1');
+        setManualAddress(displayName);
+        setIsVenueConfirmed(false); // require confirmation
+
+        // Save result info card state
+        setSearchResult({
+          latitude: lat,
+          longitude: lon,
+          displayName,
+          city,
+          state,
+          country,
+        });
+      } else {
+        Alert.alert('No Results', `No locations matched "${searchQuery}". Please check the spelling or search another location.`);
+      }
+    } catch (e: any) {
+      console.log('Error searching location via Nominatim:', e);
+      Alert.alert('Search Error', 'Unable to fetch location from OpenStreetMap. Please try again later.');
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -403,9 +557,9 @@ export default function CreateMatchesScreen() {
   const renderStep1TeamSetup = () => {
     return (
       <View style={styles.stepContent}>
-        {/* SECTION 1: MY TEAM */}
+        {/* MY TEAM */}
         <View style={styles.glassCard}>
-          <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-check-outline" size={18} color={C.green} /> SECTION 1 - MY TEAM</Text>
+          <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-check-outline" size={18} color={C.green} /> MY TEAM</Text>
           
           <Text style={styles.inputLabel}>TEAM NAME</Text>
           <TextInput
@@ -450,51 +604,71 @@ export default function CreateMatchesScreen() {
 
           {showMyXI && (
             <View style={styles.playersList}>
-              {myPlayers.map((player, idx) => (
-                <View key={idx} style={styles.playerInputRow}>
-                  <Text style={styles.playerSlotLabel}>P{idx + 1}</Text>
+              <View style={styles.subsContainer}>
+                {myPlayers.map((player, idx) => (
+                  <View key={idx} style={styles.subPill}>
+                    <Text style={styles.subPillTxt}>{player}</Text>
+                    <TouchableOpacity onPress={() => handleRemovePlayer('my', idx)}>
+                      <Feather name="x" size={12} color="#EF4444" style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+              {myPlayers.length < 11 && (
+                <View style={styles.addSubRow}>
                   <TextInput
-                    style={styles.playerInput}
-                    value={player}
-                    onChangeText={(val) => handlePlayerNameChange('my', idx, val)}
-                    placeholder={`Player ${idx + 1}`}
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                    value={newMyPlayer}
+                    onChangeText={setNewMyPlayer}
+                    placeholder="Add Playing XI Player"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
                   />
+                  <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddPlayer('my')}>
+                    <Text style={styles.smallAddBtnTxt}>+ Add</Text>
+                  </TouchableOpacity>
                 </View>
-              ))}
+              )}
             </View>
           )}
 
           {/* SUBSTITUTES */}
           <Text style={styles.subSectionLabel}>Substitute Players (Optional)</Text>
-          <View style={styles.subsContainer}>
+          <View style={styles.playersList}>
             {mySubs.map((sub, idx) => (
-              <View key={idx} style={styles.subPill}>
-                <Text style={styles.subPillTxt}>{sub}</Text>
-                <TouchableOpacity onPress={() => handleRemoveSub('my', idx)}>
-                  <Feather name="x" size={12} color="#EF4444" style={{ marginLeft: 4 }} />
+              <View key={idx} style={styles.playerInputRow}>
+                <Text style={styles.playerSlotLabel}>S{idx + 1}</Text>
+                <TextInput
+                  style={styles.playerInput}
+                  value={sub}
+                  onChangeText={(val) => handleSubNameChange('my', idx, val)}
+                  placeholder={`Substitute ${idx + 1}`}
+                  placeholderTextColor="rgba(255,255,255,0.2)"
+                />
+                <TouchableOpacity onPress={() => handleRemoveSub('my', idx)} style={{ padding: 4, paddingLeft: 8 }}>
+                  <Feather name="x" size={16} color="#EF4444" />
                 </TouchableOpacity>
               </View>
             ))}
-          </View>
-          
-          <View style={styles.addSubRow}>
-            <TextInput
-              style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-              value={newMySub}
-              onChangeText={setNewMySub}
-              placeholder="Add Sub Player"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-            />
-            <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddSub('my')}>
-              <Text style={styles.smallAddBtnTxt}>+ Add</Text>
-            </TouchableOpacity>
+            
+            <View style={[styles.playerInputRow, { marginTop: mySubs.length > 0 ? 4 : 0 }]}>
+              <Text style={styles.playerSlotLabel}>+</Text>
+              <TextInput
+                style={[styles.playerInput, { marginBottom: 0 }]}
+                value={newMySub}
+                onChangeText={setNewMySub}
+                placeholder="Add Sub Player"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+              />
+              <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddSub('my')}>
+                <Text style={styles.smallAddBtnTxt}>+ Add</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
-        {/* SECTION 2: OPPONENT TEAM */}
+        {/* OPPONENT TEAM */}
         <View style={[styles.glassCard, { marginTop: 16 }]}>
-          <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-outline" size={18} color={C.green} /> SECTION 2 - OPPONENT TEAM</Text>
+          <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-outline" size={18} color={C.green} /> OPPONENT TEAM</Text>
           
           <Text style={styles.inputLabel}>TEAM NAME</Text>
           <TextInput
@@ -539,45 +713,65 @@ export default function CreateMatchesScreen() {
 
           {showOppXI && (
             <View style={styles.playersList}>
-              {oppPlayers.map((player, idx) => (
-                <View key={idx} style={styles.playerInputRow}>
-                  <Text style={styles.playerSlotLabel}>P{idx + 1}</Text>
+              <View style={styles.subsContainer}>
+                {oppPlayers.map((player, idx) => (
+                  <View key={idx} style={styles.subPill}>
+                    <Text style={styles.subPillTxt}>{player}</Text>
+                    <TouchableOpacity onPress={() => handleRemovePlayer('opp', idx)}>
+                      <Feather name="x" size={12} color="#EF4444" style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+              {oppPlayers.length < 11 && (
+                <View style={styles.addSubRow}>
                   <TextInput
-                    style={styles.playerInput}
-                    value={player}
-                    onChangeText={(val) => handlePlayerNameChange('opp', idx, val)}
-                    placeholder={`Player ${idx + 1}`}
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                    value={newOppPlayer}
+                    onChangeText={setNewOppPlayer}
+                    placeholder="Add Playing XI Player"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
                   />
+                  <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddPlayer('opp')}>
+                    <Text style={styles.smallAddBtnTxt}>+ Add</Text>
+                  </TouchableOpacity>
                 </View>
-              ))}
+              )}
             </View>
           )}
 
           {/* SUBSTITUTES */}
           <Text style={styles.subSectionLabel}>Substitute Players (Optional)</Text>
-          <View style={styles.subsContainer}>
+          <View style={styles.playersList}>
             {oppSubs.map((sub, idx) => (
-              <View key={idx} style={styles.subPill}>
-                <Text style={styles.subPillTxt}>{sub}</Text>
-                <TouchableOpacity onPress={() => handleRemoveSub('opp', idx)}>
-                  <Feather name="x" size={12} color="#EF4444" style={{ marginLeft: 4 }} />
+              <View key={idx} style={styles.playerInputRow}>
+                <Text style={styles.playerSlotLabel}>S{idx + 1}</Text>
+                <TextInput
+                  style={styles.playerInput}
+                  value={sub}
+                  onChangeText={(val) => handleSubNameChange('opp', idx, val)}
+                  placeholder={`Substitute ${idx + 1}`}
+                  placeholderTextColor="rgba(255,255,255,0.2)"
+                />
+                <TouchableOpacity onPress={() => handleRemoveSub('opp', idx)} style={{ padding: 4, paddingLeft: 8 }}>
+                  <Feather name="x" size={16} color="#EF4444" />
                 </TouchableOpacity>
               </View>
             ))}
-          </View>
-          
-          <View style={styles.addSubRow}>
-            <TextInput
-              style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-              value={newOppSub}
-              onChangeText={setNewOppSub}
-              placeholder="Add Sub Player"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-            />
-            <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddSub('opp')}>
-              <Text style={styles.smallAddBtnTxt}>+ Add</Text>
-            </TouchableOpacity>
+            
+            <View style={[styles.playerInputRow, { marginTop: oppSubs.length > 0 ? 4 : 0 }]}>
+              <Text style={styles.playerSlotLabel}>+</Text>
+              <TextInput
+                style={[styles.playerInput, { marginBottom: 0 }]}
+                value={newOppSub}
+                onChangeText={setNewOppSub}
+                placeholder="Add Sub Player"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+              />
+              <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddSub('opp')}>
+                <Text style={styles.smallAddBtnTxt}>+ Add</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
@@ -590,9 +784,9 @@ export default function CreateMatchesScreen() {
 
     return (
       <View style={styles.stepContent}>
-        {/* SECTION 3: MATCH SETTINGS */}
+        {/* MATCH SETTINGS */}
         <View style={styles.glassCard}>
-          <Text style={styles.cardHeaderTitle}><Feather name="sliders" size={16} color={C.green} /> SECTION 3 - MATCH SETTINGS</Text>
+          <Text style={styles.cardHeaderTitle}><Feather name="sliders" size={16} color={C.green} /> MATCH SETTINGS</Text>
           
           <Text style={styles.inputLabel}>MATCH FORMAT</Text>
           <View style={styles.oversRowSelect}>
@@ -644,9 +838,9 @@ export default function CreateMatchesScreen() {
 
     return (
       <View style={styles.stepContent}>
-        {/* SECTION 4: VENUE LOCATION */}
+        {/* VENUE LOCATION */}
         <View style={styles.glassCard}>
-          <Text style={styles.cardHeaderTitle}><Ionicons name="location-outline" size={18} color={C.green} /> SECTION 4 - VENUE LOCATION</Text>
+          <Text style={styles.cardHeaderTitle}><Ionicons name="location-outline" size={18} color={C.green} /> VENUE LOCATION</Text>
 
           {/* Search bar */}
           <View style={styles.searchRow}>
@@ -692,12 +886,26 @@ export default function CreateMatchesScreen() {
               <Text style={styles.mapClickOverlayTxt}>Tap Map to Select Venue</Text>
             </View>
 
-            {permissionStatus !== 'granted' && (
-              <TouchableOpacity style={styles.locationOverlay} onPress={requestLocation}>
-                <Ionicons name="location" size={20} color={C.green} />
-                <Text style={styles.overlayTxt}>Click to grant permission</Text>
+            {/* Zoom Controls Overlay */}
+            <View style={styles.zoomControlsContainer}>
+              <TouchableOpacity 
+                style={styles.zoomBtn} 
+                onPress={handleZoomIn}
+                activeOpacity={0.8}
+              >
+                <Feather name="plus" size={12} color="#0A0D0A" />
               </TouchableOpacity>
-            )}
+              
+              <TouchableOpacity 
+                style={[styles.zoomBtn, { marginTop: 6 }]} 
+                onPress={handleZoomOut}
+                activeOpacity={0.8}
+              >
+                <Feather name="minus" size={12} color="#0A0D0A" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Permission overlay removed to always show the map and allow manual interactions */}
           </TouchableOpacity>
 
           {/* Selected Coordinates Readout Display */}
@@ -710,7 +918,7 @@ export default function CreateMatchesScreen() {
 
           {/* Actions Row */}
           <View style={styles.venueActionsRow}>
-            <TouchableOpacity style={styles.useCurrentLocBtn} onPress={requestLocation}>
+            <TouchableOpacity style={styles.useCurrentLocBtn} onPress={() => requestLocation(true)}>
               <Ionicons name="locate" size={16} color="#0A0D0A" />
               <Text style={styles.useCurrentLocBtnTxt}>Use Current Location</Text>
             </TouchableOpacity>
@@ -720,6 +928,52 @@ export default function CreateMatchesScreen() {
               <Text style={styles.clearSelectionBtnTxt}>Clear</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Nominatim Search Loading state */}
+          {searchLoading && (
+            <View style={styles.searchLoadingContainer}>
+              <ActivityIndicator size="small" color={C.green} />
+              <Text style={styles.searchLoadingText}>Searching OpenStreetMap (Nominatim)...</Text>
+            </View>
+          )}
+
+          {/* Nominatim Search Result Card */}
+          {searchResult && (
+            <View style={styles.searchResultCard}>
+              <Text style={styles.searchResultHeader}>🗺️ SEARCH RESULT FOUND</Text>
+              
+              <View style={styles.searchResultDivider} />
+              
+              <View style={styles.searchResultRow}>
+                <Text style={styles.searchResultLabel}>Display Name:</Text>
+                <Text style={styles.searchResultValue}>{searchResult.displayName}</Text>
+              </View>
+
+              <View style={styles.searchResultGrid}>
+                <View style={styles.searchResultGridItem}>
+                  <Text style={styles.searchResultSubLabel}>City / Region</Text>
+                  <Text style={styles.searchResultSubValue}>{searchResult.city}</Text>
+                </View>
+                <View style={styles.searchResultGridItem}>
+                  <Text style={styles.searchResultSubLabel}>State</Text>
+                  <Text style={styles.searchResultSubValue}>{searchResult.state}</Text>
+                </View>
+              </View>
+
+              <View style={styles.searchResultGrid}>
+                <View style={styles.searchResultGridItem}>
+                  <Text style={styles.searchResultSubLabel}>Country</Text>
+                  <Text style={styles.searchResultSubValue}>{searchResult.country}</Text>
+                </View>
+                <View style={styles.searchResultGridItem}>
+                  <Text style={styles.searchResultSubLabel}>Coordinates</Text>
+                  <Text style={[styles.searchResultSubValue, { color: C.green }]}>
+                    {searchResult.latitude.toFixed(5)}, {searchResult.longitude.toFixed(5)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Venue details inputs */}
           <Text style={styles.inputLabel}>VENUE / STADIUM NAME</Text>
@@ -807,9 +1061,9 @@ export default function CreateMatchesScreen() {
 
     return (
       <View style={styles.stepContent}>
-        {/* SECTION 7: MATCH SUMMARY CARD */}
+        {/* MATCH SUMMARY CARD */}
         <View style={styles.glassCard}>
-          <Text style={styles.cardHeaderTitle}><Feather name="file-text" size={16} color={C.green} /> SECTION 7 - MATCH SUMMARY CARD</Text>
+          <Text style={styles.cardHeaderTitle}><Feather name="file-text" size={16} color={C.green} /> MATCH SUMMARY CARD</Text>
           
           <View style={styles.summaryCard}>
             {/* Header info */}
@@ -850,9 +1104,9 @@ export default function CreateMatchesScreen() {
           </View>
         </View>
 
-        {/* SECTION 8: ACTION BUTTONS */}
+        {/* ACTION BUTTONS */}
         <View style={[styles.glassCard, { marginTop: 16 }]}>
-          <Text style={styles.cardHeaderTitle}><Feather name="check-square" size={16} color={C.green} /> SECTION 8 - ACTION BUTTONS</Text>
+          <Text style={styles.cardHeaderTitle}><Feather name="check-square" size={16} color={C.green} /> ACTION BUTTONS</Text>
           
           <View style={{ gap: 12, marginTop: 8 }}>
             <TouchableOpacity style={styles.startScoringBtn} onPress={handleStartScoring}>
@@ -1113,14 +1367,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-    marginTop: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(89, 199, 73, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(89, 199, 73, 0.2)',
+    marginTop: 12,
   },
   sectionToggleTitle: {
-    color: C.white,
+    color: C.green,
     fontSize: 13,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
   playersList: {
     marginTop: 12,
@@ -1350,6 +1608,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
   },
+  zoomControlsContainer: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    marginTop: -32,
+    flexDirection: 'column',
+    zIndex: 10,
+  },
+  zoomBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: C.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   coordinatesRow: {
     flexDirection: 'column',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -1410,6 +1689,79 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 12,
     fontWeight: '800',
+  },
+  searchLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  searchLoadingText: {
+    color: '#828880',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  searchResultCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(89, 199, 73, 0.15)',
+    marginBottom: 16,
+  },
+  searchResultHeader: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.green,
+    letterSpacing: 0.8,
+  },
+  searchResultDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginVertical: 8,
+  },
+  searchResultRow: {
+    flexDirection: 'column',
+    marginBottom: 8,
+  },
+  searchResultLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#828880',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  searchResultValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.white,
+    lineHeight: 16,
+  },
+  searchResultGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  searchResultGridItem: {
+    flex: 1,
+  },
+  searchResultSubLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#828880',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  searchResultSubValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.white,
   },
   venueSummaryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.02)',

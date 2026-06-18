@@ -8,7 +8,6 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -23,7 +22,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import PlaygroundMapView from '../components/PlaygroundMapView';
 import Animated, {
   Easing,
   FadeIn,
@@ -133,127 +131,6 @@ function ActivityRow({
 }
 
 
-// ─── Playground Map Card Component ───────────────────────────────────────────
-function PlaygroundMapCard() {
-  const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [address, setAddress] = useState<string>('SO/Uptown Dubai');
-  const [mapRegion, setMapRegion] = useState({
-    latitude: 25.0768,
-    longitude: 55.1486,
-    latitudeDelta: 0.0122,
-    longitudeDelta: 0.0121,
-  });
-
-  const requestLocation = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setPermissionStatus(status);
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setLocation(loc);
-        
-        // Center map on user's location
-        setMapRegion({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          latitudeDelta: 0.015,
-          longitudeDelta: 0.015,
-        });
-
-        // Reverse geocoding
-        const geocode = await Location.reverseGeocodeAsync({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-        if (geocode && geocode.length > 0) {
-          const item = geocode[0];
-          const street = item.street || item.name || '';
-          const city = item.city || item.subregion || '';
-          setAddress(street ? `${street}, ${city}` : city || 'SO/Uptown Dubai');
-        }
-      }
-    } catch (error) {
-      console.log('Error requesting location:', error);
-    }
-  };
-
-  useEffect(() => {
-    requestLocation();
-  }, []);
-
-  // Coords for current ground (now playing) and previous ground
-  const currentGroundCoords = location
-    ? { latitude: location.coords.latitude + 0.003, longitude: location.coords.longitude + 0.003 }
-    : { latitude: 25.0768, longitude: 55.1486 };
-
-  const previousGroundCoords = location
-    ? { latitude: location.coords.latitude - 0.004, longitude: location.coords.longitude - 0.004 }
-    : { latitude: 25.0718, longitude: 55.1426 };
-
-  return (
-    <View style={styles.mapCard}>
-      {/* Header Info */}
-      <View style={styles.mapCardHeader}>
-        <Text style={styles.mapCardSub}>Address location</Text>
-        <Text style={styles.mapCardTitle} numberOfLines={1}>
-          {address}
-        </Text>
-      </View>
-
-      {/* Map View Container */}
-      <View style={styles.mapContainer}>
-        <PlaygroundMapView
-          mapRegion={mapRegion}
-          onRegionChangeComplete={(r) => setMapRegion(r)}
-          permissionStatus={permissionStatus}
-          currentGroundCoords={currentGroundCoords}
-          previousGroundCoords={previousGroundCoords}
-        />
-
-        {/* Location request permission overlay if denied/not granted yet */}
-        {permissionStatus !== 'granted' && (
-          <Pressable style={styles.permissionOverlay} onPress={requestLocation}>
-            <Ionicons name="location-outline" size={24} color="#59C749" style={{ marginBottom: 6 }} />
-            <Text style={styles.permissionText}>Live Location Off</Text>
-            <Text style={styles.permissionSub}>Tap to grant permission & show grounds</Text>
-          </Pressable>
-        )}
-      </View>
-
-      {/* Participants Footer */}
-      <View style={styles.mapCardFooter}>
-        <View style={styles.participantsLeft}>
-          <Text style={styles.participantsSub}>Participants</Text>
-          <Text style={styles.participantsMain}>96 Going</Text>
-        </View>
-
-        {/* Avatars */}
-        <View style={styles.avatarsRow}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=80' }}
-            style={[styles.participantImg, { zIndex: 5 }]}
-          />
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=80' }}
-            style={[styles.participantImg, { zIndex: 4, marginLeft: -10 }]}
-          />
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&fit=crop&q=80' }}
-            style={[styles.participantImg, { zIndex: 3, marginLeft: -10 }]}
-          />
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&fit=crop&q=80' }}
-            style={[styles.participantImg, { zIndex: 2, marginLeft: -10 }]}
-          />
-          <View style={[styles.participantBadge, { zIndex: 1, marginLeft: -10 }]}>
-            <Text style={styles.badgeTxt}>92+</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -687,10 +564,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Ground Location Map Card */}
-        <View style={styles.section}>
-          <PlaygroundMapCard />
-        </View>
+
 
         {/* ═══════════════════════════════════════════
             OVERVIEW  (3 stat cards)
