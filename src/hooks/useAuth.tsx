@@ -49,23 +49,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [redirectUri]);
 
   // Filter out placeholder Client IDs so they don't break Google's OAuth endpoints
-  const cleanIosClientId = IOS_CLIENT_ID && IOS_CLIENT_ID !== 'YOUR_GOOGLE_IOS_CLIENT_ID' ? IOS_CLIENT_ID : undefined;
-  const cleanAndroidClientId = ANDROID_CLIENT_ID && ANDROID_CLIENT_ID !== 'YOUR_GOOGLE_ANDROID_CLIENT_ID' ? ANDROID_CLIENT_ID : undefined;
+  const cleanIosClientId =
+    IOS_CLIENT_ID && IOS_CLIENT_ID !== 'YOUR_GOOGLE_IOS_CLIENT_ID'
+      ? IOS_CLIENT_ID
+      : undefined;
+  const cleanAndroidClientId =
+    ANDROID_CLIENT_ID && ANDROID_CLIENT_ID !== 'YOUR_GOOGLE_ANDROID_CLIENT_ID'
+      ? ANDROID_CLIENT_ID
+      : undefined;
 
   // Initialize the Google Auth Session Request hook
+  // responseType: 'id_token' forces Google to return the id_token directly in the
+  // redirect params rather than requiring a token-exchange step.
   const [, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: WEB_CLIENT_ID,
     webClientId: WEB_CLIENT_ID,
     iosClientId: cleanIosClientId,
     androidClientId: cleanAndroidClientId,
     redirectUri,
+    responseType: 'id_token',
   });
 
   // 1. Listen to Google Auth Response changes
   useEffect(() => {
     async function handleGoogleResponse() {
-      if (response?.type === 'success') {
-        const idToken = response.authentication?.idToken || response.params?.idToken;
+      if (!response) return;
+
+      // ── Debug logs ─────────────────────────────────────────────
+      console.log('[Google Auth] response.type       :', response.type);
+      console.log(
+        '[Google Auth] response.authentication:',
+        JSON.stringify(
+          (response as any).authentication ?? null,
+        ),
+      );
+      console.log(
+        '[Google Auth] response.params       :',
+        JSON.stringify((response as any).params ?? null),
+      );
+      // ────────────────────────────────────────────────────────────
+
+      if (response.type === 'success') {
+        // Expo SDK 54 returns the id_token in snake_case inside response.params.
+        // response.authentication?.idToken is populated only in native builds that
+        // go through a token-exchange; in Expo Go it is usually null.
+        const params = (response as any).params ?? {};
+        const authentication = (response as any).authentication ?? {};
+
+        const idToken: string | undefined =
+          authentication?.idToken ||       // native builds (token exchange complete)
+          params?.id_token ||              // Expo Go / web redirect (snake_case key)
+          params?.idToken;                 // fallback camelCase (older SDK versions)
+
+        console.log('[Google Auth] idToken resolved   :', idToken ? `${idToken.substring(0, 20)}...` : 'UNDEFINED');
+
         if (!idToken) {
           setError('Google Sign-In failed: No ID Token received.');
           setLoading(false);
@@ -80,14 +117,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const credential = GoogleAuthProvider.credential(idToken);
           await signInWithCredential(auth, credential);
         } catch (err: any) {
+          console.error('[Google Auth] Firebase signInWithCredential error:', err);
           setError(err.message || 'Firebase authentication failed.');
           setLoading(false);
         }
-      } else if (response?.type === 'error' || response?.type === 'cancel') {
+      } else if (response.type === 'error') {
+        console.error('[Google Auth] Auth Session error:', (response as any).error);
+        setError(
+          (response as any).error?.message ||
+            'Google Sign-In failed. Please try again.',
+        );
         setLoading(false);
-        if (response.type === 'error') {
-          setError(response.error?.message || 'Google Auth Session cancelled or failed.');
-        }
+      } else if (response.type === 'cancel' || response.type === 'dismiss') {
+        console.log('[Google Auth] Auth Session cancelled/dismissed.');
+        setLoading(false);
       }
     }
 

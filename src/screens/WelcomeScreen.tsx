@@ -1,4 +1,5 @@
 import { AntDesign } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -8,6 +9,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -50,6 +52,7 @@ function Footer() {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WelcomeScreen() {
+  const router = useRouter();
   const { signInWithGoogle, loading, error, clearError } = useAuth();
 
   const handlePhone = useCallback(() => {
@@ -69,7 +72,14 @@ export default function WelcomeScreen() {
       <View style={[styles.ambientGlow, { pointerEvents: 'none' } as any]} />
 
       {/* ── Top Section: Branding & Profile Icon ─────────────────── */}
-      <View style={styles.topSection}>
+      <TouchableOpacity
+        onPress={() => {
+          console.log('[DEBUG] Crickstreet logo clicked! Navigating to tabs...');
+          router.replace('/(tabs)');
+        }}
+        style={styles.topSection}
+        activeOpacity={0.6}
+      >
         <Animated.View
           entering={FadeInUp.delay(100).duration(600)}
           style={styles.iconWrapper}
@@ -85,7 +95,7 @@ export default function WelcomeScreen() {
         >
           CRICKSTREET
         </Animated.Text>
-      </View>
+      </TouchableOpacity>
 
       {/* ── Hero: Particle Animation ──────────────────────────────── */}
       <Animated.View
