@@ -829,7 +829,8 @@ export default function CreateMatchesScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>      </View>
+        </View>
+      </View>
     );
   };
 
