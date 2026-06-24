@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crickstreet - Player Profile Preview</title>
+  <!-- Outfit Font from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #0A1628;
+      --bg-mid: #0D1F3C;
+      --bg-light: #111A2E;
+      --green: #A8CD55;
+      --green-glow: rgba(168, 205, 85, 0.4);
+      --gold: #E3A85B;
+      --white: #FFFFFF;
+      --text-gray: #8A9BA8;
+      --glass-bg: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --green-glass: rgba(168, 205, 85, 0.12);
+      --gold-glass: rgba(227, 168, 91, 0.12);
+      --red: #FF6B6B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-dark);
+      background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-mid) 50%, var(--bg-light) 100%);
+      color: var(--white);
+      min-height: 100vh;
+      padding-bottom: 120px; /* Offset for sticky bottom CTA */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background graphics */
+    .decor-circle-1 {
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(168, 205, 85, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .decor-circle-2 {
+      position: absolute;
+      top: 300px;
+      left: -80px;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(227, 168, 91, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Shimmer Skeleton Loader style */
+    .shimmer {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.03) 75%);
+      background-size: 200% 100%;
+      animation: loading-shimmer 1.6s infinite linear;
+      border-radius: 6px;
+      color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    @keyframes loading-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Header Navigation */
+    .header-nav {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      z-index: 10;
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--white);
+      text-decoration: none;
+    }
+
+    .header-label {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    /* Main Container */
+    main {
+      width: 100%;
+      max-width: 480px;
+      padding: 0 16px 24px 16px;
+      z-index: 5;
+    }
+
+    /* Layout Sections toggled by JS */
+    #skeleton-container { display: block; }
+    #profile-container { display: none; }
+    #error-container { display: none; }
+
+    /* Hero Banner card */
+    .hero-banner {
+      width: 100%;
+      background: linear-gradient(135deg, #1A3A2A 0%, #0D2B1F 50%, #162A40 100%);
+      border: 1px solid rgba(168, 205, 85, 0.2);
+      border-radius: 24px;
+      padding: 32px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .avatar-wrapper {
+      margin-bottom: 16px;
+      display: inline-block;
+      position: relative;
+    }
+
+    .avatar-ring {
+      width: 104px;
+      height: 104px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), var(--gold));
+      padding: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px var(--green-glow);
+    }
+
+    .avatar {
+      width: 98px;
+      height: 98px;
+      border-radius: 50%;
+      background-color: #1A2332;
+      object-fit: cover;
+    }
+
+    .player-name {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+    }
+
+    .player-id {
+      color: var(--text-gray);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 14px;
+    }
+
+    .badges-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .rank-diamond {
+      background: linear-gradient(90deg, #FFD700, #FFA500);
+    }
+
+    .level-badge {
+      background: linear-gradient(90deg, #00B4DB, #0083B0);
+    }
+
+    .community-row {
+      display: flex;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 14px 0;
+    }
+
+    .community-stat {
+      flex: 1;
+      text-align: center;
+    }
+
+    .community-stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--white);
+    }
+
+    .community-stat-lbl {
+      font-size: 11px;
+      color: var(--text-gray);
+      margin-top: 2px;
+    }
+
+    .comm-divider {
+      width: 1px;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Section styling */
+    section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .section-icon-bg {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--green), var(--gold));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    /* 9-Stat Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 12px 6px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, var(--green-glass), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .stat-icon {
+      font-size: 14px;
+      color: var(--green);
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--white);
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--text-gray);
+      line-height: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Achievements section */
+    .achievements-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      min-height: 52px;
+    }
+
+    .achievement-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .achievement-icon-bg {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .ach-mvp { background: linear-gradient(135deg, #FFD700, #FFA500); }
+    .ach-scorer { background: linear-gradient(135deg, #A8CD55, #4CAF50); }
+    .ach-winner { background: linear-gradient(135deg, #00B4DB, #0083B0); }
+    .ach-champ { background: linear-gradient(135deg, #f953c6, #b91d73); }
+
+    .achievement-lbl {
+      font-size: 10px;
+      color: #C0C8D4;
+      text-align: center;
+      line-height: 13px;
+    }
+
+    .empty-placeholder-text {
+      grid-column: span 4;
+      text-align: center;
+      color: var(--text-gray);
+      font-size: 13px;
+      padding: 16px 0;
+      font-style: italic;
+    }
+
+    /* Performance card (bar graph) */
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 16px;
+    }
+
+    .bar-graph {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      height: 130px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .bar-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .bar-label-runs {
+      font-size: 11px;
+      font-weight: 600;
+      color: #E8E8E8;
+    }
+
+    .bar {
+      width: 28px;
+      border-radius: 6px;
+      min-height: 8px;
+      transition: height 0.6s ease-in-out;
+    }
+
+    .won-bar {
+      background: linear-gradient(180deg, #A8CD55 0%, #4CAF50 100%);
+    }
+
+    .lost-bar {
+      background: linear-gradient(180deg, #FF6B6B 0%, #E53935 100%);
+    }
+
+    .bar-label-match {
+      font-size: 11px;
+      color: var(--text-gray);
+    }
+
+    .bar-outcome-icon {
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .outcome-won { color: var(--green); }
+    .outcome-lost { color: #FF6B6B; }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-gray);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .win-ratio {
+      margin-left: auto;
+    }
+
+    /* Error View */
+    .error-card {
+      background: rgba(255, 107, 107, 0.05);
+      border: 1px solid rgba(255, 107, 107, 0.25);
+      border-radius: 24px;
+      padding: 40px 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      margin-top: 40px;
+    }
+
+    .error-icon {
+      font-size: 56px;
+      margin-bottom: 20px;
+    }
+
+    .error-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 12px;
+    }
+
+    .error-text {
+      font-size: 14px;
+      color: var(--text-gray);
+      line-height: 22px;
+      margin-bottom: 30px;
+    }
+
+    /* Sticky Bottom Action Bar */
+    .sticky-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 12px)) 20px;
+      background: rgba(10, 22, 40, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1.5px solid var(--glass-border);
+      display: flex;
+      gap: 12px;
+      z-index: 100;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-inner {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green), var(--gold));
+      color: #050A08;
+      border: none;
+      box-shadow: 0 4px 14px rgba(168, 205, 85, 0.18);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(168, 205, 85, 0.28);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--green);
+      border: 1.5px solid var(--green);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(168, 205, 85, 0.05);
+      transform: translateY(-1px);
+    }
+
+    .btn-icon {
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Ambient glow spheres -->
+  <div class="decor-circle-1"></div>
+  <div class="decor-circle-2"></div>
+
+  <!-- Top bar -->
+  <header class="header-nav">
+    <a href="https://crickstreet.com" class="back-btn">&#8592;</a>
+    <span class="header-label" id="page-header-title">Player Profile</span>
+    <div style="width: 40px;"></div> <!-- Spacer -->
+  </header>
+
+  <!-- Profile Content -->
+  <main>
+
+    <!-- ════════════════════════════════════════════════════════
+         1. SKELETON LOADING VIEW (Visible during Firestore fetch)
+         ════════════════════════════════════════════════════════ -->
+    <div id="skeleton-container">
+      <div class="hero-banner" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05);">
+        <div class="avatar-wrapper">
+          <div class="avatar-ring shimmer" style="background: none; box-shadow: none;">
+            <div class="avatar" style="background: rgba(255,255,255,0.05);"></div>
+          </div>
+        </div>
+        <div class="shimmer" style="height: 28px; width: 160px; margin: 0 auto 8px auto; border-radius: 8px;"></div>
+        <div class="shimmer" style="height: 14px; width: 100px; margin: 0 auto 16px auto; border-radius: 4px;"></div>
+        
+        <div class="badges-row">
+          <div class="shimmer" style="height: 26px; width: 80px; border-radius: 20px;"></div>
+          <div class="shimmer" style="height: 26px; width: 80px; border-radius: 20px;"></div>
+        </div>
+
+        <div class="community-row" style="background: rgba(255,255,255,0.02);">
+          <div class="community-stat"><div class="shimmer" style="height: 20px; width: 40px; margin: 0 auto 4px auto;"></div><div class="shimmer" style="height: 10px; width: 50px; margin: 0 auto;"></div></div>
+          <div class="comm-divider"></div>
+          <div class="community-stat"><div class="shimmer" style="height: 20px; width: 40px; margin: 0 auto 4px auto;"></div><div class="shimmer" style="height: 10px; width: 50px; margin: 0 auto;"></div></div>
+          <div class="comm-divider"></div>
+          <div class="community-stat"><div class="shimmer" style="height: 20px; width: 20px; margin: 0 auto 4px auto;"></div><div class="shimmer" style="height: 10px; width: 40px; margin: 0 auto;"></div></div>
+        </div>
+      </div>
+
+      <section>
+        <div class="section-title">
+          <div class="shimmer" style="width: 28px; height: 28px; border-radius: 8px;"></div>
+          <div class="shimmer" style="width: 120px; height: 18px;"></div>
+        </div>
+        <div class="stats-grid">
+          <!-- 9 blank shimmer boxes -->
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+          <div class="stat-card shimmer" style="height: 70px;"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         2. REAL PROFILE VIEW (Populated dynamically)
+         ════════════════════════════════════════════════════════ -->
+    <div id="profile-container">
+      <!-- HERO SECTION -->
+      <div class="hero-banner">
+        <div class="avatar-wrapper">
+          <div class="avatar-ring">
+            <img id="player-avatar" src="" alt="Avatar" class="avatar">
+          </div>
+        </div>
+        <h1 id="player-display-name" class="player-name"></h1>
+        <p id="player-id-label" class="player-id"></p>
+        
+        <div class="badges-row">
+          <div class="badge rank-diamond" id="rank-badge-el">&#127942; Rookie</div>
+          <div class="badge level-badge" id="level-badge-el">&#9733; Level 1</div>
+        </div>
+
+        <div class="community-row">
+          <div class="community-stat">
+            <div class="community-stat-val" id="stat-followers">0</div>
+            <div class="community-stat-lbl">Followers</div>
+          </div>
+          <div class="comm-divider"></div>
+          <div class="community-stat">
+            <div class="community-stat-val" id="stat-following">0</div>
+            <div class="community-stat-lbl">Following</div>
+          </div>
+          <div class="comm-divider"></div>
+          <div class="community-stat">
+            <div class="community-stat-val" id="stat-teams">0</div>
+            <div class="community-stat-lbl">Teams</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS GRID -->
+      <section>
+        <div class="section-title">
+          <div class="section-icon-bg">&#128202;</div>
+          <span>Player Statistics</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-icon">&#128197;</span>
+            <span class="stat-val" id="grid-matches">0</span>
+            <span class="stat-lbl">Matches</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#128200;</span>
+            <span class="stat-val" id="grid-runs">0</span>
+            <span class="stat-lbl">Total Runs</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#9917;</span>
+            <span class="stat-val" id="grid-wickets">0</span>
+            <span class="stat-lbl">Wickets</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#9889;</span>
+            <span class="stat-val" id="grid-highest">0</span>
+            <span class="stat-lbl">Highest Score</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#65285;</span>
+            <span class="stat-val" id="grid-winpct">0%</span>
+            <span class="stat-lbl">Win %</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#9989;</span>
+            <span class="stat-val" id="grid-won">0</span>
+            <span class="stat-lbl">Matches Won</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#11088;</span>
+            <span class="stat-val" id="grid-mom">0</span>
+            <span class="stat-lbl">MoM Awards</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#127919;</span>
+            <span class="stat-val" id="grid-avg">0.0</span>
+            <span class="stat-lbl">Batting Avg</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#8982;</span>
+            <span class="stat-val" id="grid-sr">0.0</span>
+            <span class="stat-lbl">Strike Rate</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ACHIEVEMENTS -->
+      <section>
+        <div class="section-title">
+          <div class="section-icon-bg">&#127941;</div>
+          <span>Achievements</span>
+        </div>
+        <div class="achievements-grid" id="achievements-container">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- PERFORMANCE -->
+      <section>
+        <div class="section-title">
+          <div class="section-icon-bg">&#128268;</div>
+          <span>Last 5 Matches</span>
+        </div>
+        <div class="glass-card">
+          <div class="bar-graph" id="bar-graph-container">
+            <!-- Populated by JS -->
+          </div>
+          
+          <div class="legend-row">
+            <div class="legend-item">
+              <div class="legend-dot" style="background-color: var(--green);"></div>
+              <span>Won</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background-color: #FF6B6B;"></div>
+              <span>Lost</span>
+            </div>
+            <div class="win-ratio">
+              Win Ratio: <span style="color: var(--green); font-weight: bold;" id="ratio-pct">0%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         3. ERROR NOT FOUND VIEW (Toggled if player doesn't exist)
+         ════════════════════════════════════════════════════════ -->
+    <div id="error-container">
+      <div class="error-card">
+        <div class="error-icon">⚠️</div>
+        <h2 class="error-title">Player Not Found</h2>
+        <p class="error-text">
+          The player profile you scanned does not exist in Crickstreet. The user may have deleted their account or the QR link is incorrect.
+        </p>
+        <a href="https://crickstreet.com" class="btn btn-primary" style="margin-bottom: 0;">Visit Crickstreet Home</a>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Sticky Bottom Actions -->
+  <nav class="sticky-nav">
+    <div class="nav-inner">
+      <a href="#" id="app-deeplink-btn" class="btn btn-primary">
+        <span class="btn-icon">⚡</span>
+        Open in App
+      </a>
+      <a href="https://crickstreet.com" class="btn btn-secondary">
+        <span class="btn-icon">&#128229;</span>
+        Get App
+      </a>
+    </div>
+  </nav>
+
+  <!-- Firebase modules integration -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Firebase configuration pointing to crickstreet-890e7
+    const firebaseConfig = {
+      apiKey: "AIzaSyC062R_qS1jbdlknD1NWrArfgnNgHcU2Nc",
+      authDomain: "crickstreet-890e7.firebaseapp.com",
+      projectId: "crickstreet-890e7",
+      storageBucket: "crickstreet-890e7.firebasestorage.app",
+      messagingSenderId: "461731506048",
+      appId: "1:461731506048:web:d1bf43596bd0b607268365"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const playerId = urlParams.get('id');
+
+    // Achievement badges mapping configurations
+    const ALL_ACHIEVEMENTS = {
+      mvp: { label: 'MVP', icon: '🏆', class: 'ach-mvp' },
+      top_scorer: { label: 'Top Scorer', icon: '📈', class: 'ach-scorer' },
+      match_winner: { label: 'Match Winner', icon: '⚡', class: 'ach-winner' },
+      champion: { label: 'Champion', icon: '⭐', class: 'ach-champ' }
+    };
+
+    async function loadProfile() {
+      const skeletonView = document.getElementById('skeleton-container');
+      const profileView = document.getElementById('profile-container');
+      const errorView = document.getElementById('error-container');
+
+      if (!playerId) {
+        // Show error immediately if no playerId is provided
+        skeletonView.style.display = 'none';
+        errorView.style.display = 'block';
+        return;
+      }
+
+      try {
+        const userRef = doc(db, 'users', playerId);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          // Document does not exist in Firestore -> Render error screen
+          skeletonView.style.display = 'none';
+          errorView.style.display = 'block';
+          return;
+        }
+
+        const userData = userSnap.data();
+        
+        // Resolve display name and avatar (using first letter fallback if photoURL is missing)
+        const displayName = userData.displayName || 'Player';
+        const photoURL = userData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=A8CD55&color=0A1628&size=150&bold=true`;
+        
+        // Parse and validate stats object fields (strict database truth - default to 0/empty)
+        const stats = userData.stats || {};
+        
+        const followers = stats.followers || 0;
+        const following = stats.following || 0;
+        const teams = stats.teams || 0;
+
+        const matches = stats.matches || 0;
+        const runs = stats.runs || 0;
+        const wickets = stats.wickets || 0;
+
+        // Calculate level and rank dynamically from runs and wickets
+        const calculateLevel = (r, w) => Math.floor(r / 150) + Math.floor(w * 2) + 1;
+        const calculateRank = (lvl) => {
+          if (lvl >= 50) return 'Diamond';
+          if (lvl >= 35) return 'Platinum';
+          if (lvl >= 20) return 'Gold';
+          if (lvl >= 10) return 'Silver';
+          if (lvl >= 5) return 'Bronze';
+          return 'Rookie';
+        };
+        const level = calculateLevel(runs, wickets);
+        const rank = calculateRank(level);
+
+        const highestScore = stats.highestScore || 0;
+        const winPercentage = stats.winPercentage || 0;
+        const matchesWon = stats.matchesWon || 0;
+        const momAwards = stats.momAwards || 0;
+        const battingAverage = stats.battingAverage || 0;
+        const strikeRate = stats.strikeRate || 0;
+
+        const achievementsList = stats.achievements || [];
+        const last5List = stats.last5 || [];
+
+        // 1. Inject Hero Section Text and Images
+        document.getElementById('player-avatar').src = photoURL;
+        document.getElementById('player-display-name').innerText = displayName;
+        document.getElementById('player-id-label').innerText = `🏏 CSPL-${playerId.slice(0, 8).toUpperCase()}`;
+        document.getElementById('rank-badge-el').innerHTML = `&#127942; ${rank}`;
+        document.getElementById('level-badge-el').innerHTML = `&#9733; Level ${level}`;
+
+        // 2. Inject Community Stats
+        document.getElementById('stat-followers').innerText = followers.toLocaleString();
+        document.getElementById('stat-following').innerText = following.toLocaleString();
+        document.getElementById('stat-teams').innerText = teams.toLocaleString();
+
+        // 3. Inject Stats Grid values
+        document.getElementById('grid-matches').innerText = matches.toLocaleString();
+        document.getElementById('grid-runs').innerText = runs.toLocaleString();
+        document.getElementById('grid-wickets').innerText = wickets.toLocaleString();
+        document.getElementById('grid-highest').innerText = highestScore.toLocaleString();
+        document.getElementById('grid-winpct').innerText = `${winPercentage}%`;
+        document.getElementById('grid-won').innerText = matchesWon.toLocaleString();
+        document.getElementById('grid-mom').innerText = momAwards.toLocaleString();
+        document.getElementById('grid-avg').innerText = Number(battingAverage).toFixed(1);
+        document.getElementById('grid-sr').innerText = Number(strikeRate).toFixed(1);
+
+        // 4. Render Achievement Badges
+        const achContainer = document.getElementById('achievements-container');
+        achContainer.innerHTML = '';
+        if (achievementsList.length > 0) {
+          achievementsList.forEach(achKey => {
+            const achDef = ALL_ACHIEVEMENTS[achKey];
+            if (achDef) {
+              const badgeHtml = `
+                <div class="achievement-badge">
+                  <div class="achievement-icon-bg ${achDef.class}">${achDef.icon}</div>
+                  <span class="achievement-lbl">${achDef.label}</span>
+                </div>
+              `;
+              achContainer.innerHTML += badgeHtml;
+            }
+          });
+        } else {
+          achContainer.innerHTML = '<div class="empty-placeholder-text">No achievements unlocked yet</div>';
+        }
+
+        // 5. Render Last 5 Matches Bar Graph
+        const graphContainer = document.getElementById('bar-graph-container');
+        document.getElementById('ratio-pct').innerText = `${winPercentage}%`;
+        graphContainer.innerHTML = '';
+
+        if (last5List.length > 0) {
+          const maxRuns = Math.max(10, ...last5List.map(m => m.runs || 0));
+          const maxBarHeight = 80; // maximum bar height in px
+
+          last5List.forEach((m, index) => {
+            const runsCount = m.runs || 0;
+            const isWon = !!m.won;
+            const barH = Math.max(6, (runsCount / maxRuns) * maxBarHeight);
+            
+            const barHtml = `
+              <div class="bar-wrapper">
+                <span class="bar-label-runs">${runsCount}</span>
+                <div id="web-bar-${index}" class="bar ${isWon ? 'won-bar' : 'lost-bar'}" style="height: 0px;"></div>
+                <span class="bar-label-match">${m.match || `M${index+1}`}</span>
+                <span class="bar-outcome-icon ${isWon ? 'outcome-won' : 'outcome-lost'}">${isWon ? '&#9650;' : '&#9660;'}</span>
+              </div>
+            `;
+            graphContainer.innerHTML += barHtml;
+
+            // Trigger animation frame for height growth
+            setTimeout(() => {
+              const barEl = document.getElementById(`web-bar-${index}`);
+              if (barEl) barEl.style.height = `${barH}px`;
+            }, 100);
+          });
+        } else {
+          graphContainer.innerHTML = '<div class="empty-placeholder-text">No matches played recently</div>';
+        }
+
+        // 6. Setup Deep Linking Actions
+        const customSchemeUrl = `crickstreet://player/${playerId}`;
+        document.getElementById('app-deeplink-btn').addEventListener('click', (e) => {
+          e.preventDefault();
+          window.location.href = customSchemeUrl;
+          
+          // Redirect fallback to home website if app isn't installed
+          setTimeout(() => {
+            window.location.href = 'https://crickstreet.com';
+          }, 1800);
+        });
+
+        // 7. Show Profile View, Hide Loading Skeleton
+        skeletonView.style.display = 'none';
+        profileView.style.display = 'block';
+
+      } catch (err) {
+        console.error("Firestore Loading Failed:", err);
+        skeletonView.style.display = 'none';
+        errorView.style.display = 'block';
+      }
+    }
+
+    window.onload = loadProfile;
+  </script>
+</body>
+</html>

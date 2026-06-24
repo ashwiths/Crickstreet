@@ -19,42 +19,42 @@ import { db } from '@/src/services/firebase';
 
 const { width } = Dimensions.get('window');
 
-// ── Mock player stats (replace with Firestore reads when ready) ──────────────
-const MOCK_STATS = {
-  displayName: 'Galangal Richard',
-  photoURL: 'https://i.pravatar.cc/200?img=11',
-  rank: 'Diamond',
-  level: 42,
-  playerId: 'CSPL-00A1',
-  totalMatches: 187,
-  totalRuns: 6842,
-  totalWickets: 94,
-  highestScore: 142,
-  winPercentage: 68,
-  matchesWon: 127,
-  momAwards: 23,
-  battingAverage: 48.5,
-  strikeRate: 134.7,
-  followers: 3210,
-  following: 847,
-  teamsJoined: 6,
-  last5: [
-    { match: 'M1', runs: 78, won: true },
-    { match: 'M2', runs: 12, won: false },
-    { match: 'M3', runs: 95, won: true },
-    { match: 'M4', runs: 44, won: true },
-    { match: 'M5', runs: 102, won: false },
-  ],
-  achievements: [
-    { id: 'mvp', label: 'MVP', icon: 'award' as const, colors: ['#FFD700', '#FFA500'] },
-    { id: 'top_scorer', label: 'Top Scorer', icon: 'trending-up' as const, colors: ['#A8CD55', '#4CAF50'] },
-    { id: 'match_winner', label: 'Match Winner', icon: 'zap' as const, colors: ['#00B4DB', '#0083B0'] },
-    { id: 'champion', label: 'Tournament Champion', icon: 'star' as const, colors: ['#f953c6', '#b91d73'] },
-  ],
+function SkeletonView({ style }: { style: any }) {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+
+  return <Animated.View style={[style, { opacity: pulseAnim, backgroundColor: 'rgba(255,255,255,0.06)' }]} />;
+}
+
+const ACHIEVEMENT_DEFS = {
+  mvp: { label: 'MVP', icon: 'award' as const, colors: ['#FFD700', '#FFA500'] as [string, string] },
+  top_scorer: { label: 'Top Scorer', icon: 'trending-up' as const, colors: ['#A8CD55', '#4CAF50'] as [string, string] },
+  match_winner: { label: 'Match Winner', icon: 'zap' as const, colors: ['#00B4DB', '#0083B0'] as [string, string] },
+  champion: { label: 'Tournament Champion', icon: 'star' as const, colors: ['#f953c6', '#b91d73'] as [string, string] }
 };
 
+function calculateLevel(runs: number, wickets: number) {
+  return Math.floor(runs / 150) + Math.floor(wickets * 2) + 1;
+}
+
+function calculateRank(level: number) {
+  if (level >= 50) return 'Diamond';
+  if (level >= 35) return 'Platinum';
+  if (level >= 20) return 'Gold';
+  if (level >= 10) return 'Silver';
+  if (level >= 5) return 'Bronze';
+  return 'Rookie';
+}
+
 const MAX_BAR_HEIGHT = 80;
-const MAX_RUNS = Math.max(...MOCK_STATS.last5.map(m => m.runs));
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -100,6 +100,7 @@ export default function PlayerProfileScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [playerData, setPlayerData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Entrance animations
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -108,9 +109,7 @@ export default function PlayerProfileScreen() {
 
   useEffect(() => {
     if (!id) {
-      setPlayerData({
-        ...MOCK_STATS,
-      });
+      setError('No player ID provided.');
       setLoading(false);
       return;
     }
@@ -121,24 +120,39 @@ export default function PlayerProfileScreen() {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
+          const stats = data.stats || {};
+          const totalRuns = stats.runs || 0;
+          const totalWickets = stats.wickets || 0;
+          const level = calculateLevel(totalRuns, totalWickets);
+          const rank = calculateRank(level);
+          
           setPlayerData({
-            ...MOCK_STATS,
-            displayName: data.displayName || MOCK_STATS.displayName,
-            photoURL: data.photoURL || MOCK_STATS.photoURL,
+            displayName: data.displayName || 'Player',
+            photoURL: data.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.displayName || 'Player')}&background=A8CD55&color=0A1628&size=150&bold=true`,
             playerId: `CSPL-${id.slice(0, 8).toUpperCase()}`,
+            rank: rank,
+            level: level,
+            followers: stats.followers || 0,
+            following: stats.following || 0,
+            teamsJoined: stats.teams || 0,
+            totalMatches: stats.matches || 0,
+            totalRuns: totalRuns,
+            totalWickets: totalWickets,
+            highestScore: stats.highestScore || 0,
+            winPercentage: stats.winPercentage || 0,
+            matchesWon: stats.matchesWon || 0,
+            momAwards: stats.momAwards || 0,
+            battingAverage: stats.battingAverage || 0,
+            strikeRate: stats.strikeRate || 0,
+            achievements: stats.achievements || [],
+            last5: stats.last5 || [],
           });
         } else {
-          setPlayerData({
-            ...MOCK_STATS,
-            playerId: `CSPL-${id.slice(0, 8).toUpperCase()}`,
-          });
+          setError('Player not found in database.');
         }
       } catch (err) {
         console.error('Error fetching player data:', err);
-        setPlayerData({
-          ...MOCK_STATS,
-          playerId: `CSPL-${id.slice(0, 8).toUpperCase()}`,
-        });
+        setError('Error connecting to database.');
       } finally {
         setLoading(false);
       }
@@ -148,14 +162,14 @@ export default function PlayerProfileScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !error) {
       Animated.stagger(180, [
         Animated.spring(headerAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
         Animated.spring(statsAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
         Animated.spring(perfAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
       ]).start();
     }
-  }, [loading]);
+  }, [loading, error]);
 
   const headerStyle = {
     opacity: headerAnim,
@@ -173,21 +187,63 @@ export default function PlayerProfileScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={['#0A1628', '#0D1F3C', '#111A2E']}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <SafeAreaView style={styles.centered}>
-          <ActivityIndicator size="large" color="#A8CD55" />
-          <Text style={{ color: '#8A9BA8', marginTop: 12, fontSize: 14, fontWeight: '600' }}>
-            Loading player card...
-          </Text>
+        <LinearGradient colors={['#0A1628', '#0D1F3C', '#111A2E']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+              <Feather name="arrow-left" size={20} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerLabel}>Player Profile</Text>
+            <View style={{ width: 44 }} />
+          </View>
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Banner skeleton */}
+            <View style={[styles.heroBanner, { backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }]}>
+              <SkeletonView style={{ width: 98, height: 98, borderRadius: 49, marginBottom: 16 }} />
+              <SkeletonView style={{ width: 160, height: 24, borderRadius: 8, marginBottom: 8 }} />
+              <SkeletonView style={{ width: 100, height: 14, borderRadius: 4, marginBottom: 16 }} />
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+                <SkeletonView style={{ width: 80, height: 26, borderRadius: 13 }} />
+                <SkeletonView style={{ width: 80, height: 26, borderRadius: 13 }} />
+              </View>
+              <SkeletonView style={{ width: '100%', height: 60, borderRadius: 16 }} />
+            </View>
+            {/* Stats skeleton */}
+            <SkeletonView style={{ width: 150, height: 20, borderRadius: 6, marginBottom: 14 }} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {Array.from({ length: 9 }).map((_, i) => (
+                <SkeletonView key={i} style={{ width: (width - 32 - 20) / 3, height: 74, borderRadius: 16 }} />
+              ))}
+            </View>
+          </ScrollView>
         </SafeAreaView>
       </View>
     );
   }
 
-  const player = playerData || MOCK_STATS;
+  if (error || !playerData) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#0A1628', '#0D1F3C', '#111A2E']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={styles.errorCard}>
+            <Feather name="alert-circle" size={56} color="#FF6B6B" style={{ marginBottom: 16 }} />
+            <Text style={styles.errorTitle}>Player Not Found</Text>
+            <Text style={styles.errorText}>
+              The player profile you scanned does not exist in Crickstreet. The user may have deleted their account or the QR link is incorrect.
+            </Text>
+            <TouchableOpacity style={styles.errorBtn} onPress={() => router.back()}>
+              <LinearGradient colors={['#A8CD55', '#E3A85B']} style={styles.errorBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                <Text style={styles.errorBtnText}>Go Back</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  const player = playerData;
 
   return (
     <View style={styles.container}>
@@ -281,14 +337,22 @@ export default function PlayerProfileScreen() {
           <Animated.View style={[styles.section, statsStyle]}>
             <SectionTitle icon="award" title="Achievements" />
             <View style={styles.achievementsGrid}>
-              {player.achievements.map((a: any) => (
-                <AchievementBadge
-                  key={a.id}
-                  label={a.label}
-                  icon={a.icon}
-                  colors={a.colors as [string, string]}
-                />
-              ))}
+              {player.achievements.length > 0 ? (
+                player.achievements.map((achKey: string) => {
+                  const ach = (ACHIEVEMENT_DEFS as any)[achKey];
+                  if (!ach) return null;
+                  return (
+                    <AchievementBadge
+                      key={achKey}
+                      label={ach.label}
+                      icon={ach.icon}
+                      colors={ach.colors}
+                    />
+                  );
+                })
+              ) : (
+                <Text style={styles.emptyText}>No achievements unlocked yet</Text>
+              )}
             </View>
           </Animated.View>
 
@@ -297,24 +361,33 @@ export default function PlayerProfileScreen() {
             <SectionTitle icon="activity" title="Last 5 Matches" />
             <View style={styles.glassCard}>
               <View style={styles.barGraph}>
-                {player.last5.map((m: any) => {
-                  const barH = Math.max(8, (m.runs / MAX_RUNS) * MAX_BAR_HEIGHT);
-                  return (
-                    <View key={m.match} style={styles.barWrapper}>
-                      <Text style={styles.barRunsLabel}>{m.runs}</Text>
-                      <LinearGradient
-                        colors={m.won ? ['#A8CD55', '#4CAF50'] : ['#FF6B6B', '#E53935']}
-                        style={[styles.bar, { height: barH }]}
-                      />
-                      <Text style={styles.barMatchLabel}>{m.match}</Text>
-                      <Feather
-                        name={m.won ? 'chevrons-up' : 'chevrons-down'}
-                        size={12}
-                        color={m.won ? '#A8CD55' : '#FF6B6B'}
-                      />
-                    </View>
-                  );
-                })}
+                {player.last5.length > 0 ? (
+                  (() => {
+                    const maxRuns = Math.max(10, ...player.last5.map((m: any) => m.runs || 0));
+                    return player.last5.map((m: any, idx: number) => {
+                      const barH = Math.max(8, ((m.runs || 0) / maxRuns) * MAX_BAR_HEIGHT);
+                      return (
+                        <View key={m.match || idx} style={styles.barWrapper}>
+                          <Text style={styles.barRunsLabel}>{m.runs || 0}</Text>
+                          <LinearGradient
+                            colors={m.won ? ['#A8CD55', '#4CAF50'] : ['#FF6B6B', '#E53935']}
+                            style={[styles.bar, { height: barH }]}
+                          />
+                          <Text style={styles.barMatchLabel}>{m.match || `M${idx + 1}`}</Text>
+                          <Feather
+                            name={m.won ? 'chevrons-up' : 'chevrons-down'}
+                            size={12}
+                            color={m.won ? '#A8CD55' : '#FF6B6B'}
+                          />
+                        </View>
+                      );
+                    });
+                  })()
+                ) : (
+                  <Text style={[styles.emptyText, { paddingVertical: 20 }]}>
+                    No matches played recently
+                  </Text>
+                )}
               </View>
               {/* Win/Loss legend */}
               <View style={styles.legendRow}>
@@ -368,6 +441,56 @@ function SectionTitle({ icon, title }: { icon: keyof typeof Feather.glyphMap; ti
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A1628' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyText: {
+    color: '#8A9BA8',
+    fontSize: 13,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    width: '100%',
+    paddingVertical: 12,
+  },
+  errorCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 12,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#8A9BA8',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  errorBtn: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  errorBtnGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorBtnText: {
+    color: '#0A1628',
+    fontSize: 15,
+    fontWeight: '800',
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

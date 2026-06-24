@@ -468,8 +468,13 @@ export default function CreateMatchesScreen() {
           text: 'Start Scoring',
           onPress: () => {
             router.replace({
-              pathname: '/(tabs)',
-              params: { tab: 'matches' }
+              pathname: '/scorecard',
+              params: {
+                myTeamName,
+                oppTeamName,
+                myPlayers: JSON.stringify(myPlayers),
+                oppPlayers: JSON.stringify(oppPlayers),
+              },
             });
           }
         }
