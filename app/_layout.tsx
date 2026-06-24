@@ -54,6 +54,8 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="create-matches" options={{ headerShown: false }} />
+      <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="player-profile/[id]" options={{ headerShown: false }} />
       <Stack.Screen
         name="modal"
         options={{ presentation: 'modal', title: 'Modal', headerShown: true }}

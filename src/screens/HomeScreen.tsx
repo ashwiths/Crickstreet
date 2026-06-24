@@ -10,6 +10,7 @@ import {
 } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import ProfileScreen from '@/app/(tabs)/profile';
 import {
   Dimensions,
   Image,
@@ -375,82 +376,7 @@ export default function HomeScreen() {
   };
 
   const renderProfileTab = () => {
-    return (
-      <View style={styles.tabContent}>
-        {/* Header */}
-        <View style={styles.tabHeader}>
-          <Text style={styles.tabHeaderTitle}>Scorer Profile</Text>
-          <Text style={styles.tabHeaderSub}>Manage your profile & preferences</Text>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-          {/* User Bio Card */}
-          <View style={styles.profileBioCard}>
-            <View style={styles.profileAvatarLarge}>
-              <Text style={styles.profileAvatarTxt}>A</Text>
-              <View style={styles.onlineBadge} />
-            </View>
-            <Text style={styles.profileName}>Ashil</Text>
-            <Text style={styles.profileRole}>Gold Scoring Tier • Member since 2026</Text>
-            
-            <View style={styles.profileStatsSummary}>
-              <View style={styles.profileStatItem}>
-                <Text style={styles.profileStatVal}>74</Text>
-                <Text style={styles.profileStatLbl}>Scored</Text>
-              </View>
-              <View style={styles.verticalDivider} />
-              <View style={styles.profileStatItem}>
-                <Text style={styles.profileStatVal}>12</Text>
-                <Text style={styles.profileStatLbl}>Teams</Text>
-              </View>
-              <View style={styles.verticalDivider} />
-              <View style={styles.profileStatItem}>
-                <Text style={styles.profileStatVal}>4.9</Text>
-                <Text style={styles.profileStatLbl}>Rating</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Managed Teams Section */}
-          <Text style={styles.profileSectionTitle}>My Managed Teams</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.teamsHorizontalScroll}>
-            {[
-              { name: 'Crickstreet CC', players: 16, color: '#3B82F6' },
-              { name: 'Royal Strikers', players: 14, color: '#EF4444' },
-              { name: 'Sharjah Kings', players: 15, color: '#F59E0B' },
-            ].map((team) => (
-              <View key={team.name} style={styles.teamManagedCard}>
-                <View style={[styles.teamManagedIcon, { backgroundColor: team.color }]}>
-                  <Text style={styles.teamManagedIconText}>{team.name.substring(0,2)}</Text>
-                </View>
-                <Text style={styles.teamManagedName}>{team.name}</Text>
-                <Text style={styles.teamManagedCount}>{team.players} Squad Members</Text>
-              </View>
-            ))}
-          </ScrollView>
-
-          {/* Settings Section */}
-          <Text style={styles.profileSectionTitle}>App Preferences</Text>
-          <View style={styles.settingsCard}>
-            {[
-              { icon: 'bell-outline', title: 'Notifications', value: 'All matches' },
-              { icon: 'theme-light-dark', title: 'Scoring Theme', value: 'Dark Forest Green' },
-              { icon: 'shield-lock-outline', title: 'Scoring Ruleset', value: 'ICC T20 standard' },
-              { icon: 'help-circle-outline', title: 'Scoring Guide & Help', value: 'Documentation' },
-            ].map((setting) => (
-              <TouchableOpacity key={setting.title} style={styles.settingRow}>
-                <View style={settingRowStyle(setting.title)}>
-                  <MaterialCommunityIcons name={setting.icon as any} size={20} color={C.gray3} />
-                  <Text style={styles.settingTitle}>{setting.title}</Text>
-                </View>
-                <Text style={styles.settingValue}>{setting.value}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={{ height: 100 }} />
-        </ScrollView>
-      </View>
-    );
+    return <ProfileScreen onBack={() => setActiveTab('home')} />;
   };
 
   const settingRowStyle = (title: string) => {
@@ -1479,168 +1405,185 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Profile & Settings ─────────────────────────────────────────────────────
-  profileBioCard: {
-    backgroundColor: '#131713',
-    borderRadius: 24,
-    padding: 20,
+  // ── Profile & Settings (Redesigned) ────────────────────────────────────────
+  profileHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
   },
-  profileAvatarLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  profileHeaderTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+  },
+  profileHeaderBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  profileScroll: {
+    paddingHorizontal: 18,
+    paddingBottom: 20,
+  },
+  profileIdentityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  profileAvatarSmall: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    marginBottom: 12,
+    marginRight: 14,
     shadowColor: C.green,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  profileAvatarTxt: {
-    fontSize: 28,
+  profileAvatarSmallTxt: {
+    fontSize: 22,
     fontWeight: '900',
-    color: C.white,
+    color: '#FFFFFF',
   },
-  onlineBadge: {
+  profileOnlineDot: {
     position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#34D399',
-    bottom: 2,
-    right: 2,
+    bottom: 1,
+    right: 1,
     borderWidth: 2,
-    borderColor: '#131713',
+    borderColor: '#FFFFFF',
   },
-  profileName: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: C.white,
-    letterSpacing: -0.3,
-    marginBottom: 2,
-  },
-  profileRole: {
-    fontSize: 11,
-    color: '#828880',
-    fontWeight: '500',
-    marginBottom: 16,
-  },
-  profileStatsSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  profileStatItem: {
+  profileIdentityInfo: {
     flex: 1,
-    alignItems: 'center',
   },
-  profileStatVal: {
-    fontSize: 18,
+  profileIdentityName: {
+    fontSize: 17,
     fontWeight: '800',
-    color: C.white,
-  },
-  profileStatLbl: {
-    fontSize: 10,
-    color: '#828880',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  verticalDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  profileSectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: C.white,
+    color: '#1A1A1A',
+    marginBottom: 3,
     letterSpacing: -0.2,
-    marginBottom: 10,
-    marginTop: 8,
   },
-  teamsHorizontalScroll: {
-    gap: 12,
-    paddingBottom: 4,
-    marginBottom: 16,
+  profileIdentityEmail: {
+    fontSize: 13,
+    color: '#8A8A8A',
+    fontWeight: '500',
   },
-  teamManagedCard: {
-    width: 140,
-    backgroundColor: '#131713',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-  },
-  teamManagedIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  profileEditBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  teamManagedIconText: {
-    color: C.white,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  teamManagedName: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: C.white,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  teamManagedCount: {
-    fontSize: 9,
-    color: '#828880',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  settingsCard: {
-    backgroundColor: '#131713',
+  profileMenuCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    overflow: 'hidden',
+    paddingVertical: 4,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  settingRow: {
+  profileMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
-  settingLeft: {
-    flexDirection: 'row',
+  profileMenuIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#F3F4F1',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  settingTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: C.white,
-  },
-  settingValue: {
-    fontSize: 11,
-    color: C.green,
+  profileMenuLabel: {
+    flex: 1,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#1A1A1A',
   },
+  profileMenuDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginLeft: 72,
+    marginRight: 16,
+  },
+  profileLogoutCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  // kept for other components that reference these
+  profileBioCard: { backgroundColor: '#131713', borderRadius: 24, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginBottom: 20 },
+  profileAvatarLarge: { width: 72, height: 72, borderRadius: 36, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', position: 'relative', marginBottom: 12 },
+  profileAvatarTxt: { fontSize: 28, fontWeight: '900', color: C.white },
+  onlineBadge: { position: 'absolute', width: 14, height: 14, borderRadius: 7, backgroundColor: '#34D399', bottom: 2, right: 2, borderWidth: 2, borderColor: '#131713' },
+  profileName: { fontSize: 20, fontWeight: '900', color: C.white, letterSpacing: -0.3, marginBottom: 2 },
+  profileRole: { fontSize: 11, color: '#828880', fontWeight: '500', marginBottom: 16 },
+  profileStatsSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
+  profileStatItem: { flex: 1, alignItems: 'center' },
+  profileStatVal: { fontSize: 18, fontWeight: '800', color: C.white },
+  profileStatLbl: { fontSize: 10, color: '#828880', fontWeight: '600', marginTop: 2 },
+  verticalDivider: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.08)' },
+  profileSectionTitle: { fontSize: 14, fontWeight: '800', color: C.white, letterSpacing: -0.2, marginBottom: 10, marginTop: 8 },
+  teamsHorizontalScroll: { gap: 12, paddingBottom: 4, marginBottom: 16 },
+  teamManagedCard: { width: 140, backgroundColor: '#131713', borderRadius: 18, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', alignItems: 'center' },
+  teamManagedIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  teamManagedIconText: { color: C.white, fontSize: 14, fontWeight: '800' },
+  teamManagedName: { fontSize: 12, fontWeight: '800', color: C.white, marginBottom: 2, textAlign: 'center' },
+  teamManagedCount: { fontSize: 9, color: '#828880', fontWeight: '500', textAlign: 'center' },
+  settingsCard: { backgroundColor: '#131713', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  settingTitle: { fontSize: 12, fontWeight: '700', color: C.white },
+  settingValue: { fontSize: 11, color: C.green, fontWeight: '600' },
+
 
   // ── Create Match Modal ─────────────────────────────────────────────────────
   modalOverlay: {
