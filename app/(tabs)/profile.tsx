@@ -8,8 +8,9 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
   Modal,
-  SafeAreaView,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -18,14 +19,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 
 import { useAuth } from '../../src/hooks/useAuth';
 import { db, auth } from '../../src/services/firebase';
+import { useTour, TourHighlight } from '../../src/hooks/useTour';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isTablet = SCREEN_WIDTH > 600;
+const MODAL_WIDTH = isTablet ? 420 : SCREEN_WIDTH - 48;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -82,85 +87,87 @@ function QRModal({
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      {/* Backdrop */}
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose}>
+      <View style={styles.modalBackdrop}>
+        <TouchableOpacity 
+          style={StyleSheet.absoluteFillObject} 
+          activeOpacity={1} 
+          onPress={onClose} 
+        />
         <Animated.View
           style={[styles.modalSheet, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}
         >
-          <TouchableOpacity activeOpacity={1}>
-            {/* Header gradient strip */}
-            <LinearGradient
-              colors={['#1A3A2A', '#0D2B1F', '#162A40']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.modalHeaderGradient}
-            >
-              {/* Decorative circles */}
-              <View style={styles.decorCircle1} />
-              <View style={styles.decorCircle2} />
+          {/* Header gradient strip */}
+          <LinearGradient
+            colors={['#1A3A2A', '#0D2B1F', '#162A40']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.modalHeaderGradient}
+          >
+            {/* Decorative circles */}
+            <View style={styles.decorCircle1} />
+            <View style={styles.decorCircle2} />
 
-              {/* Close button */}
-              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                <Feather name="x" size={18} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
+            {/* Close button */}
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Feather name="x" size={18} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
 
-              {/* Avatar */}
-              <View style={styles.modalAvatarRingOuter}>
-                <LinearGradient
-                  colors={['#A8CD55', '#E3A85B']}
-                  style={styles.modalAvatarRing}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Image source={{ uri: photoURL || 'https://i.pravatar.cc/150?img=11' }} style={styles.modalAvatar} />
-                </LinearGradient>
-              </View>
-
-              <Text style={styles.modalName}>{displayName}</Text>
-              <Text style={styles.modalPlayerId}>{playerId}</Text>
-            </LinearGradient>
-
-            {/* QR Code */}
-            <View style={styles.qrSection}>
-              <View style={styles.qrWrapper}>
-                <QRCode
-                  value={qrValue}
-                  size={190}
-                  color="#0A1628"
-                  backgroundColor="#FFF"
-                  logo={{ uri: photoURL || 'https://i.pravatar.cc/40?img=11' }}
-                  logoSize={32}
-                  logoBackgroundColor="#FFF"
-                  logoBorderRadius={16}
-                />
-              </View>
-              <Text style={styles.qrHint}>Scan to view player profile</Text>
+            {/* Avatar */}
+            <View style={styles.modalAvatarRingOuter}>
+              <LinearGradient
+                colors={['#A8CD55', '#E3A85B']}
+                style={styles.modalAvatarRing}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Image source={{ uri: photoURL || 'https://i.pravatar.cc/150?img=11' }} style={styles.modalAvatar} />
+              </LinearGradient>
             </View>
 
-            {/* Action buttons */}
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
-                <LinearGradient
-                  colors={['#A8CD55', '#E3A85B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.actionBtnGradient}
-                >
-                  <Feather name="share-2" size={17} color="#FFF" />
-                  <Text style={styles.actionBtnText}>Share</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+            <Text style={styles.modalName}>{displayName}</Text>
+            <Text style={styles.modalPlayerId}>{playerId}</Text>
+          </LinearGradient>
 
-              <TouchableOpacity style={styles.actionBtn} onPress={onClose}>
-                <View style={styles.actionBtnOutline}>
-                  <Feather name="download" size={17} color="#A8CD55" />
-                  <Text style={[styles.actionBtnText, { color: '#A8CD55' }]}>Save QR</Text>
-                </View>
-              </TouchableOpacity>
+          {/* QR Code */}
+          <View style={styles.qrSection}>
+            <View style={styles.qrWrapper}>
+              <QRCode
+                value={qrValue}
+                size={190}
+                color="#0A1628"
+                backgroundColor="#FFF"
+                logo={{ uri: photoURL || 'https://i.pravatar.cc/40?img=11' }}
+                logoSize={32}
+                logoBackgroundColor="#FFF"
+                logoBorderRadius={16}
+              />
             </View>
-          </TouchableOpacity>
+            <Text style={styles.qrHint}>Scan to view player profile</Text>
+          </View>
+
+          {/* Action buttons */}
+          <View style={styles.modalActions}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
+              <LinearGradient
+                colors={['#A8CD55', '#E3A85B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.actionBtnGradient}
+              >
+                <Feather name="share-2" size={17} color="#FFF" />
+                <Text style={styles.actionBtnText}>Share</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionBtn} onPress={onClose}>
+              <View style={styles.actionBtnOutline}>
+                <Feather name="download" size={17} color="#A8CD55" />
+                <Text style={[styles.actionBtnText, { color: '#A8CD55' }]}>Save QR</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 }
@@ -264,159 +271,165 @@ function EditProfileModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalBackdrop}
+      >
+        <TouchableOpacity 
+          style={StyleSheet.absoluteFillObject} 
+          activeOpacity={1} 
+          onPress={onClose} 
+        />
         <View style={[styles.editProfileSheet, { maxHeight: '85%' }]} onStartShouldSetResponder={() => true}>
-          <TouchableOpacity activeOpacity={1}>
-            {/* Modal Header */}
-            <View style={styles.editProfileHeader}>
-              <Text style={styles.editProfileTitle}>Edit Player Profile</Text>
-              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                <Feather name="x" size={18} color="#1A1A1A" />
+          {/* Modal Header */}
+          <View style={styles.editProfileHeader}>
+            <Text style={styles.editProfileTitle}>Edit Player Profile</Text>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Feather name="x" size={18} color="#1A1A1A" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.editProfileForm} showsVerticalScrollIndicator={false}>
+            {/* Display Name */}
+            <Text style={styles.editInputLabel}>DISPLAY NAME</Text>
+            <TextInput
+              style={styles.editTextInput}
+              placeholder="e.g. Richard Galangal"
+              value={formName}
+              onChangeText={setFormName}
+            />
+
+            {/* Photo URL */}
+            <Text style={styles.editInputLabel}>PHOTO URL</Text>
+            <TextInput
+              style={styles.editTextInput}
+              placeholder="Image URL"
+              value={formPhoto}
+              onChangeText={setFormPhoto}
+              autoCapitalize="none"
+            />
+
+            {/* Preset Avatars */}
+            <Text style={styles.editInputLabelSub}>CHOOSE PRESET AVATAR</Text>
+            <View style={styles.presetAvatarsRow}>
+              {AVATAR_PRESETS.map((url, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => setFormPhoto(url)}
+                  style={[
+                    styles.presetAvatarBtn,
+                    formPhoto === url && styles.presetAvatarSelected,
+                  ]}
+                >
+                  <Image source={{ uri: url }} style={styles.presetAvatarImg} />
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.initialsAvatarBtn} onPress={handleResetInitials}>
+                <Text style={styles.initialsAvatarTxt}>Initials</Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.editProfileForm} showsVerticalScrollIndicator={false}>
-              {/* Display Name */}
-              <Text style={styles.editInputLabel}>DISPLAY NAME</Text>
-              <TextInput
-                style={styles.editTextInput}
-                placeholder="e.g. Richard Galangal"
-                value={formName}
-                onChangeText={setFormName}
-              />
-
-              {/* Photo URL */}
-              <Text style={styles.editInputLabel}>PHOTO URL</Text>
-              <TextInput
-                style={styles.editTextInput}
-                placeholder="Image URL"
-                value={formPhoto}
-                onChangeText={setFormPhoto}
-                autoCapitalize="none"
-              />
-
-              {/* Preset Avatars */}
-              <Text style={styles.editInputLabelSub}>CHOOSE PRESET AVATAR</Text>
-              <View style={styles.presetAvatarsRow}>
-                {AVATAR_PRESETS.map((url, idx) => (
+            {/* Role selector (Chips) */}
+            <Text style={styles.editInputLabel}>PLAYER ROLE</Text>
+            <View style={styles.chipsRow}>
+              {(['Batsman', 'Bowler', 'All-Rounder', 'Wicket Keeper'] as const).map((r) => {
+                const isSelected = formRole === r;
+                return (
                   <TouchableOpacity
-                    key={idx}
-                    onPress={() => setFormPhoto(url)}
+                    key={r}
                     style={[
-                      styles.presetAvatarBtn,
-                      formPhoto === url && styles.presetAvatarSelected,
+                      styles.chip,
+                      isSelected && styles.chipSelected,
                     ]}
+                    onPress={() => setFormRole(r)}
                   >
-                    <Image source={{ uri: url }} style={styles.presetAvatarImg} />
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={styles.initialsAvatarBtn} onPress={handleResetInitials}>
-                  <Text style={styles.initialsAvatarTxt}>Initials</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Role selector (Chips) */}
-              <Text style={styles.editInputLabel}>PLAYER ROLE</Text>
-              <View style={styles.chipsRow}>
-                {(['Batsman', 'Bowler', 'All-Rounder', 'Wicket Keeper'] as const).map((r) => {
-                  const isSelected = formRole === r;
-                  return (
-                    <TouchableOpacity
-                      key={r}
+                    <Text
                       style={[
-                        styles.chip,
-                        isSelected && styles.chipSelected,
+                        styles.chipText,
+                        isSelected && styles.chipTextSelected,
                       ]}
-                      onPress={() => setFormRole(r)}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          isSelected && styles.chipTextSelected,
-                        ]}
-                      >
-                        {r}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                      {r}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Jersey Number */}
+            <Text style={styles.editInputLabel}>JERSEY NUMBER</Text>
+            <TextInput
+              style={styles.editTextInput}
+              placeholder="e.g. 7"
+              keyboardType="numeric"
+              value={formJersey}
+              onChangeText={setFormJersey}
+            />
+
+            {/* Statistics Grid */}
+            <Text style={styles.editInputLabel}>CAREER STATS</Text>
+            <View style={styles.statsFormGrid}>
+              <View style={styles.statsFormCol}>
+                <Text style={styles.editInputLabelSub}>MATCHES</Text>
+                <TextInput
+                  style={styles.editTextInputSmall}
+                  keyboardType="numeric"
+                  value={formMatches}
+                  onChangeText={setFormMatches}
+                />
               </View>
-
-              {/* Jersey Number */}
-              <Text style={styles.editInputLabel}>JERSEY NUMBER</Text>
-              <TextInput
-                style={styles.editTextInput}
-                placeholder="e.g. 7"
-                keyboardType="numeric"
-                value={formJersey}
-                onChangeText={setFormJersey}
-              />
-
-              {/* Statistics Grid */}
-              <Text style={styles.editInputLabel}>CAREER STATS</Text>
-              <View style={styles.statsFormGrid}>
-                <View style={styles.statsFormCol}>
-                  <Text style={styles.editInputLabelSub}>MATCHES</Text>
-                  <TextInput
-                    style={styles.editTextInputSmall}
-                    keyboardType="numeric"
-                    value={formMatches}
-                    onChangeText={setFormMatches}
-                  />
-                </View>
-                <View style={styles.statsFormCol}>
-                  <Text style={styles.editInputLabelSub}>TOTAL RUNS</Text>
-                  <TextInput
-                    style={styles.editTextInputSmall}
-                    keyboardType="numeric"
-                    value={formRuns}
-                    onChangeText={setFormRuns}
-                  />
-                </View>
+              <View style={styles.statsFormCol}>
+                <Text style={styles.editInputLabelSub}>TOTAL RUNS</Text>
+                <TextInput
+                  style={styles.editTextInputSmall}
+                  keyboardType="numeric"
+                  value={formRuns}
+                  onChangeText={setFormRuns}
+                />
               </View>
+            </View>
 
-              <View style={styles.statsFormGrid}>
-                <View style={styles.statsFormCol}>
-                  <Text style={styles.editInputLabelSub}>WICKETS</Text>
-                  <TextInput
-                    style={styles.editTextInputSmall}
-                    keyboardType="numeric"
-                    value={formWickets}
-                    onChangeText={setFormWickets}
-                  />
-                </View>
-                <View style={styles.statsFormCol}>
-                  <Text style={styles.editInputLabelSub}>HIGHEST SCORE</Text>
-                  <TextInput
-                    style={styles.editTextInputSmall}
-                    keyboardType="numeric"
-                    value={formHighestScore}
-                    onChangeText={setFormHighestScore}
-                  />
-                </View>
+            <View style={styles.statsFormGrid}>
+              <View style={styles.statsFormCol}>
+                <Text style={styles.editInputLabelSub}>WICKETS</Text>
+                <TextInput
+                  style={styles.editTextInputSmall}
+                  keyboardType="numeric"
+                  value={formWickets}
+                  onChangeText={setFormWickets}
+                />
               </View>
+              <View style={styles.statsFormCol}>
+                <Text style={styles.editInputLabelSub}>HIGHEST SCORE</Text>
+                <TextInput
+                  style={styles.editTextInputSmall}
+                  keyboardType="numeric"
+                  value={formHighestScore}
+                  onChangeText={setFormHighestScore}
+                />
+              </View>
+            </View>
 
-              {/* Action Save Button */}
-              <TouchableOpacity style={styles.saveProfileBtn} onPress={handleSave} disabled={saving}>
-                <LinearGradient
-                  colors={['#A8CD55', '#E3A85B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.saveProfileBtnGradient}
-                >
-                  {saving ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.saveProfileBtnText}>Save Profile Data</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <View style={{ height: 24 }} />
-            </ScrollView>
-          </TouchableOpacity>
+            {/* Action Save Button */}
+            <TouchableOpacity style={styles.saveProfileBtn} onPress={handleSave} disabled={saving}>
+              <LinearGradient
+                colors={['#A8CD55', '#E3A85B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.saveProfileBtnGradient}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.saveProfileBtnText}>Save Profile Data</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <View style={{ height: 24 }} />
+          </ScrollView>
         </View>
-      </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -426,6 +439,9 @@ function EditProfileModal({
 export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { startTour } = useTour();
+  const insets = useSafeAreaInsets();
+  
   const [qrVisible, setQrVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
@@ -449,6 +465,15 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
     return () => unsubscribe();
   }, [user?.uid]);
 
+  const handleShareProfile = async () => {
+    try {
+      await Share.share({
+        message: `Check out my Crickstreet player profile! 🏏\nhttps://crickstreet-890e7.web.app/player?id=${uid}`,
+        title: `${displayName}'s Cricket Profile`,
+      });
+    } catch (_) {}
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -456,23 +481,25 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
         locations={[0, 0.4, 0.8]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
+        style={[styles.headerGradient, { height: Math.max(300, 300 + insets.top) }]}
       />
 
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 8 : 16 }]}>
           <TouchableOpacity style={styles.iconButton} onPress={onBack || (() => router.back())}>
             <Feather name="arrow-left" size={24} color="#1A1A1A" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={handleShareProfile}>
             <Feather name="share-2" size={20} color="#1A1A1A" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
+        <ScrollView 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]} 
+          showsVerticalScrollIndicator={false}
+        >
           {/* ── Profile Card ── */}
           <View style={styles.profileCard}>
             <Image source={{ uri: photoURL }} style={styles.avatar} />
@@ -552,9 +579,11 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
             <View style={styles.divider} />
             <MenuItem icon="map-pin" label="My Ground" onPress={() => router.push('/my-grounds')} />
             <View style={styles.divider} />
-            <MenuItem icon="heart" label="Favorite Doctors" />
+            <TourHighlight id="notification-menu">
+              <MenuItem icon="heart" label="Notification" onPress={() => router.push('/notification-settings' as any)} />
+            </TourHighlight>
             <View style={styles.divider} />
-            <MenuItem icon="file-text" label="Medical all History" />
+            <MenuItem icon="file-text" label="Learn To Use" onPress={startTour} />
             <View style={styles.divider} />
             <MenuItem icon="info" label="Help & Support" onPress={() => router.push('/support')} />
           </View>
@@ -571,8 +600,7 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
           </View>
               <View style={styles.bottomSpacer} />
         </ScrollView>
-      </SafeAreaView>
-
+      </View>
       {/* ── QR Modal ── */}
       <QRModal
         visible={qrVisible}
@@ -611,8 +639,6 @@ function MenuItem({ icon, label, onPress }: { icon: keyof typeof Feather.glyphMa
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-
-const MODAL_WIDTH = width - 48;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F1' },

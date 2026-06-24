@@ -1,6 +1,9 @@
+import * as AuthSession from 'expo-auth-session';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { Platform } from 'react-native';
 import {
   GoogleAuthProvider,
   signInWithCredential,
@@ -27,45 +30,54 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// PLACEHOLDERS: Replace these with your actual Client IDs from Firebase Console / Google Cloud Console.
+// Web Client ID from Google Cloud Console
 const WEB_CLIENT_ID = '461731506048-bi2g4kvn0mjue2c2dv3htljek599101n.apps.googleusercontent.com';
-const IOS_CLIENT_ID = 'YOUR_GOOGLE_IOS_CLIENT_ID';
-const ANDROID_CLIENT_ID = 'YOUR_GOOGLE_ANDROID_CLIENT_ID';
+const IOS_CLIENT_ID = undefined;
+const ANDROID_CLIENT_ID = undefined;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Generate the redirect URI explicitly for reliable routing matching
-  const redirectUri = makeRedirectUri({
-    scheme: 'crickstreet',
-    path: 'oauthredirect',
-  });
+  const isExpoGo =
+    Constants?.appOwnership === 'expo' ||
+    Constants?.executionEnvironment === 'storeClient' ||
+    (Constants?.executionEnvironment as string) === ExecutionEnvironment.StoreClient ||
+    (typeof Constants?.linkingUri === 'string' && Constants.linkingUri.startsWith('exp://'));
 
-  // Log the generated redirect URI in terminal logs
+  const owner = Constants.expoConfig?.owner || 'anonymous';
+  const slug = Constants.expoConfig?.slug || 'Crickstreet';
+  const proxyUrl = `https://auth.expo.io/@${owner}/${slug}/oauthredirect`;
+
+  // Resolve the redirect URI dynamically based on the execution environment
+  const redirectUri = Platform.select({
+    web: makeRedirectUri({
+      path: 'oauthredirect',
+    }),
+    default: isExpoGo
+      ? proxyUrl
+      : makeRedirectUri({
+          scheme: 'crickstreet',
+          path: 'oauthredirect',
+        }),
+  }) as string;
+
+  // Log the generated redirect URI in terminal logs for console verification
   useEffect(() => {
+    console.log('[Google Auth] Constants appOwnership:', Constants?.appOwnership);
+    console.log('[Google Auth] Constants executionEnvironment:', Constants?.executionEnvironment);
+    console.log('[Google Auth] Constants linkingUri:', Constants?.linkingUri);
+    console.log('[Google Auth] Resolved isExpoGo:', isExpoGo);
     console.log('[Google Auth] Active Redirect URI:', redirectUri);
-  }, [redirectUri]);
-
-  // Filter out placeholder Client IDs so they don't break Google's OAuth endpoints
-  const cleanIosClientId =
-    IOS_CLIENT_ID && IOS_CLIENT_ID !== 'YOUR_GOOGLE_IOS_CLIENT_ID'
-      ? IOS_CLIENT_ID
-      : undefined;
-  const cleanAndroidClientId =
-    ANDROID_CLIENT_ID && ANDROID_CLIENT_ID !== 'YOUR_GOOGLE_ANDROID_CLIENT_ID'
-      ? ANDROID_CLIENT_ID
-      : undefined;
+  }, [redirectUri, isExpoGo]);
 
   // Initialize the Google Auth Session Request hook
-  // responseType: 'id_token' forces Google to return the id_token directly in the
-  // redirect params rather than requiring a token-exchange step.
   const [, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: WEB_CLIENT_ID,
     webClientId: WEB_CLIENT_ID,
-    iosClientId: cleanIosClientId,
-    androidClientId: cleanAndroidClientId,
+    iosClientId: IOS_CLIENT_ID,
+    androidClientId: ANDROID_CLIENT_ID,
     redirectUri,
     responseType: 'id_token',
   });

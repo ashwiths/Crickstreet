@@ -18,7 +18,6 @@ import {
   Dimensions,
   Image,
   Modal,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,6 +30,7 @@ import {
   Switch,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../src/hooks/useAuth';
 import { db } from '../src/services/firebase';

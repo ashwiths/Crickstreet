@@ -11,6 +11,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import ProfileScreen from '@/app/(tabs)/profile';
+import { useTour, TourHighlight } from '../hooks/useTour';
 import {
   Dimensions,
   Image,
@@ -580,63 +581,71 @@ export default function HomeScreen() {
           </TouchableOpacity>
 
           {/* Tab 2: Matches */}
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('matches')}
-            activeOpacity={0.75}
-          >
-            <MaterialCommunityIcons
-              name={activeTab === 'matches' ? 'scoreboard' : 'scoreboard-outline'}
-              size={20}
-              color={activeTab === 'matches' ? C.green : 'rgba(255,255,255,0.42)'}
-            />
-            <Text style={[styles.navLabel, activeTab === 'matches' && styles.navLabelActive]}>Matches</Text>
-            {activeTab === 'matches' && <View style={styles.activeDot} />}
-          </TouchableOpacity>
+          <TourHighlight id="matches-tab" style={{ flex: 1 }}>
+            <TouchableOpacity
+              style={[styles.navItem, { width: '100%' }]}
+              onPress={() => setActiveTab('matches')}
+              activeOpacity={0.75}
+            >
+              <MaterialCommunityIcons
+                name={activeTab === 'matches' ? 'scoreboard' : 'scoreboard-outline'}
+                size={20}
+                color={activeTab === 'matches' ? C.green : 'rgba(255,255,255,0.42)'}
+              />
+              <Text style={[styles.navLabel, activeTab === 'matches' && styles.navLabelActive]}>Matches</Text>
+              {activeTab === 'matches' && <View style={styles.activeDot} />}
+            </TouchableOpacity>
+          </TourHighlight>
 
           {/* Tab 3: Center FAB (Cricket Ball Image) */}
           <View style={styles.navCenter}>
-            <TouchableOpacity
-              style={styles.navCenterBtn}
-              onPress={() => router.push('/create-matches')}
-              activeOpacity={0.85}
-            >
-              <Image
-                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3076/3076935.png' }}
-                style={styles.cricketBallImage}
-              />
-            </TouchableOpacity>
+            <TourHighlight id="create-match">
+              <TouchableOpacity
+                style={styles.navCenterBtn}
+                onPress={() => router.push('/create-matches')}
+                activeOpacity={0.85}
+              >
+                <Image
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3076/3076935.png' }}
+                  style={styles.cricketBallImage}
+                />
+              </TouchableOpacity>
+            </TourHighlight>
           </View>
 
           {/* Tab 4: Tournament */}
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('tournament')}
-            activeOpacity={0.75}
-          >
-            <MaterialCommunityIcons
-              name={activeTab === 'tournament' ? 'trophy' : 'trophy-outline'}
-              size={20}
-              color={activeTab === 'tournament' ? C.green : 'rgba(255,255,255,0.42)'}
-            />
-            <Text style={[styles.navLabel, activeTab === 'tournament' && styles.navLabelActive]}>Tourney</Text>
-            {activeTab === 'tournament' && <View style={styles.activeDot} />}
-          </TouchableOpacity>
+          <TourHighlight id="tournament-tab" style={{ flex: 1 }}>
+            <TouchableOpacity
+              style={[styles.navItem, { width: '100%' }]}
+              onPress={() => setActiveTab('tournament')}
+              activeOpacity={0.75}
+            >
+              <MaterialCommunityIcons
+                name={activeTab === 'tournament' ? 'trophy' : 'trophy-outline'}
+                size={20}
+                color={activeTab === 'tournament' ? C.green : 'rgba(255,255,255,0.42)'}
+              />
+              <Text style={[styles.navLabel, activeTab === 'tournament' && styles.navLabelActive]}>Tourney</Text>
+              {activeTab === 'tournament' && <View style={styles.activeDot} />}
+            </TouchableOpacity>
+          </TourHighlight>
 
           {/* Tab 5: Profile */}
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('profile')}
-            activeOpacity={0.75}
-          >
-            <MaterialCommunityIcons
-              name={activeTab === 'profile' ? 'account' : 'account-outline'}
-              size={20}
-              color={activeTab === 'profile' ? C.green : 'rgba(255,255,255,0.42)'}
-            />
-            <Text style={[styles.navLabel, activeTab === 'profile' && styles.navLabelActive]}>Profile</Text>
-            {activeTab === 'profile' && <View style={styles.activeDot} />}
-          </TouchableOpacity>
+          <TourHighlight id="profile-tab" style={{ flex: 1 }}>
+            <TouchableOpacity
+              style={[styles.navItem, { width: '100%' }]}
+              onPress={() => setActiveTab('profile')}
+              activeOpacity={0.75}
+            >
+              <MaterialCommunityIcons
+                name={activeTab === 'profile' ? 'account' : 'account-outline'}
+                size={20}
+                color={activeTab === 'profile' ? C.green : 'rgba(255,255,255,0.42)'}
+              />
+              <Text style={[styles.navLabel, activeTab === 'profile' && styles.navLabelActive]}>Profile</Text>
+              {activeTab === 'profile' && <View style={styles.activeDot} />}
+            </TouchableOpacity>
+          </TourHighlight>
         </View>
       </View>
     </View>

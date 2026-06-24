@@ -61,6 +61,7 @@ function RootLayoutNav() {
       <Stack.Screen name="my-grounds" options={{ headerShown: false }} />
       <Stack.Screen name="ground-details/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="support" options={{ headerShown: false }} />
+      <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
       <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       <Stack.Screen name="player-profile/[id]" options={{ headerShown: false }} />
       <Stack.Screen
@@ -71,12 +72,16 @@ function RootLayoutNav() {
   );
 }
 
+import { TourProvider } from '../src/hooks/useTour';
+
 export default function RootLayout() {
   return (
     <ThemeProvider value={CustomDarkTheme}>
       <AuthProvider>
-        <RootLayoutNav />
-        <StatusBar style="light" />
+        <TourProvider>
+          <RootLayoutNav />
+          <StatusBar style="light" />
+        </TourProvider>
       </AuthProvider>
     </ThemeProvider>
   );

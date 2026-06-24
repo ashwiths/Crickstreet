@@ -1,11 +1,10 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { collection, doc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
-import React, { useState } from 'react';
+import { collection, doc, getDoc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Alert,
   Dimensions,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,8 +12,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db } from '../src/services/firebase';
+import { useAuth } from '../src/hooks/useAuth';
+import { triggerLocalNotification } from '../src/services/notifications';
+import { TourHighlight } from '../src/hooks/useTour';
 
 const C = {
   hero:    '#1B3F14',
@@ -64,6 +67,155 @@ export default function ScorecardScreen() {
   const [showMomSelect, setShowMomSelect] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const { user } = useAuth();
+  const uid = user?.uid || '';
+
+  // 1. Notification Preferences State & Firestore Loader
+  const [notifPrefs, setNotifPrefs] = useState<any>({
+    scoreUpdateReminder: true,
+    inningsBreakReminder: true,
+    inningsStartedNotification: true,
+    inningsBreakNotification: true,
+    matchCompletedNotification: true,
+  });
+
+  useEffect(() => {
+    if (!uid) return;
+    async function fetchPrefs() {
+      try {
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          if (data.notificationSettings) {
+            setNotifPrefs(data.notificationSettings);
+            return;
+          }
+        }
+
+        // Try fallback collection users/{uid}/notificationSettings/preferences
+        const backupRef = doc(db, 'users', uid, 'notificationSettings', 'preferences');
+        const backupSnap = await getDoc(backupRef);
+        if (backupSnap.exists()) {
+          setNotifPrefs(backupSnap.data());
+        }
+      } catch (err) {
+        console.log('Error loading notification preferences in scorecard:', err);
+      }
+    }
+    fetchPrefs();
+  }, [uid]);
+
+  // 2. Match Status and Innings States
+  const [matchStatus, setMatchStatus] = useState<'Upcoming' | 'Live' | 'Innings Break' | 'Completed'>('Upcoming');
+  const [currentInnings, setCurrentInnings] = useState<'First Innings' | 'Second Innings'>('First Innings');
+
+  // 3. Score & Break Timers Trackers
+  const [lastScoreUpdateTime, setLastScoreUpdateTime] = useState<Date>(new Date());
+  const [inningsBreakStartTime, setInningsBreakStartTime] = useState<Date | null>(null);
+
+  const [firstInningsStarted, setFirstInningsStarted] = useState(false);
+  const [secondInningsStarted, setSecondInningsStarted] = useState(false);
+
+  const [scoreTimerSeconds, setScoreTimerSeconds] = useState(0);
+  const [breakTimerSeconds, setBreakTimerSeconds] = useState(0);
+
+  const hasWarnedScoreUpdate = useRef(false);
+  const hasWarnedInningsBreak = useRef(false);
+
+  // 4. Timer Tick Interval Effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+
+      if (matchStatus === 'Live') {
+        const elapsed = Math.floor((now.getTime() - lastScoreUpdateTime.getTime()) / 1000);
+        setScoreTimerSeconds(elapsed);
+
+        // Score Update Reminder (60 seconds idle)
+        if (elapsed >= 60 && !hasWarnedScoreUpdate.current) {
+          hasWarnedScoreUpdate.current = true;
+          if (notifPrefs.scoreUpdateReminder) {
+            triggerLocalNotification(
+              'Score Update Pending 🏏',
+              'Score update pending. Please update the live match score.'
+            );
+          }
+        }
+      } else {
+        setScoreTimerSeconds(0);
+      }
+
+      if (matchStatus === 'Innings Break' && inningsBreakStartTime) {
+        const elapsed = Math.floor((now.getTime() - inningsBreakStartTime.getTime()) / 1000);
+        setBreakTimerSeconds(elapsed);
+
+        // Innings Break Reminder (10 minutes idle = 600 seconds)
+        if (elapsed >= 600 && !hasWarnedInningsBreak.current) {
+          hasWarnedInningsBreak.current = true;
+          if (notifPrefs.inningsBreakReminder) {
+            triggerLocalNotification(
+              'Innings Break Alert ☕',
+              'Innings break is still active. Please start the next innings.'
+            );
+          }
+        }
+      } else {
+        setBreakTimerSeconds(0);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [matchStatus, lastScoreUpdateTime, inningsBreakStartTime, notifPrefs]);
+
+  // 5. Status Transition Handler
+  const handleStatusChange = (newStatus: typeof matchStatus) => {
+    setMatchStatus(newStatus);
+
+    if (newStatus === 'Live') {
+      setLastScoreUpdateTime(new Date());
+      hasWarnedScoreUpdate.current = false;
+    } else if (newStatus === 'Innings Break') {
+      setInningsBreakStartTime(new Date());
+      hasWarnedInningsBreak.current = false;
+
+      // Innings Break started notification
+      if (notifPrefs.inningsBreakNotification) {
+        triggerLocalNotification('Innings Break ⏸️', 'Innings Break has started.');
+      }
+    } else if (newStatus === 'Completed') {
+      // Completed status notification
+      if (notifPrefs.matchCompletedNotification) {
+        triggerLocalNotification(
+          'Match Completed 🏆',
+          'Match completed successfully. View scorecard and results.'
+        );
+      }
+    }
+  };
+
+  // 6. Innings Switcher Handler
+  const handleInningsChange = (newInnings: typeof currentInnings) => {
+    setCurrentInnings(newInnings);
+    setLastScoreUpdateTime(new Date());
+    hasWarnedScoreUpdate.current = false;
+  };
+
+  // 7. Manual test simulation triggers
+  const simulateScoreUpdateTimeout = () => {
+    const pastTime = new Date(new Date().getTime() - 60000);
+    setLastScoreUpdateTime(pastTime);
+    hasWarnedScoreUpdate.current = false;
+    Alert.alert('Simulating Score Idle ⏱️', 'Last update set to 60s ago. Push reminder should trigger shortly.');
+  };
+
+  const simulateInningsBreakTimeout = () => {
+    const pastTime = new Date(new Date().getTime() - 600000);
+    setInningsBreakStartTime(pastTime);
+    hasWarnedInningsBreak.current = false;
+    Alert.alert('Simulating Break Idle ☕', 'Break idle set to 10m ago. Push reminder should trigger shortly.');
+  };
+
   const allPlayersList = [...myRoster.map(p => p.name), ...oppRoster.map(p => p.name)];
 
   const updatePlayerStat = (
@@ -74,6 +226,26 @@ export default function ScorecardScreen() {
   ) => {
     // Keep only numbers
     const cleanVal = val.replace(/[^0-9]/g, '');
+
+    // Reset scoring update reminder clock
+    setLastScoreUpdateTime(new Date());
+    hasWarnedScoreUpdate.current = false;
+
+    // Check first score update in new innings
+    if (field === 'runs' && cleanVal !== '0' && cleanVal !== '') {
+      if (currentInnings === 'First Innings' && !firstInningsStarted) {
+        setFirstInningsStarted(true);
+        if (notifPrefs.inningsStartedNotification) {
+          triggerLocalNotification('Innings Started 🏏', 'First Innings has started.');
+        }
+      } else if (currentInnings === 'Second Innings' && !secondInningsStarted) {
+        setSecondInningsStarted(true);
+        if (notifPrefs.inningsStartedNotification) {
+          triggerLocalNotification('Innings Started 🏏', 'Second Innings has started.');
+        }
+      }
+    }
+
     if (team === 'my') {
       const next = [...myRoster];
       next[index] = { ...next[index], [field]: cleanVal };
@@ -178,6 +350,14 @@ export default function ScorecardScreen() {
       // Submit all batch updates
       await batch.commit();
 
+      // Trigger Match Completed local notification if enabled
+      if (notifPrefs.matchCompletedNotification) {
+        triggerLocalNotification(
+          'Match Completed 🏆',
+          'Match completed successfully. View scorecard and results.'
+        );
+      }
+
       Alert.alert(
         'Match Completed! 🏆',
         `Successfully scored and saved.\nUpdated ${matchUpdatesCount} player profiles in Firestore.`,
@@ -218,6 +398,85 @@ export default function ScorecardScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           
+          {/* Notification & Match Status Controller (Vibrant Glassmorphism Panel) */}
+          <TourHighlight id="live-score">
+            <View style={styles.controlPanelCard}>
+              <Text style={styles.controlPanelHeader}>
+                <Feather name="bell" size={14} color={C.green} style={{ marginRight: 6 }} /> LIVE MATCH CONTROL PANEL
+              </Text>
+              
+              {/* Match Status Toggles */}
+              <Text style={styles.controlLabel}>MATCH STATUS</Text>
+              <View style={styles.statusButtonGrid}>
+                {(['Upcoming', 'Live', 'Innings Break', 'Completed'] as const).map(s => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.statusSelectBtn, matchStatus === s && styles.statusSelectBtnActive]}
+                    onPress={() => handleStatusChange(s)}
+                  >
+                    <Text style={[styles.statusSelectBtnTxt, matchStatus === s && styles.statusSelectBtnTxtActive]}>
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Innings Selector */}
+              <View style={styles.inningsControlsRow}>
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <Text style={styles.controlLabel}>CURRENT INNINGS</Text>
+                  <View style={styles.inningsButtonGrid}>
+                    {(['First Innings', 'Second Innings'] as const).map(i => (
+                      <TouchableOpacity
+                        key={i}
+                        style={[styles.inningsSelectBtn, currentInnings === i && styles.inningsSelectBtnActive]}
+                        onPress={() => handleInningsChange(i)}
+                        disabled={matchStatus !== 'Live' && matchStatus !== 'Upcoming'}
+                      >
+                        <Text style={[styles.inningsSelectBtnTxt, currentInnings === i && styles.inningsSelectBtnTxtActive]}>
+                          {i === 'First Innings' ? '1st Inn' : '2nd Inn'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Dev Simulation actions */}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.controlLabel}>TEST REMINDERS</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <TouchableOpacity 
+                      style={[styles.simulateBtn, matchStatus !== 'Live' && styles.simulateBtnDisabled]}
+                      onPress={simulateScoreUpdateTimeout}
+                      disabled={matchStatus !== 'Live'}
+                    >
+                      <Text style={styles.simulateBtnTxt}>Score Idle</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.simulateBtn, matchStatus !== 'Innings Break' && styles.simulateBtnDisabled]}
+                      onPress={simulateInningsBreakTimeout}
+                      disabled={matchStatus !== 'Innings Break'}
+                    >
+                      <Text style={styles.simulateBtnTxt}>10m Idle</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Real-time counters information */}
+              {matchStatus === 'Live' && (
+                <Text style={styles.timerBadge}>
+                  ⏱️ Time since last score update: {scoreTimerSeconds}s / 60s
+                </Text>
+              )}
+              {matchStatus === 'Innings Break' && (
+                <Text style={styles.timerBadge}>
+                  ⏱️ Innings break active for: {Math.floor(breakTimerSeconds / 60)}m {breakTimerSeconds % 60}s
+                </Text>
+              )}
+            </View>
+          </TourHighlight>
+
           {/* Team Switcher tabs */}
           <View style={styles.tabBar}>
             <TouchableOpacity 
@@ -426,4 +685,115 @@ const styles = StyleSheet.create({
   completeBtnTxt: { color: '#FFF', fontSize: 15, fontWeight: '800' },
   cancelBtn: { paddingVertical: 14, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
   cancelBtnTxt: { color: C.gray3, fontSize: 14, fontWeight: '700' },
+
+  // Live Match Control Panel
+  controlPanelCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 16,
+    marginBottom: 16,
+  },
+  controlPanelHeader: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 14,
+  },
+  controlLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#9CA3AF',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  statusButtonGrid: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 14,
+  },
+  statusSelectBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusSelectBtnActive: {
+    backgroundColor: 'rgba(89, 199, 73, 0.15)',
+    borderColor: '#59C749',
+  },
+  statusSelectBtnTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  statusSelectBtnTxtActive: {
+    color: '#59C749',
+    fontWeight: '800',
+  },
+  inningsControlsRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  inningsButtonGrid: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  inningsSelectBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inningsSelectBtnActive: {
+    backgroundColor: 'rgba(89, 199, 73, 0.15)',
+    borderColor: '#59C749',
+  },
+  inningsSelectBtnTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  inningsSelectBtnTxtActive: {
+    color: '#59C749',
+    fontWeight: '800',
+  },
+  simulateBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  simulateBtnDisabled: {
+    opacity: 0.4,
+  },
+  simulateBtnTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  timerBadge: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#EAB308',
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
 });

@@ -7,13 +7,13 @@ import {
   Animated,
   Dimensions,
   Image,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/src/services/firebase';
 

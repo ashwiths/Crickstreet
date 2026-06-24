@@ -22,7 +22,6 @@ import {
   Image,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,6 +30,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../src/hooks/useAuth';
 import { db } from '../src/services/firebase';

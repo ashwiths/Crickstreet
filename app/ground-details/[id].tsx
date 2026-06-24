@@ -19,6 +19,7 @@ import {
   useColorScheme,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../src/hooks/useAuth';
 import { db } from '../../src/services/firebase';
@@ -45,6 +46,7 @@ interface Ground {
 
 export default function GroundDetailsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const uid = user?.uid || '';
@@ -162,11 +164,23 @@ export default function GroundDetailsScreen() {
       )}
 
       {/* Banner & Header overlap */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
+      >
         <View style={styles.bannerContainer}>
           <Image source={{ uri: ground.images }} style={styles.bannerImage} />
           
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={() => router.back()}>
+          <TouchableOpacity 
+            style={[
+              styles.backBtn, 
+              { 
+                backgroundColor: 'rgba(0,0,0,0.5)', 
+                top: insets.top > 0 ? insets.top + 8 : 24 
+              }
+            ]} 
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back" size={22} color="#FFF" />
           </TouchableOpacity>
         </View>

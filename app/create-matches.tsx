@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PlaygroundMapView from '../src/components/PlaygroundMapView';
 
 const C = {
@@ -34,6 +35,7 @@ const STEPS = ['Team Setup', 'Match Setup', 'Venue', 'Review'] as const;
 
 export default function CreateMatchesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<number>(0);
 
   // ─── STEP 1: TEAMS STATE ───────────────────────────────────────────────────
@@ -1141,7 +1143,7 @@ export default function CreateMatchesScreen() {
         <View style={styles.deco1} />
         <View style={styles.deco2} />
 
-        <View style={{ height: Platform.OS === 'ios' ? 48 : 28 }} />
+        <View style={{ height: insets.top > 0 ? insets.top + 6 : 28 }} />
 
         {/* Header navigation row */}
         <View style={styles.headerRow}>
@@ -1161,7 +1163,7 @@ export default function CreateMatchesScreen() {
       {/* ─── Wizard Content ─── */}
       <ScrollView 
         style={styles.scroll} 
-        contentContainerStyle={styles.body} 
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 40 }]} 
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepWrapper}>
