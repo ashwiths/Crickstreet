@@ -261,9 +261,9 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
             </TouchableOpacity>
 
             <View style={styles.divider} />
-            <MenuItem icon="user" label="Account Settings" />
+            <MenuItem icon="users" label="My Players" />
             <View style={styles.divider} />
-            <MenuItem icon="credit-card" label="Payment Method" />
+            <MenuItem icon="user" label="My Teams" onPress={() => router.push('/my-teams')} />
             <View style={styles.divider} />
             <MenuItem icon="git-merge" label="Care Coordination" />
             <View style={styles.divider} />
@@ -303,9 +303,9 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
 
 // ── MenuItem helper ───────────────────────────────────────────────────────────
 
-function MenuItem({ icon, label }: { icon: keyof typeof Feather.glyphMap; label: string }) {
+function MenuItem({ icon, label, onPress }: { icon: keyof typeof Feather.glyphMap; label: string; onPress?: () => void }) {
   return (
-    <TouchableOpacity style={styles.menuItem}>
+    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
       <View style={styles.menuIconContainer}>
         <Feather name={icon} size={20} color="#1A1A1A" />
       </View>

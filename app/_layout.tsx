@@ -55,6 +55,8 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="create-matches" options={{ headerShown: false }} />
       <Stack.Screen name="scorecard" options={{ headerShown: false }} />
+      <Stack.Screen name="my-teams" options={{ headerShown: false }} />
+      <Stack.Screen name="team-details/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       <Stack.Screen name="player-profile/[id]" options={{ headerShown: false }} />
       <Stack.Screen
