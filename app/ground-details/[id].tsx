@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/hooks/useAuth';
 import { db } from '../../src/services/firebase';
 
-const { width } = Dimensions.get('window');
+const width = Math.min(Dimensions.get('window').width, 600);
 
 import GroundMapView from '../../src/components/GroundMapView';
 
