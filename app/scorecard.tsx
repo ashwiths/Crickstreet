@@ -45,10 +45,12 @@ export default function ScorecardScreen() {
     oppTeamName?: string;
     myPlayers?: string;
     oppPlayers?: string;
+    matchId?: string;
   }>();
 
   const myTeamName = params.myTeamName || 'Crickstreet CC';
   const oppTeamName = params.oppTeamName || 'Opponents';
+  const matchId = params.matchId || '';
   
   const initialMyPlayers: string[] = params.myPlayers ? JSON.parse(params.myPlayers) : [];
   const initialOppPlayers: string[] = params.oppPlayers ? JSON.parse(params.oppPlayers) : [];
@@ -346,6 +348,22 @@ export default function ScorecardScreen() {
           matchUpdatesCount++;
         }
       });
+
+      if (uid && matchId) {
+        const myTeamRuns = myRoster.reduce((sum, p) => sum + (parseInt(p.runs) || 0), 0);
+        const oppTeamRuns = oppRoster.reduce((sum, p) => sum + (parseInt(p.runs) || 0), 0);
+        const myTeamWickets = oppRoster.reduce((sum, p) => sum + (parseInt(p.wickets) || 0), 0);
+        const oppTeamWickets = myRoster.reduce((sum, p) => sum + (parseInt(p.wickets) || 0), 0);
+
+        const matchRef = doc(db, 'users', uid, 'matches', matchId);
+        batch.update(matchRef, {
+          status: 'completed',
+          myScore: `${myTeamRuns}/${oppTeamWickets}`,
+          oppScore: `${oppTeamRuns}/${myTeamWickets}`,
+          statusText: `${winningTeamName} won by ${Math.abs(myTeamRuns - oppTeamRuns)} runs`,
+          endedAt: new Date().toISOString(),
+        });
+      }
 
       // Submit all batch updates
       await batch.commit();

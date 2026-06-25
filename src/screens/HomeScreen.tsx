@@ -9,10 +9,16 @@ import {
   MaterialCommunityIcons,
 } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { db } from '../services/firebase';
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Alert } from 'react-native';
 import ProfileScreen from '@/app/(tabs)/profile';
 import { useTour, TourHighlight } from '../hooks/useTour';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Platform,
@@ -140,6 +146,104 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'matches' | 'tournament' | 'profile'>('home');
   const [matchFilter, setMatchFilter] = useState<'live' | 'history'>('live');
 
+  const { user } = useAuth();
+  const [matches, setMatches] = useState<any[]>([]);
+  const [userStats, setUserStats] = useState<any>(null);
+  const [loadingDb, setLoadingDb] = useState(true);
+
+  // Floating Help bubble popup
+  const handleShowHelp = () => {
+    Alert.alert(
+      'Welcome to Crickstreet! 🏏',
+      'Learn how Crickstreet works:\n\n1. 👥 Create your playing XI under "Create Team".\n2. 📍 Register your local pitch details in "Add Ground".\n3. 🏏 Press "Start New Match" to launch scoring!\n4. 📊 View automatic player stats and charts inside profiles.'
+    );
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setMatches([]);
+      setUserStats(null);
+      setLoadingDb(false);
+      return;
+    }
+
+    setLoadingDb(true);
+
+    // 1. Listen to matches subcollection
+    const mQuery = query(
+      collection(db, 'users', user.uid, 'matches'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubMatches = onSnapshot(mQuery, (snapshot) => {
+      const fetchedMatches: any[] = [];
+      snapshot.forEach((docSnap) => {
+        fetchedMatches.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setMatches(fetchedMatches);
+      setLoadingDb(false);
+    }, (err) => {
+      console.error('Error loading matches:', err);
+      setLoadingDb(false);
+    });
+
+    // 2. Listen to user profile document stats
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubStats = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserStats(data.stats || null);
+      }
+    });
+
+    return () => {
+      unsubMatches();
+      unsubStats();
+    };
+  }, [user]);
+
+  const liveMatches = useMemo(() => matches.filter((m: any) => m.status === 'live'), [matches]);
+  const historyMatches = useMemo(() => matches.filter((m: any) => m.status === 'completed'), [matches]);
+
+  // Floating animations for Empty State
+  const floatAnim = useSharedValue(0);
+  useEffect(() => {
+    floatAnim.value = withRepeat(
+      withSequence(
+        withTiming(-12, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+  const floatStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: floatAnim.value }],
+  }));
+
+  const pulseAnim = useSharedValue(1);
+  useEffect(() => {
+    pulseAnim.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withDelay(3000, withTiming(1, { duration: 0 }))
+      ),
+      -1,
+      false
+    );
+  }, []);
+  const buttonPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseAnim.value }],
+  }));
+
+  const previewFeatures = [
+    { title: '🏆 Rankings', desc: 'Global player leaderboard' },
+    { title: '📈 Statistics', desc: 'In-depth performance analytics' },
+    { title: '🔥 Recent Form', desc: 'L5 match trend graphs' },
+    { title: '⭐ Man of the Match', desc: 'MVP award counts' },
+  ];
+
   // Handle active tab updates via router params
   useEffect(() => {
     if (params.tab === 'matches') {
@@ -195,98 +299,85 @@ export default function HomeScreen() {
         {/* Match cards list */}
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
           {matchFilter === 'live' ? (
-            <View style={styles.matchCard}>
-              <View style={styles.matchCardHeader}>
-                <View style={styles.liveBadge}>
-                  <View style={styles.livePulseDot} />
-                  <Text style={styles.liveBadgeTxt}>LIVE</Text>
-                </View>
-                <Text style={styles.matchTypeLabel}>T20 Match • SO/Uptown Dubai</Text>
-              </View>
-
-              <View style={styles.matchTeamsRow}>
-                {/* Team 1 */}
-                <View style={styles.teamRow}>
-                  <View style={[styles.teamLogoContainer, { backgroundColor: '#3B82F6' }]}>
-                    <Text style={styles.teamLogoText}>CC</Text>
+            liveMatches.length > 0 ? (
+              liveMatches.map((m: any) => (
+                <View key={m.id} style={styles.matchCard}>
+                  <View style={styles.matchCardHeader}>
+                    <View style={styles.liveBadge}>
+                      <View style={styles.livePulseDot} />
+                      <Text style={styles.liveBadgeTxt}>LIVE</Text>
+                    </View>
+                    <Text style={styles.matchTypeLabel}>{m.format || 'T20'} • {m.venueName || 'Local Ground'}</Text>
                   </View>
-                  <Text style={styles.teamNameText}>Crickstreet CC</Text>
-                  <Text style={styles.teamScoreText}>184/5 (20)</Text>
-                </View>
 
-                {/* Team 2 */}
-                <View style={styles.teamRow}>
-                  <View style={[styles.teamLogoContainer, { backgroundColor: '#EF4444' }]}>
-                    <Text style={styles.teamLogoText}>RS</Text>
+                  <View style={styles.matchTeamsRow}>
+                    <View style={styles.teamRow}>
+                      <View style={[styles.teamLogoContainer, { backgroundColor: '#3B82F6' }]}>
+                        <Text style={styles.teamLogoText}>{m.myTeamName ? m.myTeamName.slice(0, 2).toUpperCase() : 'MY'}</Text>
+                      </View>
+                      <Text style={styles.teamNameText}>{m.myTeamName}</Text>
+                      <Text style={styles.teamScoreText}>{m.myScore || '0/0'}</Text>
+                    </View>
+
+                    <View style={styles.teamRow}>
+                      <View style={[styles.teamLogoContainer, { backgroundColor: '#EF4444' }]}>
+                        <Text style={styles.teamLogoText}>{m.oppTeamName ? m.oppTeamName.slice(0, 2).toUpperCase() : 'OP'}</Text>
+                      </View>
+                      <Text style={styles.teamNameText}>{m.oppTeamName}</Text>
+                      <Text style={styles.teamScoreText}>{m.oppScore || '0/0'}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.teamNameText}>Royal Strikers</Text>
-                  <Text style={styles.teamScoreText}>142/4 (18.2)</Text>
-                </View>
-              </View>
 
-              <View style={styles.matchCardDivider} />
-              <Text style={styles.matchStatusText}>
-                Royal Strikers need 43 runs in 10 balls (Target: 185)
-              </Text>
-            </View>
+                  <View style={styles.matchCardDivider} />
+                  <Text style={styles.matchStatusText}>{m.statusText || 'Scoring in progress'}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyFeedCard}>
+                <Feather name="activity" size={32} color="rgba(255,255,255,0.2)" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyFeedText}>No active live matches right now.</Text>
+                <TouchableOpacity style={styles.createMatchMiniBtn} onPress={() => router.push('/create-matches')}>
+                  <Text style={styles.createMatchMiniBtnText}>Start Match</Text>
+                </TouchableOpacity>
+              </View>
+            )
           ) : (
-            <View style={{ gap: 12 }}>
-              <View style={styles.matchCard}>
-                <View style={styles.matchCardHeader}>
-                  <Text style={styles.finishedLabel}>FINISHED</Text>
-                  <Text style={styles.matchTypeLabel}>T20 Match • Crickstreet Turf</Text>
-                </View>
+            historyMatches.length > 0 ? (
+              historyMatches.map((m: any) => (
+                <View key={m.id} style={styles.matchCard}>
+                  <View style={styles.matchCardHeader}>
+                    <Text style={styles.finishedLabel}>FINISHED</Text>
+                    <Text style={styles.matchTypeLabel}>{m.format || 'T20'} • {m.venueName || 'Local Ground'}</Text>
+                  </View>
 
-                <View style={styles.matchTeamsRow}>
-                  <View style={styles.teamRow}>
-                    <View style={[styles.teamLogoContainer, { backgroundColor: '#8B5CF6' }]}>
-                      <Text style={styles.teamLogoText}>DG</Text>
+                  <View style={styles.matchTeamsRow}>
+                    <View style={styles.teamRow}>
+                      <View style={[styles.teamLogoContainer, { backgroundColor: '#8B5CF6' }]}>
+                        <Text style={styles.teamLogoText}>{m.myTeamName ? m.myTeamName.slice(0, 2).toUpperCase() : 'MY'}</Text>
+                      </View>
+                      <Text style={styles.teamNameText}>{m.myTeamName}</Text>
+                      <Text style={styles.teamScoreText}>{m.myScore || '0/0'}</Text>
                     </View>
-                    <Text style={styles.teamNameText}>Dubai Gladiators</Text>
-                    <Text style={styles.teamScoreText}>210/3 (20)</Text>
-                  </View>
-                  <View style={styles.teamRow}>
-                    <View style={[styles.teamLogoContainer, { backgroundColor: '#F59E0B' }]}>
-                      <Text style={styles.teamLogoText}>SK</Text>
+
+                    <View style={styles.teamRow}>
+                      <View style={[styles.teamLogoContainer, { backgroundColor: '#F59E0B' }]}>
+                        <Text style={styles.teamLogoText}>{m.oppTeamName ? m.oppTeamName.slice(0, 2).toUpperCase() : 'OP'}</Text>
+                      </View>
+                      <Text style={styles.teamNameText}>{m.oppTeamName}</Text>
+                      <Text style={styles.teamScoreText}>{m.oppScore || '0/0'}</Text>
                     </View>
-                    <Text style={styles.teamNameText}>Sharjah Kings</Text>
-                    <Text style={styles.teamScoreText}>212/2 (19.1)</Text>
                   </View>
+
+                  <View style={styles.matchCardDivider} />
+                  <Text style={styles.matchStatusFinishedText}>{m.statusText || 'Match completed'}</Text>
                 </View>
-                <View style={styles.matchCardDivider} />
-                <Text style={styles.matchStatusFinishedText}>
-                  Sharjah Kings won by 8 wickets
-                </Text>
+              ))
+            ) : (
+              <View style={styles.emptyFeedCard}>
+                <Feather name="archive" size={32} color="rgba(255,255,255,0.2)" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyFeedText}>No match history records found.</Text>
               </View>
-
-              <View style={styles.matchCard}>
-                <View style={styles.matchCardHeader}>
-                  <Text style={styles.finishedLabel}>FINISHED</Text>
-                  <Text style={styles.matchTypeLabel}>ODI Match • Zayed Stadium</Text>
-                </View>
-
-                <View style={styles.matchTeamsRow}>
-                  <View style={styles.teamRow}>
-                    <View style={[styles.teamLogoContainer, { backgroundColor: '#10B981' }]}>
-                      <Text style={styles.teamLogoText}>AF</Text>
-                    </View>
-                    <Text style={styles.teamNameText}>Abu Dhabi Falcons</Text>
-                    <Text style={styles.teamScoreText}>268/8 (50)</Text>
-                  </View>
-                  <View style={styles.teamRow}>
-                    <View style={[styles.teamLogoContainer, { backgroundColor: '#EC4899' }]}>
-                      <Text style={styles.teamLogoText}>AS</Text>
-                    </View>
-                    <Text style={styles.teamNameText}>Al Ain Stars</Text>
-                    <Text style={styles.teamScoreText}>254/10 (48.4)</Text>
-                  </View>
-                </View>
-                <View style={styles.matchCardDivider} />
-                <Text style={styles.matchStatusFinishedText}>
-                  Abu Dhabi Falcons won by 14 runs
-                </Text>
-              </View>
-            </View>
+            )
           )}
           <View style={{ height: 100 }} />
         </ScrollView>
@@ -384,6 +475,135 @@ export default function HomeScreen() {
     return styles.settingLeft;
   };
 
+  const renderEmptyState = () => {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F3F4F1' }}>
+        <LinearGradient
+          colors={['#E5F2D9', '#F9E5C8', '#F3F4F1']}
+          locations={[0, 0.4, 0.8]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.emptyHeaderGradient}
+        />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.emptyBody}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Soft decorative gradient circles */}
+          <View style={styles.emptyDeco1} />
+          <View style={styles.emptyDeco2} />
+          <View style={styles.emptyDeco3} />
+
+          {/* Welcome Header */}
+          <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyHeaderRow}>
+            <View style={styles.headerLeft}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarTxt}>{user?.displayName ? user.displayName.slice(0, 1).toUpperCase() : 'P'}</Text>
+                <View style={styles.emptyOnlineDot} />
+              </View>
+              <View>
+                <Text style={styles.emptyHelloTxt}>Welcome back to</Text>
+                <Text style={styles.emptyNameTxt}>{user?.displayName || 'Player'} 👋</Text>
+              </View>
+            </View>
+            <Pressable style={styles.emptyBellBtn}>
+              <Feather name="bell" size={18} color="#1A1A1A" />
+              <Animated.View style={[styles.emptyBellDot, pulseStyle]} />
+            </Pressable>
+          </Animated.View>
+
+          {/* Hero Animated Cricket Graphic */}
+          <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.emptyHeroSection}>
+            <Animated.View style={[styles.emptyBallContainer, floatStyle]}>
+              <Text style={styles.emptyBatEmoji}>🏏</Text>
+            </Animated.View>
+            <Text style={styles.emptyTitleText}>No Matches Yet</Text>
+            <Text style={styles.emptyDescText}>
+              Start your first cricket match and begin tracking scores, player statistics, rankings, and achievements.
+            </Text>
+          </Animated.View>
+
+          {/* Primary Floating Gradient Button with Pulse */}
+          <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.emptyCtaWrapper}>
+            <Animated.View style={buttonPulseStyle}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => router.push('/create-matches')}
+                style={styles.floatingGradientBtn}
+              >
+                <LinearGradient
+                  colors={['#59C749', '#E3A85B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.floatingGradientBtnGradient}
+                >
+                  <View style={styles.ctaIconBg}>
+                    <Text style={styles.ctaIconEmoji}>➕</Text>
+                  </View>
+                  <Text style={styles.ctaButtonText}>Start New Match</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
+
+          {/* Feature Preview (Locked) */}
+          <Animated.View entering={FadeInDown.delay(600).duration(500)} style={styles.emptyPreviewSection}>
+            <Text style={styles.emptySectionHeader}>PREMIUM FEATURES (LOCKED)</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.previewScrollContent}
+            >
+              {previewFeatures.map((f, idx) => (
+                <View key={idx} style={styles.previewCard}>
+                  <View style={styles.previewLockBadge}>
+                    <Feather name="lock" size={10} color="#E3A85B" style={{ marginRight: 4 }} />
+                    <Text style={styles.previewLockBadgeText}>LOCKED</Text>
+                  </View>
+                  <Text style={styles.previewCardTitle}>{f.title}</Text>
+                  <Text style={styles.previewCardDesc}>{f.desc}</Text>
+                  <Text style={styles.previewCardBadge}>Coming after your first match</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </Animated.View>
+
+          {/* Friendly Statistics Placeholders */}
+          <Animated.View entering={FadeInDown.delay(700).duration(500)} style={styles.emptyStatsPlaceholderCard}>
+            <Text style={styles.emptyStatsPlaceholderHeader}>📈 ANALYTICS PREVIEW</Text>
+            <View style={styles.emptyStatsPlaceholderDivider} />
+            
+            <View style={styles.emptyStatPlaceholderRow}>
+              <MaterialCommunityIcons name="scoreboard-outline" size={18} color="rgba(255,255,255,0.4)" />
+              <Text style={styles.emptyStatPlaceholderText}>No matches played yet</Text>
+            </View>
+            <View style={styles.emptyStatPlaceholderRow}>
+              <Feather name="trending-up" size={18} color="rgba(255,255,255,0.4)" />
+              <Text style={styles.emptyStatPlaceholderText}>No player statistics yet</Text>
+            </View>
+            
+            <Text style={styles.emptyStatPlaceholderFooter}>
+              Start your first match to unlock analytics.
+            </Text>
+          </Animated.View>
+
+          {/* Spacer for bottom navigation */}
+          <View style={{ height: 120 }} />
+        </ScrollView>
+
+        {/* Floating Help Bubble */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={handleShowHelp}
+          style={styles.floatingHelpBubble}
+        >
+          <Text style={{ fontSize: 24 }}>🏏</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   const renderHomeTab = () => {
     return (
       <ScrollView
@@ -411,12 +631,12 @@ export default function HomeScreen() {
             {/* Avatar + Greeting */}
             <View style={styles.headerLeft}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarTxt}>A</Text>
+                <Text style={styles.avatarTxt}>{user?.displayName ? user.displayName.slice(0, 1).toUpperCase() : 'P'}</Text>
                 <View style={styles.onlineDot} />
               </View>
               <View>
                 <Text style={styles.helloTxt}>Hello,</Text>
-                <Text style={styles.nameTxt}>Ashil 👋</Text>
+                <Text style={styles.nameTxt}>{user?.displayName || 'Player'} 👋</Text>
               </View>
             </View>
 
@@ -504,15 +724,15 @@ export default function HomeScreen() {
           <View style={styles.statsRow}>
             <StatCard
               icon={<MaterialCommunityIcons name="trophy-outline" size={18} color={C.green} />}
-              label="MATCHES" value="128" note="This season" delay={420}
+              label="MATCHES" value={String(userStats?.matches || 0)} note="Total Matches" delay={420}
             />
             <StatCard
-              icon={<Feather name="star"  size={18} color="#F59E0B" />}
-              label="RATING"  value="4.9" note="All time"    delay={500}
+              icon={<Feather name="trending-up" size={18} color="#F59E0B" />}
+              label="RUNS" value={String(userStats?.runs || 0)} note="Total Runs" delay={500}
             />
             <StatCard
-              icon={<Feather name="users" size={18} color="#6C63FF" />}
-              label="FANS"    value="32K" note="+12% week"   delay={580}
+              icon={<Feather name="award" size={18} color="#6C63FF" />}
+              label="WICKETS" value={String(userStats?.wickets || 0)} note="Total Wickets" delay={580}
             />
           </View>
         </View>
@@ -555,7 +775,15 @@ export default function HomeScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={activeTab === 'home' ? C.hero : '#0A0D0A'} />
 
-      {activeTab === 'home' && renderHomeTab()}
+      {activeTab === 'home' && (
+        loadingDb ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#59C749" />
+          </View>
+        ) : (
+          matches.length === 0 ? renderEmptyState() : renderHomeTab()
+        )
+      )}
       {activeTab === 'matches' && renderMatchesTab()}
       {activeTab === 'tournament' && renderTournamentTab()}
       {activeTab === 'profile' && renderProfileTab()}
@@ -1859,6 +2087,403 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#828880',
+  },
+
+  // ── Empty State Redesign Styles ─────────────────────────────────────────────
+  emptyHeaderGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#F3F4F1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyBody: {
+    flexGrow: 1,
+    paddingBottom: 140,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    position: 'relative',
+    backgroundColor: 'transparent',
+  },
+  emptyDeco1: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(168, 205, 85, 0.22)',
+    top: -50,
+    right: -50,
+  },
+  emptyDeco2: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(227, 168, 91, 0.16)',
+    top: 250,
+    left: -80,
+  },
+  emptyDeco3: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(168, 205, 85, 0.12)',
+    bottom: 100,
+    right: -40,
+  },
+  emptyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingTop: Platform.OS === 'ios' ? 48 : 28,
+    marginBottom: 24,
+    width: '100%',
+  },
+  emptyHelloTxt: {
+    fontSize: 11,
+    color: '#8A8A8A',
+    fontWeight: '600',
+    lineHeight: 14,
+  },
+  emptyNameTxt: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    letterSpacing: -0.2,
+    lineHeight: 20,
+  },
+  emptyOnlineDot: {
+    position: 'absolute',
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#34D399',
+    bottom: 1,
+    right: 1,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  emptyBellBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 205, 85, 0.25)',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  emptyBellDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: C.green,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  emptyHeroSection: {
+    alignItems: 'center',
+    marginVertical: 12,
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  emptyBallContainer: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(168, 205, 85, 0.45)',
+    shadowColor: '#A8CD55',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyBatEmoji: {
+    fontSize: 40,
+  },
+  emptyTitleText: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#2D5016',
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  emptyDescText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#555555',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 8,
+  },
+  emptyCtaWrapper: {
+    alignItems: 'center',
+    marginVertical: 24,
+    width: '100%',
+  },
+  floatingGradientBtn: {
+    borderRadius: 30,
+    overflow: 'hidden',
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  floatingGradientBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 30,
+    gap: 12,
+  },
+  ctaIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaIconEmoji: {
+    fontSize: 14,
+  },
+  ctaButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  emptySecondaryContainer: {
+    width: '100%',
+    paddingHorizontal: 4,
+    marginBottom: 24,
+  },
+  emptySectionHeader: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2D5016',
+    letterSpacing: 1.0,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
+  secondaryRow: {
+    marginBottom: 10,
+    width: '100%',
+  },
+  secondaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 205, 85, 0.18)',
+    gap: 12,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  secondaryIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryIconText: {
+    fontSize: 20,
+  },
+  secondaryCardText: {
+    flex: 1,
+    gap: 2,
+  },
+  secondaryCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  secondaryCardDesc: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#666666',
+    lineHeight: 14,
+  },
+  emptyPreviewSection: {
+    width: '100%',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  previewScrollContent: {
+    gap: 12,
+    paddingRight: 20,
+  },
+  previewCard: {
+    width: 170,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 205, 85, 0.12)',
+    gap: 4,
+    opacity: 0.85,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  previewLockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(227, 168, 91, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  previewLockBadgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#E3A85B',
+    letterSpacing: 0.5,
+  },
+  previewCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  previewCardDesc: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#666666',
+    marginBottom: 6,
+  },
+  previewCardBadge: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#A8CD55',
+  },
+  emptyStatsPlaceholderCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 205, 85, 0.18)',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  emptyStatsPlaceholderHeader: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8A8A8A',
+    letterSpacing: 0.8,
+  },
+  emptyStatsPlaceholderDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 12,
+  },
+  emptyStatPlaceholderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  emptyStatPlaceholderText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#444444',
+  },
+  emptyStatPlaceholderFooter: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#2D5016',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  floatingHelpBubble: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 100 : 90,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#A8CD55',
+    shadowColor: '#A8CD55',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 1000,
+  },
+  emptyFeedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 205, 85, 0.18)',
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  emptyFeedText: {
+    fontSize: 13,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  createMatchMiniBtn: {
+    backgroundColor: '#59C749',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 100,
+  },
+  createMatchMiniBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
 });

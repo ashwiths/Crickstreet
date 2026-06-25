@@ -17,6 +17,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PlaygroundMapView from '../src/components/PlaygroundMapView';
+import { useAuth } from '../src/hooks/useAuth';
+import { db } from '../src/services/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const C = {
   hero:    '#1B3F14',
@@ -35,6 +38,7 @@ const STEPS = ['Team Setup', 'Match Setup', 'Venue', 'Review'] as const;
 
 export default function CreateMatchesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<number>(0);
 
@@ -420,7 +424,7 @@ export default function CreateMatchesScreen() {
   const getFormatText = () => format === 'Custom' ? `${customOvers} Overs` : `${format} Format`;
 
   // ─── ACTIONS ───────────────────────────────────────────────────────────────
-  const handleStartScoring = () => {
+  const handleStartScoring = async () => {
     // Validate Step 1
     if (!myTeamName.trim()) {
       Alert.alert('Missing Team Name', 'Please fill in your Team Name.');
@@ -458,9 +462,31 @@ export default function CreateMatchesScreen() {
         confirmed: isVenueConfirmed,
       },
       createdAt: new Date().toISOString(),
-      status: 'upcoming',
+      status: 'live', // Start scoring makes the match active (live)
     };
     console.log('Firebase ready match data structure:', JSON.stringify(matchData, null, 2));
+
+    let matchId = '';
+    if (user) {
+      try {
+        const colRef = collection(db, 'users', user.uid, 'matches');
+        const docRef = await addDoc(colRef, {
+          myTeamName,
+          oppTeamName: opponentDisplay,
+          format,
+          matchType,
+          venueName,
+          status: 'live',
+          createdAt: serverTimestamp(),
+          myScore: '0/0',
+          oppScore: '0/0',
+          statusText: 'Match started',
+        });
+        matchId = docRef.id;
+      } catch (err) {
+        console.error('Error saving match to Firestore:', err);
+      }
+    }
 
     Alert.alert(
       'Match Initiated 🏏',
@@ -476,6 +502,7 @@ export default function CreateMatchesScreen() {
                 oppTeamName,
                 myPlayers: JSON.stringify(myPlayers),
                 oppPlayers: JSON.stringify(oppPlayers),
+                matchId: matchId,
               },
             });
           }

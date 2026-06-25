@@ -47,7 +47,8 @@
           "cameraPermission": "Crickstreet needs camera access to scan player QR codes.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "@maplibre/maplibre-react-native"
     ],
     "experiments": {
       "typedRoutes": true,

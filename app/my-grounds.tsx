@@ -26,18 +26,15 @@ import {
   View,
   useColorScheme,
   Share,
-  Platform,
-  Switch,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import GroundMapView from '../src/components/GroundMapView';
 import { useAuth } from '../src/hooks/useAuth';
 import { db } from '../src/services/firebase';
 
-const { width } = Dimensions.get('window');
-
-import GroundMapView from '../src/components/GroundMapView';
+const { height } = Dimensions.get('window');
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Ground {
@@ -48,6 +45,7 @@ interface Ground {
   address: string;
   city: string;
   district: string;
+  state: string;
   latitude: number;
   longitude: number;
   contactNumber: string;
@@ -102,19 +100,19 @@ export default function MyGroundsScreen() {
 
   // Location Selector states
   const [isManual, setIsManual] = useState(false);
-  const [selectedLat, setSelectedLat] = useState(11.1271); // Defaults to Tamil Nadu anchor coord
+  const [selectedLat, setSelectedLat] = useState(11.1271); // Tamil Nadu center anchor coord
   const [selectedLng, setSelectedLng] = useState(78.6569);
+  const [selectedZoom, setSelectedZoom] = useState(6); // default zoom 6
+  
   const [formAddress, setFormAddress] = useState('');
   const [formCity, setFormCity] = useState('');
   const [formDistrict, setFormDistrict] = useState('');
-
-  // Manual input fields
-  const [manualStreet, setManualStreet] = useState('');
-  const [manualArea, setManualArea] = useState('');
   const [manualState, setManualState] = useState('');
   const [manualPincode, setManualPincode] = useState('');
+  
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [searchingLocation, setSearchingLocation] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
 
   // Theme support
   const isDark = systemScheme === 'dark';
@@ -133,6 +131,8 @@ export default function MyGroundsScreen() {
       redLight: isDark ? 'rgba(255,107,107,0.1)' : 'rgba(211,47,47,0.08)',
       inputBg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
       inputBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+      glassBg: isDark ? 'rgba(13, 31, 60, 0.85)' : 'rgba(255, 255, 255, 0.88)',
+      glassBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
     };
   }, [isDark]);
 
@@ -158,6 +158,7 @@ export default function MyGroundsScreen() {
             address: data.address || '',
             city: data.city || '',
             district: data.district || '',
+            state: data.state || 'Tamil Nadu',
             latitude: Number(data.latitude || 0),
             longitude: Number(data.longitude || 0),
             contactNumber: data.contactNumber || '',
@@ -205,36 +206,20 @@ export default function MyGroundsScreen() {
     const address = nominatimItem.address || {};
     const display = nominatimItem.display_name || '';
     
-    // Formatting street: combination of house_number and road/street/pedestrian
-    const houseNo = address.house_number || '';
-    const road = address.road || address.street || address.pedestrian || '';
-    const streetVal = houseNo && road ? `${houseNo} ${road}` : (road || houseNo);
-    
-    // Formatting area: neighbourhood / suburb / village / hamlet / commercial / county
-    const areaVal = address.neighbourhood || address.suburb || address.village || address.hamlet || address.commercial || '';
-    
-    // Formatting city: city / town / village / municipality
     const cityVal = address.city || address.town || address.village || address.municipality || '';
-    
-    // Formatting district: county / state_district
     const districtVal = address.county || address.state_district || '';
-    
-    // Formatting state
-    const stateVal = address.state || '';
-    
-    // Formatting pincode
+    const stateVal = address.state || 'Tamil Nadu';
     const pincodeVal = address.postcode || '';
     
+    // Set formatted inputs
     setFormAddress(display);
-    setManualStreet(streetVal || '');
-    setManualArea(areaVal || '');
     setFormCity(cityVal || '');
-    setFormDistrict(districtVal || '');
-    setManualState(stateVal || '');
-    setManualPincode(pincodeVal || '');
+    setFormDistrict(districtVal || cityVal || '');
+    setManualState(stateVal);
+    setManualPincode(pincodeVal);
   };
 
-  // Reverse Geocoding via OpenStreetMap Nominatim
+  // Reverse Geocoding via Nominatim
   const performReverseGeocode = async (lat: number, lng: number) => {
     try {
       const response = await fetch(
@@ -254,53 +239,138 @@ export default function MyGroundsScreen() {
     }
   };
 
-  // Search Ground Location via OpenStreetMap Nominatim with Tamil Nadu bias
-  const handleSearchLocation = async () => {
-    if (!locationSearchQuery.trim()) {
-      Alert.alert('Search Error', 'Please enter a location name to search.');
+  // Search places & local grounds dynamically
+  const handleSearchTextChange = async (text: string) => {
+    setLocationSearchQuery(text);
+    if (!text.trim()) {
+      setSuggestions([]);
       return;
     }
 
+    // 1. Filter local grounds
+    const localMatches = grounds
+      .filter(g => g.groundName.toLowerCase().includes(text.toLowerCase()) || g.address.toLowerCase().includes(text.toLowerCase()))
+      .map(g => ({
+        isLocal: true,
+        displayName: g.groundName,
+        subText: `Registered Ground - ${g.address}`,
+        latitude: g.latitude,
+        longitude: g.longitude,
+        ground: g
+      }));
+
+    // 2. Fetch from Nominatim (biasing to Tamil Nadu, India)
+    let externalMatches: any[] = [];
     setSearchingLocation(true);
     try {
-      let searchString = locationSearchQuery.trim();
-      const lowerQuery = searchString.toLowerCase();
-      
-      // Bias checks for Tamil Nadu, India
-      if (!lowerQuery.includes('tamil nadu') && !lowerQuery.includes('tn')) {
-        searchString += ', Tamil Nadu';
+      let queryStr = text.trim();
+      if (!queryStr.toLowerCase().includes('tamil nadu') && !queryStr.toLowerCase().includes('tn')) {
+        queryStr += ', Tamil Nadu';
       }
-      if (!lowerQuery.includes('india') && !lowerQuery.includes('in')) {
-        searchString += ', India';
+      if (!queryStr.toLowerCase().includes('india')) {
+        queryStr += ', India';
       }
 
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchString)}&format=json&limit=1&addressdetails=1&countrycodes=in&viewbox=76.13,13.58,80.35,8.08&bounded=0`;
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(queryStr)}&format=json&limit=4&addressdetails=1&countrycodes=in&viewbox=76.13,13.58,80.35,8.08&bounded=0`;
       
       const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'CrickstreetApp/1.0',
-        },
+        headers: { 'User-Agent': 'CrickstreetApp/1.0' }
       });
       const data = await response.json();
       if (data && data.length > 0) {
-        const item = data[0];
-        const lat = parseFloat(item.lat);
-        const lng = parseFloat(item.lon);
-        setSelectedLat(lat);
-        setSelectedLng(lng);
-        parseAndSetAddress(item);
-      } else {
-        Alert.alert('Search Results', 'No matches found in Tamil Nadu, India. Please try a different search.');
+        externalMatches = data.map((item: any) => ({
+          isLocal: false,
+          displayName: item.display_name.split(',')[0] || 'Place Found',
+          subText: item.display_name,
+          latitude: parseFloat(item.lat),
+          longitude: parseFloat(item.lon),
+          rawItem: item
+        }));
       }
     } catch (err) {
-      console.error('OSM Search Geocoding error:', err);
-      Alert.alert('Search Error', 'An error occurred while contacting the geocoding service.');
+      console.error('OSM Geocoding search error:', err);
     } finally {
       setSearchingLocation(false);
     }
+
+    setSuggestions([...localMatches, ...externalMatches]);
   };
 
-  // Detect and center map on current device location
+  const handleSelectSuggestion = (item: any) => {
+    setSuggestions([]);
+    setLocationSearchQuery('');
+    
+    setSelectedLat(item.latitude);
+    setSelectedLng(item.longitude);
+    setSelectedZoom(13); // Zoom in on selection
+
+    if (item.isLocal) {
+      const g = item.ground;
+      setEditingGround(g);
+      setFormName(g.groundName);
+      setFormDesc(g.description);
+      setFormType(g.groundType);
+      setFormContact(g.contactNumber);
+      setFormFee(g.entryFee);
+      setFormImages(g.images);
+      setFormAddress(g.address);
+      setFormCity(g.city);
+      setFormDistrict(g.district);
+      setManualState(g.state);
+      setManualPincode('');
+    } else {
+      setFormAddress(item.subText);
+      parseAndSetAddress(item.rawItem);
+      // Auto-prefill ground name if empty
+      if (!formName.trim()) {
+        setFormName(item.displayName);
+      }
+    }
+  };
+
+  // Automatically geocode manual address inputs
+  const triggerManualGeocode = async (
+    addressStr: string,
+    districtStr: string,
+    stateStr: string,
+    pincodeStr: string
+  ) => {
+    const queryParts = [addressStr, districtStr, stateStr, pincodeStr].filter(Boolean);
+    if (queryParts.length < 2) return; 
+
+    const fullQuery = queryParts.join(', ').trim();
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1&accept-language=en`,
+        {
+          headers: { 'User-Agent': 'CrickstreetApp/1.0' }
+        }
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        setSelectedLat(lat);
+        setSelectedLng(lng);
+        setSelectedZoom(14); // Zoom in closer on manual locate
+      }
+    } catch (err) {
+      console.log('Manual geocoding error:', err);
+    }
+  };
+
+  // Debounced effect for manual entry address geocoding
+  useEffect(() => {
+    if (!isManual) return;
+    
+    const delayDebounce = setTimeout(() => {
+      triggerManualGeocode(formAddress, formDistrict, manualState, manualPincode);
+    }, 1200);
+
+    return () => clearTimeout(delayDebounce);
+  }, [formAddress, formDistrict, manualState, manualPincode, isManual]);
+
+  // Center map on device GPS location
   const handleUseCurrentLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -317,6 +387,7 @@ export default function MyGroundsScreen() {
         const { latitude, longitude } = loc.coords;
         setSelectedLat(latitude);
         setSelectedLng(longitude);
+        setSelectedZoom(13);
         setDeviceLocation({ latitude, longitude });
         performReverseGeocode(latitude, longitude);
       }
@@ -326,24 +397,17 @@ export default function MyGroundsScreen() {
     }
   };
 
-  // OpenStreetMap event message listener (React Native Web support)
-  useEffect(() => {
-    const handleWebMapMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'OSM_MAP_CLICK') {
-        const { latitude, longitude } = event.data;
-        setSelectedLat(latitude);
-        setSelectedLng(longitude);
-        performReverseGeocode(latitude, longitude);
-      }
-    };
+  // Compass rotation reset
+  const handleResetCompass = () => {
+    // Re-trigger setCamera with bearing 0 by forcing a minor zoom level reload
+    const currentZoom = selectedZoom;
+    setSelectedZoom(z => z + 0.0001);
+    setTimeout(() => {
+      setSelectedZoom(currentZoom);
+    }, 50);
+  };
 
-    if (Platform.OS === 'web') {
-      window.addEventListener('message', handleWebMapMessage);
-      return () => window.removeEventListener('message', handleWebMapMessage);
-    }
-  }, []);
-
-  // Form setup for add
+  // Open modal in Add mode (defaults to Tamil Nadu anchor coords, zoom 6)
   const handleOpenAdd = async () => {
     setEditingGround(null);
     setFormName('');
@@ -354,51 +418,33 @@ export default function MyGroundsScreen() {
     setFormImages('');
     setIsManual(false);
     setLocationSearchQuery('');
+    setSuggestions([]);
 
-    // Default coordinates in case location permission is not granted and no pre-fetched location is available
     let initialLat = 11.1271;
     let initialLng = 78.6569;
+    let initialZoom = 6;
 
     if (deviceLocation) {
       initialLat = deviceLocation.latitude;
       initialLng = deviceLocation.longitude;
+      initialZoom = 13;
     }
 
     setSelectedLat(initialLat);
     setSelectedLng(initialLng);
+    setSelectedZoom(initialZoom);
     setFormAddress('');
     setFormCity('');
     setFormDistrict('');
-    setManualStreet('');
-    setManualArea('');
-    setManualState('');
+    setManualState('Tamil Nadu');
     setManualPincode('');
     setModalVisible(true);
 
-    // Trigger geocoding immediately for the initial coordinates
+    // Initial reverse geocode if device GPS or anchor coordinates are set
     performReverseGeocode(initialLat, initialLng);
-
-    // If deviceLocation is not pre-fetched yet, try to obtain it now
-    if (!deviceLocation) {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          if (loc && loc.coords) {
-            const { latitude, longitude } = loc.coords;
-            setSelectedLat(latitude);
-            setSelectedLng(longitude);
-            setDeviceLocation({ latitude, longitude });
-            performReverseGeocode(latitude, longitude);
-          }
-        }
-      } catch (e) {
-        console.log('Error fetching device location dynamically on add:', e);
-      }
-    }
   };
 
-  // Form setup for edit
+  // Open modal in Edit mode (centers on target coordinate, zoom 13)
   const handleOpenEdit = (ground: Ground) => {
     setEditingGround(ground);
     setFormName(ground.groundName);
@@ -409,45 +455,22 @@ export default function MyGroundsScreen() {
     setFormImages(ground.images);
     setSelectedLat(ground.latitude);
     setSelectedLng(ground.longitude);
+    setSelectedZoom(13);
     setFormAddress(ground.address);
     setFormCity(ground.city);
     setFormDistrict(ground.district);
+    setManualState(ground.state || 'Tamil Nadu');
+    setManualPincode('');
     setIsManual(false);
+    setSuggestions([]);
     setModalVisible(true);
   };
 
-  // Drag/Select position on Map (Common Handler)
+  // Tap anywhere on Map Selection triggers reverse geocoding
   const handleMapPinSelected = (lat: number, lng: number) => {
     setSelectedLat(lat);
     setSelectedLng(lng);
     performReverseGeocode(lat, lng);
-  };
-
-  // Geocoding manual address fields via OpenStreetMap search
-  const runManualGeocoding = async (): Promise<{ lat: number; lng: number } | null> => {
-    const fullQuery = `${manualStreet} ${manualArea} ${formCity} ${formDistrict} ${manualState} ${manualPincode}`.trim();
-    if (!fullQuery) return null;
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1&accept-language=en`,
-        {
-          headers: {
-            'User-Agent': 'CrickstreetApp/1.0',
-          },
-        }
-      );
-      const data = await response.json();
-      if (data && data.length > 0) {
-        return {
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon),
-        };
-      }
-    } catch (err) {
-      console.error('OSM Forward Geocoding error:', err);
-    }
-    return null;
   };
 
   // Save changes to Firestore
@@ -456,31 +479,34 @@ export default function MyGroundsScreen() {
       Alert.alert('Validation Error', 'Please enter a valid ground name.');
       return;
     }
+    if (!formAddress.trim()) {
+      Alert.alert('Validation Error', 'Please enter a valid address.');
+      return;
+    }
 
     setSaving(true);
     let finalLat = selectedLat;
     let finalLng = selectedLng;
     let finalAddress = formAddress;
 
-    // Handle manual entry coordinates conversion
     if (isManual) {
-      if (!manualStreet.trim() || !formCity.trim() || !formDistrict.trim()) {
-        Alert.alert('Validation Error', 'Please fill in Street, City, and District for manual entry.');
-        setSaving(false);
-        return;
-      }
-      
-      const geocoded = await runManualGeocoding();
-      if (geocoded) {
-        finalLat = geocoded.lat;
-        finalLng = geocoded.lng;
-        finalAddress = `${manualStreet}, ${manualArea ? manualArea + ', ' : ''}${formCity}, ${formDistrict}${manualState ? ', ' + manualState : ''}${manualPincode ? ' - ' + manualPincode : ''}`;
-      } else {
-        Alert.alert('Geocoding Warning', 'Could not locate address on OpenStreetMap. Defaulting to system anchor coordinates.');
+      const fullQuery = `${formAddress}, ${formDistrict}, ${manualState} ${manualPincode}`.trim();
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1&accept-language=en`,
+          { headers: { 'User-Agent': 'CrickstreetApp/1.0' } }
+        );
+        const data = await response.json();
+        if (data && data.length > 0) {
+          finalLat = parseFloat(data[0].lat);
+          finalLng = parseFloat(data[0].lon);
+        }
+      } catch (err) {
+        console.error('Final geocode error:', err);
       }
     }
 
-    // Check duplicate coordinates check (within ~10m range)
+    // Coordinate duplicate validation (~10m range check)
     const isDuplicate = grounds.some((g) => {
       if (editingGround && g.id === editingGround.id) return false;
       return Math.abs(g.latitude - finalLat) < 0.0001 && Math.abs(g.longitude - finalLng) < 0.0001;
@@ -496,14 +522,16 @@ export default function MyGroundsScreen() {
       groundName: formName.trim(),
       description: formDesc.trim(),
       groundType: formType,
-      address: finalAddress || 'Manual Address Resolved',
-      city: formCity.trim(),
+      address: finalAddress,
+      city: formCity.trim() || formDistrict.trim(),
       district: formDistrict.trim(),
+      state: manualState.trim() || 'Tamil Nadu',
       latitude: finalLat,
       longitude: finalLng,
       contactNumber: formContact.trim(),
       entryFee: formFee.trim() || 'Free',
       images: formImages.trim() || 'https://images.unsplash.com/photo-1599586120429-48281b6f0ece?auto=format&fit=crop&q=80&w=600',
+      createdBy: uid,
       createdAt: editingGround ? editingGround.createdAt : new Date().toISOString(),
     };
 
@@ -558,8 +586,6 @@ export default function MyGroundsScreen() {
     }
   };
 
-
-
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {isDark && (
@@ -576,7 +602,7 @@ export default function MyGroundsScreen() {
             <Ionicons name="arrow-back" size={22} color={theme.text} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>My Ground</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>My Grounds</Text>
             {!loading && grounds.length > 0 && (
               <View style={[styles.badgeContainer, { backgroundColor: theme.greenLight, borderColor: theme.greenText }]}>
                 <Text style={[styles.badgeText, { color: theme.greenText }]}>{grounds.length}</Text>
@@ -669,7 +695,7 @@ export default function MyGroundsScreen() {
           </ScrollView>
         )}
 
-        {/* Floating Action Button */}
+        {/* Add Ground Floating Action Button */}
         {!loading && grounds.length > 0 && (
           <TouchableOpacity style={styles.fab} onPress={handleOpenAdd}>
             <LinearGradient
@@ -683,313 +709,334 @@ export default function MyGroundsScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Create / Edit Form Modal */}
+        {/* Premium Fullscreen Map Modal */}
         <Modal
           visible={modalVisible}
           animationType="slide"
-          transparent={true}
+          transparent={false}
           onRequestClose={() => setModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: theme.bgMid, borderColor: theme.cardBorder }]}>
+          <View style={styles.mapModalContainer}>
+            {/* Absolute Map Background */}
+            <View style={StyleSheet.absoluteFillObject}>
+              <GroundMapView
+                latitude={selectedLat}
+                longitude={selectedLng}
+                zoomLevel={selectedZoom}
+                onLocationSelect={handleMapPinSelected}
+                isDark={isDark}
+              />
+            </View>
+
+            {/* Premium Top Floating Search Panel */}
+            <SafeAreaView style={styles.topSearchWrapper}>
+              <View style={[styles.glassPanel, styles.searchBar, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}>
+                <Ionicons name="search-outline" size={20} color={theme.textSecondary} />
+                <TextInput
+                  style={[styles.searchInputText, { color: theme.text }]}
+                  placeholder="Search grounds, addresses, cities..."
+                  placeholderTextColor={theme.textSecondary}
+                  value={locationSearchQuery}
+                  onChangeText={handleSearchTextChange}
+                />
+                {searchingLocation ? (
+                  <ActivityIndicator size="small" color={theme.greenText} style={{ marginRight: 4 }} />
+                ) : locationSearchQuery.length > 0 ? (
+                  <TouchableOpacity onPress={() => { setLocationSearchQuery(''); setSuggestions([]); }}>
+                    <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {/* Glassmorphic Autocomplete Suggestions List */}
+              {suggestions.length > 0 && (
+                <View style={[styles.glassPanel, styles.suggestionsContainer, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}>
+                  <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 220 }}>
+                    {suggestions.map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[styles.suggestionItem, { borderBottomColor: theme.cardBorder }]}
+                        onPress={() => handleSelectSuggestion(item)}
+                      >
+                        <Ionicons
+                          name={item.isLocal ? "map-outline" : "location-outline"}
+                          size={18}
+                          color={theme.greenText}
+                        />
+                        <View style={styles.suggestionTextContainer}>
+                          <Text style={[styles.suggestionDisplayName, { color: theme.text }]} numberOfLines={1}>
+                            {item.displayName}
+                          </Text>
+                          <Text style={[styles.suggestionSubText, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {item.subText}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </SafeAreaView>
+
+            {/* Right Side Floating Map Controls */}
+            <View style={styles.floatingControlsContainer}>
+              {/* Save CTA */}
+              <TouchableOpacity
+                style={[styles.controlBtn, { backgroundColor: theme.green, borderColor: theme.greenLight }]}
+                onPress={handleSaveGround}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#050A08" />
+                ) : (
+                  <Ionicons name="checkmark" size={24} color="#050A08" />
+                )}
+              </TouchableOpacity>
+
+              {/* Device Locate */}
+              <TouchableOpacity
+                style={[styles.controlBtn, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}
+                onPress={handleUseCurrentLocation}
+              >
+                <Ionicons name="location" size={20} color={theme.greenText} />
+              </TouchableOpacity>
+
+              {/* Zoom In */}
+              <TouchableOpacity
+                style={[styles.controlBtn, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}
+                onPress={() => setSelectedZoom(z => Math.min(19, z + 1))}
+              >
+                <Ionicons name="add" size={22} color={theme.text} />
+              </TouchableOpacity>
+
+              {/* Zoom Out */}
+              <TouchableOpacity
+                style={[styles.controlBtn, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}
+                onPress={() => setSelectedZoom(z => Math.max(1, z - 1))}
+              >
+                <Ionicons name="remove" size={22} color={theme.text} />
+              </TouchableOpacity>
+
+              {/* Compass */}
+              <TouchableOpacity
+                style={[styles.controlBtn, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}
+                onPress={handleResetCompass}
+              >
+                <Ionicons name="compass-outline" size={20} color={theme.text} />
+              </TouchableOpacity>
+
+              {/* Close/Discard Modal */}
+              <TouchableOpacity
+                style={[styles.controlBtn, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Ionicons name="close" size={22} color={theme.red} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Premium Bottom Glassmorphic Card (Information & Form inputs) */}
+            <View style={[styles.glassPanel, styles.bottomGlassCard, { backgroundColor: theme.glassBg, borderColor: theme.glassBorder }]}>
               
-              {/* Header */}
-              <View style={[styles.modalHeader, { borderBottomColor: theme.cardBorder }]}>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>
-                  {editingGround ? 'Edit Ground Details' : 'Add New Ground'}
-                </Text>
+              {/* Segmented Mode Selector Tab */}
+              <View style={[styles.modeToggleContainer, { borderColor: theme.glassBorder }]}>
                 <TouchableOpacity
-                  style={[styles.closeModalBtn, { backgroundColor: theme.inputBg }]}
-                  onPress={() => setModalVisible(false)}
+                  style={[styles.modeToggleTab, !isManual && [styles.modeToggleActiveTab, { backgroundColor: theme.green }]]}
+                  onPress={() => setIsManual(false)}
                 >
-                  <Feather name="x" size={18} color={theme.text} />
+                  <Ionicons name="map" size={14} color={!isManual ? '#050A08' : theme.textSecondary} />
+                  <Text style={[styles.modeToggleText, { color: !isManual ? '#050A08' : theme.textSecondary, fontWeight: !isManual ? '800' : '600' }]}>
+                    Map Pin Selection
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.modeToggleTab, isManual && [styles.modeToggleActiveTab, { backgroundColor: theme.green }]]}
+                  onPress={() => setIsManual(true)}
+                >
+                  <Ionicons name="create" size={14} color={isManual ? '#050A08' : theme.textSecondary} />
+                  <Text style={[styles.modeToggleText, { color: isManual ? '#050A08' : theme.textSecondary, fontWeight: isManual ? '800' : '600' }]}>
+                    Manual Address
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.bottomCardScroll}>
                 
-                {/* Basic details */}
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>GROUND NAME</Text>
+                <Text style={[styles.inputLabel, { color: theme.greenText }]}>GROUND NAME</Text>
                 <TextInput
                   style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                  placeholder="e.g. Crickstreet Stadium"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
+                  placeholder="e.g. Crickstreet Turf Stadium"
+                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
                   value={formName}
                   onChangeText={setFormName}
                 />
 
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>DESCRIPTION</Text>
-                <TextInput
-                  style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, height: 70, paddingTop: 10 }]}
-                  placeholder="Describe turf, seating capacity, nets, etc."
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                  value={formDesc}
-                  onChangeText={setFormDesc}
-                  multiline
-                />
-
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>GROUND TYPE</Text>
-                <View style={styles.typeSelectorRow}>
-                  {(['Turf', 'Concrete', 'Matting', 'Grass'] as const).map((t) => {
-                    const isSelected = formType === t;
-                    return (
-                      <TouchableOpacity
-                        key={t}
-                        style={[
-                          styles.typeChip,
-                          {
-                            backgroundColor: isSelected ? theme.greenLight : theme.inputBg,
-                            borderColor: isSelected ? theme.greenText : theme.inputBorder,
-                          },
-                        ]}
-                        onPress={() => setFormType(t)}
-                      >
-                        <Text style={[styles.typeChipText, { color: isSelected ? theme.greenText : theme.textSecondary, fontWeight: isSelected ? '700' : '500' }]}>
-                          {t}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                <View style={styles.rowForm}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>CONTACT NUMBER</Text>
-                    <TextInput
-                      style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                      placeholder="Phone number"
-                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                      keyboardType="phone-pad"
-                      value={formContact}
-                      onChangeText={setFormContact}
-                    />
-                  </View>
-
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>ENTRY FEE (PER HOUR)</Text>
-                    <TextInput
-                      style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                      placeholder="e.g. Free or $20"
-                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                      value={formFee}
-                      onChangeText={setFormFee}
-                    />
-                  </View>
-                </View>
-
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>PHOTO URL (OPTIONAL)</Text>
-                <TextInput
-                  style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                  placeholder="https://domain.com/ground.jpg"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                  value={formImages}
-                  onChangeText={setFormImages}
-                  autoCapitalize="none"
-                />
-
-                {/* Location Selection Method Switch */}
-                <View style={[styles.toggleRow, { borderTopColor: theme.cardBorder, borderBottomColor: theme.cardBorder }]}>
-                  <View>
-                    <Text style={[styles.toggleTitle, { color: theme.text }]}>Enter Address Manually</Text>
-                    <Text style={[styles.toggleSubtitle, { color: theme.textSecondary }]}>Convert text inputs to coordinates via Geocoder</Text>
-                  </View>
-                  <Switch
-                    value={isManual}
-                    onValueChange={setIsManual}
-                    trackColor={{ false: '#767577', true: theme.green }}
-                    thumbColor={isManual ? '#FFF' : '#f4f3f4'}
-                  />
-                </View>
-
                 {isManual ? (
                   // Manual Address Entry Fields
-                  <View style={styles.manualAddressSection}>
-                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>STREET / BUILDING</Text>
+                  <View style={{ gap: 4 }}>
+                    <Text style={[styles.inputLabel, { color: theme.greenText }]}>STREET ADDRESS</Text>
                     <TextInput
                       style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                      placeholder="e.g. 12 Main St"
-                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                      value={manualStreet}
-                      onChangeText={setManualStreet}
-                    />
-
-                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>AREA / LANDMARK</Text>
-                    <TextInput
-                      style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                      placeholder="e.g. Near Uptown Mall"
-                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                      value={manualArea}
-                      onChangeText={setManualArea}
+                      placeholder="e.g. 12 Gandhi Road"
+                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
+                      value={formAddress}
+                      onChangeText={setFormAddress}
                     />
 
                     <View style={styles.rowForm}>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>CITY</Text>
+                        <Text style={[styles.inputLabel, { color: theme.greenText }]}>DISTRICT / CITY</Text>
                         <TextInput
                           style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                          placeholder="e.g. Dubai"
-                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                          value={formCity}
-                          onChangeText={setFormCity}
-                        />
-                      </View>
-
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>DISTRICT</Text>
-                        <TextInput
-                          style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                          placeholder="e.g. Jumeirah"
-                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
+                          placeholder="e.g. Coimbatore"
+                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
                           value={formDistrict}
                           onChangeText={setFormDistrict}
                         />
                       </View>
-                    </View>
-
-                    <View style={styles.rowForm}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>STATE</Text>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[styles.inputLabel, { color: theme.greenText }]}>STATE</Text>
                         <TextInput
                           style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                          placeholder="e.g. Dubai Emirate"
-                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
+                          placeholder="e.g. Tamil Nadu"
+                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
                           value={manualState}
                           onChangeText={setManualState}
                         />
                       </View>
-
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>PINCODE</Text>
-                        <TextInput
-                          style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                          placeholder="e.g. 00000"
-                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
-                          value={manualPincode}
-                          onChangeText={setManualPincode}
-                        />
-                      </View>
                     </View>
+
+                    <Text style={[styles.inputLabel, { color: theme.greenText }]}>PINCODE</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
+                      placeholder="e.g. 641001"
+                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
+                      keyboardType="number-pad"
+                      value={manualPincode}
+                      onChangeText={setManualPincode}
+                    />
                   </View>
                 ) : (
-                  // Map Selection Method (OSM)
-                  <View style={styles.mapSelectorSection}>
-                    {/* Search Location Bar */}
-                    <Text style={[styles.inputLabel, { color: theme.textSecondary, marginBottom: 8 }]}>
-                      SEARCH LOCATION (BIASED TO TAMIL NADU)
-                    </Text>
-                    <View style={styles.searchBarContainer}>
-                      <TextInput
-                        style={[styles.searchInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                        placeholder="Search local areas (e.g. Coimbatore)"
-                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
-                        value={locationSearchQuery}
-                        onChangeText={setLocationSearchQuery}
-                        onSubmitEditing={handleSearchLocation}
-                      />
-                      <TouchableOpacity 
-                        style={[styles.searchButton, { backgroundColor: theme.green }]} 
-                        onPress={handleSearchLocation}
-                        disabled={searchingLocation}
-                      >
-                        {searchingLocation ? (
-                          <ActivityIndicator size="small" color="#050A08" />
-                        ) : (
-                          <Ionicons name="search" size={20} color="#050A08" />
-                        )}
-                      </TouchableOpacity>
-                    </View>
+                  // Map Selection - Display dynamic geocoded info
+                  <View style={{ gap: 4 }}>
+                    <Text style={[styles.inputLabel, { color: theme.greenText }]}>RESOLVED ADDRESS</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, height: 50, paddingTop: 10 }]}
+                      placeholder="Tap on the map or drag pin to resolve address..."
+                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
+                      value={formAddress}
+                      onChangeText={setFormAddress}
+                      multiline
+                    />
 
-                    {/* Use Current Location Option */}
-                    <View style={styles.mapActionRow}>
-                      <TouchableOpacity 
-                        style={[styles.currentLocBtn, { borderColor: theme.green }]} 
-                        onPress={handleUseCurrentLocation}
-                      >
-                        <Ionicons name="location-outline" size={18} color={theme.greenText} />
-                        <Text style={[styles.currentLocBtnText, { color: theme.greenText }]}>
-                          Use My Current Location
+                    <View style={styles.rowForm}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>LATITUDE</Text>
+                        <Text style={[styles.coordsTextVal, { color: theme.text }]}>
+                          {selectedLat.toFixed(5)}
                         </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <Text style={[styles.inputLabel, { color: theme.textSecondary, marginTop: 12, marginBottom: 8 }]}>
-                      TAP ON MAP OR DRAG MARKER TO CHOOSE LOCATION
-                    </Text>
-
-                    <View style={[styles.mapWrapper, { borderColor: theme.cardBorder }]}>
-                      <GroundMapView
-                        latitude={selectedLat}
-                        longitude={selectedLng}
-                        onLocationSelect={handleMapPinSelected}
-                      />
-                    </View>
-
-                    {/* Coordinates Info */}
-                    <View style={[styles.resolvedInfoBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, marginBottom: 12 }]}>
-                      <Text style={[styles.resolvedInfoText, { color: theme.text, fontWeight: '700' }]}>
-                        🧭 Coordinates: {selectedLat.toFixed(5)}, {selectedLng.toFixed(5)}
-                      </Text>
-                      <Text style={[styles.resolvedInfoText, { color: theme.textSecondary, marginTop: 4 }]}>
-                        📍 Full Address: {formAddress || 'Fetching address...'}
-                      </Text>
-                    </View>
-
-                    {/* Structured Geocoded Address Grid */}
-                    <View style={[styles.addressGridContainer, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
-                      <Text style={[styles.addressGridTitle, { color: theme.text }]}>Detected Address Details</Text>
-                      
-                      <View style={styles.addressGrid}>
-                        <View style={styles.addressGridCol}>
-                          <Text style={[styles.addressGridLabel, { color: theme.textSecondary }]}>STREET</Text>
-                          <Text style={[styles.addressGridVal, { color: theme.text }]} numberOfLines={1}>
-                            {manualStreet || '—'}
-                          </Text>
-                        </View>
-                        <View style={styles.addressGridCol}>
-                          <Text style={[styles.addressGridLabel, { color: theme.textSecondary }]}>AREA</Text>
-                          <Text style={[styles.addressGridVal, { color: theme.text }]} numberOfLines={1}>
-                            {manualArea || '—'}
-                          </Text>
-                        </View>
                       </View>
-
-                      <View style={styles.addressGrid}>
-                        <View style={styles.addressGridCol}>
-                          <Text style={[styles.addressGridLabel, { color: theme.textSecondary }]}>CITY</Text>
-                          <Text style={[styles.addressGridVal, { color: theme.text }]} numberOfLines={1}>
-                            {formCity || '—'}
-                          </Text>
-                        </View>
-                        <View style={styles.addressGridCol}>
-                          <Text style={[styles.addressGridLabel, { color: theme.textSecondary }]}>DISTRICT</Text>
-                          <Text style={[styles.addressGridVal, { color: theme.text }]} numberOfLines={1}>
-                            {formDistrict || '—'}
-                          </Text>
-                        </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>LONGITUDE</Text>
+                        <Text style={[styles.coordsTextVal, { color: theme.text }]}>
+                          {selectedLng.toFixed(5)}
+                        </Text>
                       </View>
+                    </View>
 
-                      <View style={styles.addressGrid}>
-                        <View style={styles.addressGridCol}>
-                          <Text style={[styles.addressGridLabel, { color: theme.textSecondary }]}>STATE</Text>
-                          <Text style={[styles.addressGridVal, { color: theme.text }]} numberOfLines={1}>
-                            {manualState || '—'}
-                          </Text>
-                        </View>
-                        <View style={styles.addressGridCol}>
-                          <Text style={[styles.addressGridLabel, { color: theme.textSecondary }]}>PINCODE</Text>
-                          <Text style={[styles.addressGridVal, { color: theme.text }]} numberOfLines={1}>
-                            {manualPincode || '—'}
-                          </Text>
-                        </View>
+                    <View style={styles.rowForm}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>DISTRICT</Text>
+                        <Text style={[styles.coordsTextVal, { color: theme.text }]} numberOfLines={1}>
+                          {formDistrict || 'Tamil Nadu District'}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>STATE</Text>
+                        <Text style={[styles.coordsTextVal, { color: theme.text }]} numberOfLines={1}>
+                          {manualState || 'Tamil Nadu'}
+                        </Text>
                       </View>
                     </View>
                   </View>
                 )}
 
-                {/* Save CTA */}
+                {/* Additional Metadata Fields for Crickstreet profile info */}
+                <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: theme.cardBorder, paddingTop: 12 }}>
+                  <Text style={[styles.inputLabel, { color: theme.greenText }]}>GROUND TYPE</Text>
+                  <View style={styles.typeSelectorRow}>
+                    {(['Turf', 'Concrete', 'Matting', 'Grass'] as const).map((t) => {
+                      const isSelected = formType === t;
+                      return (
+                        <TouchableOpacity
+                          key={t}
+                          style={[
+                            styles.typeChip,
+                            {
+                              backgroundColor: isSelected ? theme.greenLight : theme.inputBg,
+                              borderColor: isSelected ? theme.green : theme.inputBorder,
+                            },
+                          ]}
+                          onPress={() => setFormType(t)}
+                        >
+                          <Text style={[styles.typeChipText, { color: isSelected ? theme.greenText : theme.textSecondary, fontWeight: isSelected ? '800' : '600' }]}>
+                            {t}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <View style={styles.rowForm}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: theme.greenText }]}>CONTACT NUMBER</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
+                        placeholder="e.g. +91 99999 88888"
+                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
+                        keyboardType="phone-pad"
+                        value={formContact}
+                        onChangeText={setFormContact}
+                      />
+                    </View>
+
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={[styles.inputLabel, { color: theme.greenText }]}>ENTRY FEE / HOUR</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
+                        placeholder="e.g. ₹1500"
+                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
+                        value={formFee}
+                        onChangeText={setFormFee}
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={[styles.inputLabel, { color: theme.greenText }]}>DESCRIPTION</Text>
+                  <TextInput
+                    style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, height: 60, paddingTop: 10 }]}
+                    placeholder="Describe stadium capacity, availability of lights, nets etc."
+                    placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
+                    value={formDesc}
+                    onChangeText={setFormDesc}
+                    multiline
+                  />
+
+                  <Text style={[styles.inputLabel, { color: theme.greenText }]}>PHOTO URL</Text>
+                  <TextInput
+                    style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
+                    placeholder="https://images.unsplash.com/photo-1..."
+                    placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)'}
+                    value={formImages}
+                    onChangeText={setFormImages}
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                {/* Submit Saving Trigger */}
                 <TouchableOpacity style={styles.saveBtn} onPress={handleSaveGround} disabled={saving}>
                   <LinearGradient
-                    colors={['#A8CD55', '#E3A85B']}
+                    colors={['#A8CD55', '#4CAF50']}
                     style={styles.saveBtnGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -998,13 +1045,13 @@ export default function MyGroundsScreen() {
                       <ActivityIndicator size="small" color="#050A08" />
                     ) : (
                       <Text style={styles.saveBtnText}>
-                        {editingGround ? 'Update Ground Entry' : 'Create Ground Entry'}
+                        {editingGround ? 'Update Cricket Ground' : 'Save Cricket Ground'}
                       </Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: 30 }} />
               </ScrollView>
             </View>
           </View>
@@ -1057,7 +1104,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
 
-  // Ground list cards
+  // List Cards
   card: {
     borderRadius: 20,
     borderWidth: 1,
@@ -1131,7 +1178,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Floating Action Button
+  // List FAB
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -1196,73 +1243,171 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  // Modal Dialog Styling
-  modalOverlay: {
+  // ── Modal Map Dashboard ───────────────────────────────────────────────────
+  mapModalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#0A1628',
   },
-  modalContent: {
-    width: width - 32,
-    maxHeight: '90%',
-    borderRadius: 24,
+  glassPanel: {
+    borderRadius: 20,
     borderWidth: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 8,
     overflow: 'hidden',
   },
-  modalHeader: {
+  
+  // Floating Search bar
+  topSearchWrapper: {
+    position: 'absolute',
+    top: 20,
+    left: 16,
+    right: 16,
+    zIndex: 999,
+    gap: 8,
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    height: 52,
   },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '800',
+  searchInputText: {
+    flex: 1,
+    fontSize: 14,
+    paddingHorizontal: 12,
+    height: '100%',
   },
-  closeModalBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+
+  // Search Results Container
+  suggestionsContainer: {
+    marginTop: 4,
+    paddingVertical: 6,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+  },
+  suggestionTextContainer: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  suggestionDisplayName: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  suggestionSubText: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  // Right Side Floating controls
+  floatingControlsContainer: {
+    position: 'absolute',
+    right: 16,
+    top: height * 0.18,
+    zIndex: 99,
+    gap: 12,
+  },
+  controlBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  formContainer: {
-    padding: 20,
+
+  // Premium Bottom Card
+  bottomGlassCard: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    maxHeight: height * 0.45,
+    padding: 16,
+    zIndex: 99,
   },
+  bottomCardScroll: {
+    paddingVertical: 6,
+  },
+  
+  // Segment Toggle
+  modeToggleContainer: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 3,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  modeToggleTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 11,
+  },
+  modeToggleActiveTab: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modeToggleText: {
+    fontSize: 12,
+  },
+
+  // Form Inside Card
   inputLabel: {
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 8,
-    marginTop: 10,
+    marginBottom: 6,
+    marginTop: 8,
   },
   textInput: {
-    height: 48,
+    height: 44,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    marginBottom: 10,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    marginBottom: 8,
   },
   rowForm: {
     flexDirection: 'row',
     marginBottom: 4,
+  },
+  coordsTextVal: {
+    fontSize: 13,
+    fontWeight: '700',
+    paddingVertical: 4,
   },
 
   // Type chips
   typeSelectorRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 8,
+    marginTop: 4,
   },
   typeChip: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
   },
@@ -1270,138 +1415,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
-  // Toggle switch row
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    marginTop: 14,
-    marginBottom: 14,
-  },
-  toggleTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  toggleSubtitle: {
-    fontSize: 10,
-    marginTop: 2,
-  },
-
-  // Manual Section
-  manualAddressSection: {
-    marginBottom: 10,
-  },
-
-  // Map Section
-  mapSelectorSection: {
-    marginBottom: 10,
-  },
-  mapWrapper: {
-    width: '100%',
-    height: 200,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    backgroundColor: '#151715',
-    marginBottom: 12,
-  },
-  resolvedInfoBox: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  resolvedInfoText: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-
-  // Search bar styles
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 13,
-  },
-  searchButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  
-  // Map actions
-  mapActionRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  currentLocBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    gap: 6,
-  },
-  currentLocBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-
-  // Address details grid styles
-  addressGridContainer: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 14,
-  },
-  addressGridTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  addressGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    gap: 12,
-  },
-  addressGridCol: {
-    flex: 1,
-  },
-  addressGridLabel: {
-    fontSize: 8,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  addressGridVal: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
   // Save btn
   saveBtn: {
     borderRadius: 100,
     overflow: 'hidden',
-    marginTop: 16,
+    marginTop: 18,
   },
   saveBtnGradient: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
