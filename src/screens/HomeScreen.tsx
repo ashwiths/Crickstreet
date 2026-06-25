@@ -62,7 +62,7 @@ const C = {
   shadowC: 'rgba(0,0,0,0.06)',
 } as const;
 
-const { width: W } = Dimensions.get('window');
+const W = Math.min(Dimensions.get('window').width, 600);
 
 // ─── Quick Action ─────────────────────────────────────────────────────────────
 function QuickAction({
