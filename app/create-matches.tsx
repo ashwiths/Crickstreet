@@ -19,7 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PlaygroundMapView from '../src/components/PlaygroundMapView';
 import { useAuth } from '../src/hooks/useAuth';
 import { db } from '../src/services/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, limit, onSnapshot } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const C = {
   hero:    '#1B3F14',
@@ -41,6 +42,21 @@ export default function CreateMatchesScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<number>(0);
+  const [matchFlow, setMatchFlow] = useState<'practice' | 'tournament' | null>(null);
+  const [hasMatches, setHasMatches] = useState<boolean>(true);
+
+  // Firestore user matches listener
+  useEffect(() => {
+    if (!user) return;
+    const colRef = collection(db, 'users', user.uid, 'matches');
+    const q = query(colRef, limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setHasMatches(!snapshot.empty);
+    }, (error) => {
+      console.error('Error fetching user matches count:', error);
+    });
+    return unsubscribe;
+  }, [user]);
 
   // ─── STEP 1: TEAMS STATE ───────────────────────────────────────────────────
   const [myTeamName, setMyTeamName] = useState('Crickstreet CC');
@@ -182,6 +198,36 @@ export default function CreateMatchesScreen() {
 
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [searchResult, setSearchResult] = useState<SearchResultType | null>(null);
+
+  const handleSelectPracticeFlow = () => {
+    setOppTeamName('Practice Opponent');
+    setOppCaptain('Opp Captain');
+    setOppViceCaptain('Opp Vice Captain');
+    setOppPlayers([
+      'Opp Player 1', 'Opp Player 2', 'Opp Player 3', 'Opp Player 4', 'Opp Player 5',
+      'Opp Player 6', 'Opp Player 7', 'Opp Player 8', 'Opp Player 9', 'Opp Player 10',
+      'Opp Player 11'
+    ]);
+    setOppSubs([]);
+    setMatchType('practice');
+    setMatchFlow('practice');
+    setCurrentStep(0);
+  };
+
+  const handleSelectTournamentFlow = () => {
+    setOppTeamName('Royal Strikers');
+    setOppCaptain('Steve Smith');
+    setOppViceCaptain('Pat Cummins');
+    setOppPlayers([
+      'Steve Smith', 'Travis Head', 'David Warner', 'Marnus Labuschagne', 'Glenn Maxwell',
+      'Marcus Stoinis', 'Alex Carey', 'Pat Cummins', 'Mitchell Starc',
+      'Josh Hazlewood', 'Adam Zampa'
+    ]);
+    setOppSubs(['Cameron Green', 'Nathan Lyon']);
+    setMatchType('Tournament Match');
+    setMatchFlow('tournament');
+    setCurrentStep(0);
+  };
 
   const syncLocationDetails = async (lat: number, lng: number) => {
     setSelectedLat(lat);
@@ -451,7 +497,7 @@ export default function CreateMatchesScreen() {
       settings: {
         format,
         customOvers: format === 'Custom' ? customOvers : null,
-        matchType,
+        matchType: matchFlow || 'tournament',
       },
       venue: {
         name: venueName,
@@ -474,7 +520,7 @@ export default function CreateMatchesScreen() {
           myTeamName,
           oppTeamName: opponentDisplay,
           format,
-          matchType,
+          matchType: matchFlow || 'tournament',
           venueName,
           status: 'live',
           createdAt: serverTimestamp(),
@@ -534,10 +580,12 @@ export default function CreateMatchesScreen() {
   };
 
   const handleBackStep = () => {
-    if (currentStep > 0) {
+    if (matchFlow === null) {
+      handleCancel();
+    } else if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else {
-      handleCancel();
+      setMatchFlow(null);
     }
   };
 
@@ -701,113 +749,115 @@ export default function CreateMatchesScreen() {
         </View>
 
         {/* OPPONENT TEAM */}
-        <View style={[styles.glassCard, { marginTop: 16 }]}>
-          <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-outline" size={18} color={C.green} /> OPPONENT TEAM</Text>
-          
-          <Text style={styles.inputLabel}>TEAM NAME</Text>
-          <TextInput
-            style={styles.textInput}
-            value={oppTeamName}
-            onChangeText={setOppTeamName}
-            placeholder="e.g. Royal Strikers"
-            placeholderTextColor="rgba(255,255,255,0.3)"
-          />
+        {matchFlow !== 'practice' && (
+          <View style={[styles.glassCard, { marginTop: 16 }]}>
+            <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-outline" size={18} color={C.green} /> OPPONENT TEAM</Text>
+            
+            <Text style={styles.inputLabel}>TEAM NAME</Text>
+            <TextInput
+              style={styles.textInput}
+              value={oppTeamName}
+              onChangeText={setOppTeamName}
+              placeholder="e.g. Royal Strikers"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+            />
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>CAPTAIN (OPTIONAL)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={oppCaptain}
-                onChangeText={setOppCaptain}
-                placeholder="Opp Captain"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-              />
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>CAPTAIN (OPTIONAL)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={oppCaptain}
+                  onChangeText={setOppCaptain}
+                  placeholder="Opp Captain"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>VICE CAPTAIN (OPTIONAL)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={oppViceCaptain}
+                  onChangeText={setOppViceCaptain}
+                  placeholder="Opp Vice Captain"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>VICE CAPTAIN (OPTIONAL)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={oppViceCaptain}
-                onChangeText={setOppViceCaptain}
-                placeholder="Opp Vice Captain"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-              />
-            </View>
-          </View>
 
-          {/* PLAYING XI LIST */}
-          <TouchableOpacity 
-            style={styles.sectionToggleButton}
-            onPress={() => setShowOppXI(!showOppXI)}
-          >
-            <Text style={styles.sectionToggleTitle}>Playing XI Roster ({oppPlayers.length}/11 Players)</Text>
-            <Feather name={showOppXI ? "chevron-up" : "chevron-down"} size={16} color={C.green} />
-          </TouchableOpacity>
+            {/* PLAYING XI LIST */}
+            <TouchableOpacity 
+              style={styles.sectionToggleButton}
+              onPress={() => setShowOppXI(!showOppXI)}
+            >
+              <Text style={styles.sectionToggleTitle}>Playing XI Roster ({oppPlayers.length}/11 Players)</Text>
+              <Feather name={showOppXI ? "chevron-up" : "chevron-down"} size={16} color={C.green} />
+            </TouchableOpacity>
 
-          {showOppXI && (
-            <View style={styles.playersList}>
-              <View style={styles.subsContainer}>
-                {oppPlayers.map((player, idx) => (
-                  <View key={idx} style={styles.subPill}>
-                    <Text style={styles.subPillTxt}>{player}</Text>
-                    <TouchableOpacity onPress={() => handleRemovePlayer('opp', idx)}>
-                      <Feather name="x" size={12} color="#EF4444" style={{ marginLeft: 4 }} />
+            {showOppXI && (
+              <View style={styles.playersList}>
+                <View style={styles.subsContainer}>
+                  {oppPlayers.map((player, idx) => (
+                    <View key={idx} style={styles.subPill}>
+                      <Text style={styles.subPillTxt}>{player}</Text>
+                      <TouchableOpacity onPress={() => handleRemovePlayer('opp', idx)}>
+                        <Feather name="x" size={12} color="#EF4444" style={{ marginLeft: 4 }} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+                {oppPlayers.length < 11 && (
+                  <View style={styles.addSubRow}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                      value={newOppPlayer}
+                      onChangeText={setNewOppPlayer}
+                      placeholder="Add Playing XI Player"
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                    />
+                    <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddPlayer('opp')}>
+                      <Text style={styles.smallAddBtnTxt}>+ Add</Text>
                     </TouchableOpacity>
                   </View>
-                ))}
+                )}
               </View>
-              {oppPlayers.length < 11 && (
-                <View style={styles.addSubRow}>
+            )}
+
+            {/* SUBSTITUTES */}
+            <Text style={styles.subSectionLabel}>Substitute Players (Optional)</Text>
+            <View style={styles.playersList}>
+              {oppSubs.map((sub, idx) => (
+                <View key={idx} style={styles.playerInputRow}>
+                  <Text style={styles.playerSlotLabel}>S{idx + 1}</Text>
                   <TextInput
-                    style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-                    value={newOppPlayer}
-                    onChangeText={setNewOppPlayer}
-                    placeholder="Add Playing XI Player"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    style={styles.playerInput}
+                    value={sub}
+                    onChangeText={(val) => handleSubNameChange('opp', idx, val)}
+                    placeholder={`Substitute ${idx + 1}`}
+                    placeholderTextColor="rgba(255,255,255,0.2)"
                   />
-                  <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddPlayer('opp')}>
-                    <Text style={styles.smallAddBtnTxt}>+ Add</Text>
+                  <TouchableOpacity onPress={() => handleRemoveSub('opp', idx)} style={{ padding: 4, paddingLeft: 8 }}>
+                    <Feather name="x" size={16} color="#EF4444" />
                   </TouchableOpacity>
                 </View>
-              )}
-            </View>
-          )}
-
-          {/* SUBSTITUTES */}
-          <Text style={styles.subSectionLabel}>Substitute Players (Optional)</Text>
-          <View style={styles.playersList}>
-            {oppSubs.map((sub, idx) => (
-              <View key={idx} style={styles.playerInputRow}>
-                <Text style={styles.playerSlotLabel}>S{idx + 1}</Text>
+              ))}
+              
+              <View style={[styles.playerInputRow, { marginTop: oppSubs.length > 0 ? 4 : 0 }]}>
+                <Text style={styles.playerSlotLabel}>+</Text>
                 <TextInput
-                  style={styles.playerInput}
-                  value={sub}
-                  onChangeText={(val) => handleSubNameChange('opp', idx, val)}
-                  placeholder={`Substitute ${idx + 1}`}
-                  placeholderTextColor="rgba(255,255,255,0.2)"
+                  style={[styles.playerInput, { marginBottom: 0 }]}
+                  value={newOppSub}
+                  onChangeText={setNewOppSub}
+                  placeholder="Add Sub Player"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
                 />
-                <TouchableOpacity onPress={() => handleRemoveSub('opp', idx)} style={{ padding: 4, paddingLeft: 8 }}>
-                  <Feather name="x" size={16} color="#EF4444" />
+                <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddSub('opp')}>
+                  <Text style={styles.smallAddBtnTxt}>+ Add</Text>
                 </TouchableOpacity>
               </View>
-            ))}
-            
-            <View style={[styles.playerInputRow, { marginTop: oppSubs.length > 0 ? 4 : 0 }]}>
-              <Text style={styles.playerSlotLabel}>+</Text>
-              <TextInput
-                style={[styles.playerInput, { marginBottom: 0 }]}
-                value={newOppSub}
-                onChangeText={setNewOppSub}
-                placeholder="Add Sub Player"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-              />
-              <TouchableOpacity style={styles.smallAddBtn} onPress={() => handleAddSub('opp')}>
-                <Text style={styles.smallAddBtnTxt}>+ Add</Text>
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
+        )}
       </View>
     );
   };
@@ -1160,6 +1210,156 @@ export default function CreateMatchesScreen() {
       </View>
     );
   };
+
+  const renderChooseMatchTypeScreen = () => {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor={C.hero} />
+        <View style={styles.hero}>
+          <View style={styles.deco1} />
+          <View style={styles.deco2} />
+          <View style={{ height: insets.top > 0 ? insets.top + 6 : 28 }} />
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/(tabs)')}>
+              <Feather name="chevron-left" size={24} color={C.white} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Match Setup</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <View style={styles.curve} />
+        </View>
+
+        <ScrollView 
+          style={styles.scroll} 
+          contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 40 }]} 
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.choiceHeaderContainer}>
+            <Text style={styles.choiceTitle}>Choose Match Type</Text>
+            <Text style={styles.choiceSubtitle}>How would you like to start today's match?</Text>
+          </View>
+
+          <View style={styles.premiumCardContainer}>
+            {/* Option 1: Single Practice Match */}
+            <View style={styles.premiumCard}>
+              {!hasMatches && (
+                <View style={styles.cardBadge}>
+                  <Text style={styles.cardBadgeText}>⭐ Recommended for Beginners</Text>
+                </View>
+              )}
+              
+              <View style={styles.cardMainRow}>
+                <View style={styles.cardIconContainer}>
+                  <Text style={{ fontSize: 28 }}>🏏</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitleText}>Single Practice Match</Text>
+                  <Text style={styles.cardDescText}>
+                    Perfect for practice sessions, street cricket, and friendly games where only your own team needs to be tracked.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Only My Team is required.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>No opponent team information required.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Track batting, bowling, wickets, overs, and player statistics.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Match results are stored in player history.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Player rankings and statistics must still update normally.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Faster setup with fewer steps.</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.cardBtn} 
+                onPress={handleSelectPracticeFlow}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[C.green, '#D4AF37']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.cardBtnGradient}
+                >
+                  <Text style={styles.cardBtnText}>Start Practice Match</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            {/* Option 2: Tournament Match */}
+            <View style={[styles.premiumCard, { marginTop: 24 }]}>
+              <View style={styles.cardMainRow}>
+                <View style={styles.cardIconContainer}>
+                  <Text style={{ fontSize: 28 }}>🏆</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitleText}>Tournament Match</Text>
+                  <Text style={styles.cardDescText}>
+                    Create a complete competitive match between two teams.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Setup both My Team and Opponent Team.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Configure toss details, match formats, and venue location.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Complete, official rulebook calculations and scoring stats.</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureItemText}>Perfect for tournament fixtures, club matches, and league games.</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.cardBtn} 
+                onPress={handleSelectTournamentFlow}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[C.green, '#2E7D32']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.cardBtnGradient}
+                >
+                  <Text style={styles.cardBtnText}>Continue to Setup</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  if (matchFlow === null) {
+    return renderChooseMatchTypeScreen();
+  }
 
   return (
     <View style={styles.root}>
@@ -1998,5 +2198,128 @@ const styles = StyleSheet.create({
     color: '#0A0D0A',
     fontSize: 13,
     fontWeight: '900',
+  },
+  choiceHeaderContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+    paddingHorizontal: 16,
+  },
+  choiceTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: C.white,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  choiceSubtitle: {
+    fontSize: 13,
+    color: '#828880',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  premiumCardContainer: {
+    width: '100%',
+    paddingBottom: 20,
+  },
+  premiumCard: {
+    width: '80%',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    position: 'relative',
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  cardBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    borderBottomLeftRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#D4AF37',
+  },
+  cardBadgeText: {
+    color: '#D4AF37',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  cardMainRow: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  cardIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  cardTitleText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: C.white,
+    marginBottom: 4,
+  },
+  cardDescText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.5)',
+    lineHeight: 15,
+  },
+  featureList: {
+    gap: 6,
+    marginBottom: 20,
+    paddingLeft: 4,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  featureBullet: {
+    color: C.green,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  featureItemText: {
+    flex: 1,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  cardBtn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  cardBtnGradient: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBtnText: {
+    color: '#0A0D0A',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.2,
   },
 });
