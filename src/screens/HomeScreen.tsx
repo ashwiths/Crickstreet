@@ -592,14 +592,6 @@ export default function HomeScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* Floating Help Bubble */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleShowHelp}
-          style={styles.floatingHelpBubble}
-        >
-          <Text style={{ fontSize: 24 }}>🏏</Text>
-        </TouchableOpacity>
       </View>
     );
   };
