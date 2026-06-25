@@ -1214,7 +1214,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#C53A33', // Cricket ball leather red/maroon is great, or green, but here it's housing the ball image
+    backgroundColor: C.green, // Housing the ball image with green background
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: C.green,
