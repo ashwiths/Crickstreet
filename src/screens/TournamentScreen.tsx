@@ -68,7 +68,7 @@ export default function TournamentScreen({
       potm: m.potm || 'N/A',
       venue: m.venueName || m.venue || 'Local',
     };
-  }) : sampleMatches;
+  }) : [];
 
   const filterChips: Array<{ key: typeof filter; label: string }> = [
     { key: 'all', label: 'All' },
@@ -108,20 +108,110 @@ export default function TournamentScreen({
     return { bg: '#F5F5F5', text: '#8A8A8A' };
   };
 
+  // --- Real dynamic data calculations ---
+  const totalMatches = displayMatches.length;
+  const wins = displayMatches.filter((m) => m.result === 'Won').length;
+  const losses = displayMatches.filter((m) => m.result === 'Lost').length;
+  const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
+
+  let totalRuns = 0;
+  displayMatches.forEach((m) => {
+    const runs = parseInt(m.myScore?.split('/')[0] || '0', 10);
+    if (!isNaN(runs)) totalRuns += runs;
+  });
+  if (userStats && typeof userStats.runs === 'number') {
+    totalRuns = userStats.runs;
+  }
+
   const statsCards = [
-    { icon: '🏏', label: 'Matches Played', value: String(matches.length > 0 ? matches.length : 24), color: '#2D5016', iconBg: '#F0F4EC' },
-    { icon: '🏆', label: 'Tournament Wins', value: '7', color: '#E3A85B', iconBg: '#FFF9E6' },
-    { icon: '📈', label: 'Win Rate', value: '62%', color: '#A8CD55', iconBg: '#F0F4EC' },
-    { icon: '⚡', label: 'Runs Scored', value: String(userStats?.runs || 845), color: '#A8CD55', iconBg: '#FFF9E6' },
+    { icon: '🏏', label: 'Matches Played', value: String(totalMatches), color: '#2D5016', iconBg: '#F0F4EC' },
+    { icon: '🏆', label: 'Tournament Wins', value: String(wins), color: '#E3A85B', iconBg: '#FFF9E6' },
+    { icon: '📈', label: 'Win Rate', value: `${winRate}%`, color: '#A8CD55', iconBg: '#F0F4EC' },
+    { icon: '⚡', label: 'Runs Scored', value: String(totalRuns), color: '#A8CD55', iconBg: '#FFF9E6' },
   ];
 
   const achievements = [
-    { emoji: '🏆', title: 'First Tournament Win', color: '#E3A85B', bg: '#FFF9E6' },
-    { emoji: '🔥', title: '5 Match Win Streak', color: '#FF4D4D', bg: '#FFF0F0' },
-    { emoji: '💯', title: 'First Century', color: '#A8CD55', bg: '#F0F4EC' },
-    { emoji: '🎯', title: '100 Wickets', color: '#A8CD55', bg: '#F0F4EC' },
-    { emoji: '🥇', title: 'MVP Award', color: '#E3A85B', bg: '#FFF9E6' },
+    { emoji: '🏆', title: 'First Tournament Win', color: '#E3A85B', bg: '#FFF9E6', unlocked: wins >= 1 },
+    { emoji: '🔥', title: '5 Match Win Streak', color: '#FF4D4D', bg: '#FFF0F0', unlocked: wins >= 5 },
+    { emoji: '💯', title: 'First Century', color: '#A8CD55', bg: '#F0F4EC', unlocked: (userStats?.centuries || 0) >= 1 || displayMatches.some(m => {
+        const runs = parseInt(m.myScore?.split('/')[0] || '0', 10);
+        return runs >= 100;
+      })
+    },
+    { emoji: '🎯', title: '100 Wickets', color: '#A8CD55', bg: '#F0F4EC', unlocked: (userStats?.wickets || 0) >= 100 },
+    { emoji: '🥇', title: 'MVP Award', color: '#E3A85B', bg: '#FFF9E6', unlocked: wins >= 3 },
   ];
+
+  // Current Season calculations
+  let highestScoreStr = 'N/A';
+  let lowestScoreStr = 'N/A';
+  let highestVal = 0;
+  let lowestVal = 999;
+  
+  displayMatches.forEach((m) => {
+    const runs = parseInt(m.myScore?.split('/')[0] || '0', 10);
+    if (!isNaN(runs) && runs > 0) {
+      if (runs > highestVal) {
+        highestVal = runs;
+        highestScoreStr = m.myScore;
+      }
+      if (runs < lowestVal) {
+        lowestVal = runs;
+        lowestScoreStr = m.myScore;
+      }
+    }
+  });
+  if (lowestVal === 999) lowestVal = 0;
+
+  const seasonPoints = wins * 2 + (totalMatches - wins - losses) * 1;
+  const simulatedNRR = totalMatches > 0 ? (wins >= losses ? `+${((wins - losses) * 0.22).toFixed(2)}` : `${((wins - losses) * 0.22).toFixed(2)}`) : '0.00';
+
+  const seasonRow1 = [
+    { label: 'Matches', value: String(totalMatches) },
+    { label: 'Wins', value: String(wins) },
+    { label: 'Losses', value: String(losses) },
+    { label: 'Points', value: String(seasonPoints) },
+  ];
+
+  const seasonRow2 = [
+    { label: 'NRR', value: simulatedNRR, hi: true },
+    { label: 'Highest', value: highestScoreStr, hi: false },
+    { label: 'Lowest', value: lowestScoreStr, hi: false },
+  ];
+
+  // Group matches by month dynamically for graph
+  const last6Months: Array<{ label: string; wins: number; losses: number }> = [];
+  const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentDate = new Date();
+  
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    last6Months.push({
+      label: monthLabels[d.getMonth()],
+      wins: 0,
+      losses: 0,
+    });
+  }
+
+  displayMatches.forEach((m) => {
+    const dateStr = String(m.date);
+    last6Months.forEach((mon) => {
+      if (dateStr.includes(mon.label)) {
+        if (m.result === 'Won') {
+          mon.wins += 1;
+        } else if (m.result === 'Lost') {
+          mon.losses += 1;
+        }
+      }
+    });
+  });
+
+  let maxWinsLosses = 1;
+  last6Months.forEach((m) => {
+    if (m.wins > maxWinsLosses) maxWinsLosses = m.wins;
+    if (m.losses > maxWinsLosses) maxWinsLosses = m.losses;
+  });
+  const barHeightFactor = 65 / maxWinsLosses;
 
   return (
     <View style={styles.container}>
@@ -310,7 +400,7 @@ export default function TournamentScreen({
                 style={styles.seasonGradient}
               >
                 <View style={styles.seasonRow}>
-                  {[{ label: 'Matches', value: '12' }, { label: 'Wins', value: '7' }, { label: 'Losses', value: '4' }, { label: 'Points', value: '14' }].map((item) => (
+                  {seasonRow1.map((item) => (
                     <View key={item.label} style={styles.seasonItem}>
                       <Text style={styles.seasonVal}>{item.value}</Text>
                       <Text style={styles.seasonLbl}>{item.label}</Text>
@@ -319,7 +409,7 @@ export default function TournamentScreen({
                 </View>
                 <View style={styles.cardDivider} />
                 <View style={styles.seasonRow}>
-                  {[{ label: 'NRR', value: '+0.82', hi: true }, { label: 'Highest', value: '198/3', hi: false }, { label: 'Lowest', value: '112/9', hi: false }].map((item) => (
+                  {seasonRow2.map((item) => (
                     <View key={item.label} style={styles.seasonItem}>
                       <Text style={[styles.seasonVal, item.hi && { color: '#2D5016' }]}>{item.value}</Text>
                       <Text style={styles.seasonLbl}>{item.label}</Text>
@@ -343,18 +433,20 @@ export default function TournamentScreen({
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.achievementsScroll}
             >
-              {achievements.map((ach, i) => (
+               {achievements.map((ach, i) => (
                 <Animated.View
                   key={ach.title}
                   entering={FadeInDown.delay(540 + i * 50).duration(350)}
-                  style={[styles.achievementCard, { borderColor: ach.color + '40' }]}
+                  style={[styles.achievementCard, { borderColor: ach.unlocked ? ach.color + '40' : 'rgba(0,0,0,0.08)', opacity: ach.unlocked ? 1 : 0.65 }]}
                 >
                   <View style={[styles.achIconBg, { backgroundColor: ach.bg }]}>
                     <Text style={{ fontSize: 24 }}>{ach.emoji}</Text>
                   </View>
                   <Text style={styles.achTitle} numberOfLines={2}>{ach.title}</Text>
-                  <View style={[styles.achBadge, { backgroundColor: ach.color + '18' }]}>
-                    <Text style={[styles.achBadgeTxt, { color: ach.color }]}>Unlocked</Text>
+                  <View style={[styles.achBadge, { backgroundColor: ach.unlocked ? ach.color + '18' : 'rgba(0,0,0,0.05)' }]}>
+                    <Text style={[styles.achBadgeTxt, { color: ach.unlocked ? ach.color : '#8A8A8A' }]}>
+                      {ach.unlocked ? 'Unlocked' : 'Locked'}
+                    </Text>
                   </View>
                 </Animated.View>
               ))}
@@ -368,17 +460,10 @@ export default function TournamentScreen({
             </View>
             <View style={styles.graphCard}>
               <View style={styles.graphBars}>
-                {[
-                  { label: 'Jun', wins: 3, losses: 1 },
-                  { label: 'May', wins: 2, losses: 2 },
-                  { label: 'Apr', wins: 4, losses: 1 },
-                  { label: 'Mar', wins: 1, losses: 3 },
-                  { label: 'Feb', wins: 3, losses: 2 },
-                  { label: 'Jan', wins: 2, losses: 1 },
-                ].map((m) => (
+                {last6Months.map((m) => (
                   <View key={m.label} style={styles.barGroup}>
-                    <View style={[styles.graphBar, { height: m.wins * 14, backgroundColor: '#A8CD55' }]} />
-                    <View style={[styles.graphBar, { height: m.losses * 14, backgroundColor: '#FF4D4D', opacity: 0.4 }]} />
+                    <View style={[styles.graphBar, { height: Math.max(m.wins * barHeightFactor, m.wins > 0 ? 6 : 0), backgroundColor: '#A8CD55' }]} />
+                    <View style={[styles.graphBar, { height: Math.max(m.losses * barHeightFactor, m.losses > 0 ? 6 : 0), backgroundColor: '#FF4D4D', opacity: 0.4 }]} />
                     <Text style={styles.barLabel}>{m.label}</Text>
                   </View>
                 ))}
