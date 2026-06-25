@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/src/services/firebase';
 
-const { width } = Dimensions.get('window');
+const width = Math.min(Dimensions.get('window').width, 600);
 
 function SkeletonView({ style }: { style: any }) {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
