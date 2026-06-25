@@ -386,14 +386,6 @@ export default function HomeScreen() {
   };
 
   const renderTournamentTab = () => {
-    const standings = [
-      { rank: 1, name: 'Crickstreet CC', p: 6, w: 5, l: 1, nrr: '+1.842', pts: 10 },
-      { rank: 2, name: 'Dubai Gladiators', p: 6, w: 4, l: 2, nrr: '+0.912', pts: 8 },
-      { rank: 3, name: 'Sharjah Kings', p: 6, w: 3, l: 3, nrr: '-0.124', pts: 6 },
-      { rank: 4, name: 'Abu Dhabi Falcons', p: 6, w: 2, l: 4, nrr: '-0.854', pts: 4 },
-      { rank: 5, name: 'Royal Strikers', p: 6, w: 1, l: 5, nrr: '-1.450', pts: 2 },
-    ];
-
     return (
       <View style={styles.tabContent}>
         {/* Header */}
@@ -403,63 +395,15 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-          {/* Active Tournament Card */}
-          <View style={styles.leagueFeaturedCard}>
-            <Text style={styles.leagueTag}>ONGOING LEAGUE</Text>
-            <Text style={styles.leagueTitle}>Crickstreet Premier League 2026</Text>
-            <Text style={styles.leagueDetails}>Dubai • 8 Teams • Season 3</Text>
-          </View>
-
-          {/* Standings Table Card */}
-          <View style={styles.tableCard}>
-            <Text style={styles.tableCardTitle}>Team Standings</Text>
-            
-            {/* Table Header */}
-            <View style={styles.tableHeaderRow}>
-              <Text style={[styles.thText, { width: 30 }]}>Pos</Text>
-              <Text style={[styles.thText, { flex: 1 }]}>Team</Text>
-              <Text style={[styles.thText, { width: 30, textAlign: 'center' }]}>P</Text>
-              <Text style={[styles.thText, { width: 30, textAlign: 'center' }]}>W</Text>
-              <Text style={[styles.thText, { width: 50, textAlign: 'center' }]}>NRR</Text>
-              <Text style={[styles.thText, { width: 40, textAlign: 'right' }]}>Pts</Text>
-            </View>
-
-            {/* Table Rows */}
-            {standings.map((team, idx) => (
-              <View key={team.name} style={[styles.tableRow, idx === standings.length - 1 && { borderBottomWidth: 0 }]}>
-                <Text style={[styles.tdRankText, { width: 30 }]}>{team.rank}</Text>
-                <Text style={[styles.tdNameText, { flex: 1 }]} numberOfLines={1}>{team.name}</Text>
-                <Text style={[styles.tdText, { width: 30, textAlign: 'center' }]}>{team.p}</Text>
-                <Text style={[styles.tdText, { width: 30, textAlign: 'center' }]}>{team.w}</Text>
-                <Text style={[styles.tdText, { width: 50, textAlign: 'center', color: team.nrr.startsWith('+') ? '#10B981' : '#EF4444' }]}>
-                  {team.nrr}
-                </Text>
-                <Text style={[styles.tdPtsText, { width: 40, textAlign: 'right' }]}>{team.pts}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Individual leaders stats */}
-          <View style={styles.leadersRow}>
-            {/* Orange Cap */}
-            <View style={styles.leaderCard}>
-              <View style={[styles.capIconBg, { backgroundColor: '#F59E0B' }]}>
-                <MaterialCommunityIcons name="cricket" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.leaderLabel}>ORANGE CAP (RUNS)</Text>
-              <Text style={styles.leaderName}>Virat Kohli</Text>
-              <Text style={styles.leaderStats}>482 Runs • avg 68.8</Text>
-            </View>
-
-            {/* Purple Cap */}
-            <View style={styles.leaderCard}>
-              <View style={[styles.capIconBg, { backgroundColor: '#8B5CF6' }]}>
-                <MaterialCommunityIcons name="bowling" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.leaderLabel}>PURPLE CAP (WKTS)</Text>
-              <Text style={styles.leaderName}>Jasprit Bumrah</Text>
-              <Text style={styles.leaderStats}>16 Wickets • econ 5.4</Text>
-            </View>
+          {/* Empty State */}
+          <View style={[styles.emptyFeedCard, { paddingVertical: 60, alignItems: 'center' }]}>
+            <Text style={{ fontSize: 52, marginBottom: 16 }}>🏆</Text>
+            <Text style={[styles.emptyFeedText, { fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginBottom: 8 }]}>
+              No Tournaments Yet
+            </Text>
+            <Text style={[styles.emptyFeedText, { textAlign: 'center', lineHeight: 20 }]}>
+              Tournament data will appear here once leagues and matches are created.
+            </Text>
           </View>
           <View style={{ height: 100 }} />
         </ScrollView>
@@ -715,21 +659,11 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.actCard}>
-            <ActivityRow emoji="🏏" title="Match Highlight"
-              desc="India vs Australia — 3rd Test posted"
-              badge="NEW" time="2m ago" badgeGreen delay={560} />
-            <View style={styles.divider} />
-            <ActivityRow emoji="🎯" title="Top Performer"
-              desc="Virat Kohli named Player of the Series"
-              badge="UPDATE" time="1h ago" delay={640} />
-            <View style={styles.divider} />
-            <ActivityRow emoji="📊" title="Stats Updated"
-              desc="ICC rankings refreshed after latest results"
-              badge="INFO" time="3h ago" delay={720} />
-            <View style={styles.divider} />
-            <ActivityRow emoji="🔔" title="Tour Alert"
-              desc="Australia tour schedule confirmed next month"
-              badge="HOT" time="5h ago" badgeGreen delay={800} />
+            <View style={[styles.emptyFeedCard, { margin: 0, borderRadius: 0, borderWidth: 0, backgroundColor: 'transparent', paddingVertical: 32 }]}>
+              <Feather name="bell" size={28} color="rgba(255,255,255,0.2)" style={{ marginBottom: 10 }} />
+              <Text style={styles.emptyFeedText}>No recent updates yet.</Text>
+              <Text style={[styles.emptyFeedText, { marginTop: 4, fontSize: 12 }]}>Play matches to see activity here.</Text>
+            </View>
           </View>
         </View>
 

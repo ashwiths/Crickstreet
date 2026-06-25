@@ -117,28 +117,20 @@ export default function CreateMatchesScreen() {
   }, [user]);
 
   // ─── STEP 1: TEAMS STATE ───────────────────────────────────────────────────
-  const [myTeamName, setMyTeamName] = useState('Crickstreet CC');
-  const [myCaptain, setMyCaptain] = useState('Ashil');
-  const [myViceCaptain, setMyViceCaptain] = useState('Virat Kohli');
-  const [myPlayers, setMyPlayers] = useState<string[]>([
-    'Ashil', 'Virat Kohli', 'Rohit Sharma', 'K L Rahul', 'Rishabh Pant',
-    'Hardik Pandya', 'Ravindra Jadeja', 'Jasprit Bumrah', 'Mohammed Shami',
-    'Yuzvendra Chahal', 'Mohammed Siraj'
-  ]);
-  const [mySubs, setMySubs] = useState<string[]>(['Shubman Gill', 'Axar Patel']);
+  const [myTeamName, setMyTeamName] = useState('');
+  const [myCaptain, setMyCaptain] = useState('');
+  const [myViceCaptain, setMyViceCaptain] = useState('');
+  const [myPlayers, setMyPlayers] = useState<string[]>([]);
+  const [mySubs, setMySubs] = useState<string[]>([]);
   const [newMySub, setNewMySub] = useState('');
   const [newMyPlayer, setNewMyPlayer] = useState('');
   const [showMyXI, setShowMyXI] = useState(false);
 
-  const [oppTeamName, setOppTeamName] = useState('Royal Strikers');
-  const [oppCaptain, setOppCaptain] = useState('Steve Smith');
-  const [oppViceCaptain, setOppViceCaptain] = useState('Pat Cummins');
-  const [oppPlayers, setOppPlayers] = useState<string[]>([
-    'Steve Smith', 'Travis Head', 'David Warner', 'Marnus Labuschagne', 'Glenn Maxwell',
-    'Marcus Stoinis', 'Alex Carey', 'Pat Cummins', 'Mitchell Starc',
-    'Josh Hazlewood', 'Adam Zampa'
-  ]);
-  const [oppSubs, setOppSubs] = useState<string[]>(['Cameron Green', 'Nathan Lyon']);
+  const [oppTeamName, setOppTeamName] = useState('');
+  const [oppCaptain, setOppCaptain] = useState('');
+  const [oppViceCaptain, setOppViceCaptain] = useState('');
+  const [oppPlayers, setOppPlayers] = useState<string[]>([]);
+  const [oppSubs, setOppSubs] = useState<string[]>([]);
   const [newOppSub, setNewOppSub] = useState('');
   const [newOppPlayer, setNewOppPlayer] = useState('');
   const [showOppXI, setShowOppXI] = useState(false);
