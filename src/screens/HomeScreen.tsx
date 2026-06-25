@@ -16,6 +16,7 @@ import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore'
 import { LinearGradient } from 'expo-linear-gradient';
 import { Alert } from 'react-native';
 import ProfileScreen from '@/app/(tabs)/profile';
+import TournamentScreen from './TournamentScreen';
 import { useTour, TourHighlight } from '../hooks/useTour';
 import {
   ActivityIndicator,
@@ -387,29 +388,14 @@ export default function HomeScreen() {
 
   const renderTournamentTab = () => {
     return (
-      <View style={styles.tabContent}>
-        {/* Header */}
-        <View style={styles.tabHeader}>
-          <Text style={styles.tabHeaderTitle}>Tournaments</Text>
-          <Text style={styles.tabHeaderSub}>Leagues, standings & stats</Text>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-          {/* Empty State */}
-          <View style={[styles.emptyFeedCard, { paddingVertical: 60, alignItems: 'center' }]}>
-            <Text style={{ fontSize: 52, marginBottom: 16 }}>🏆</Text>
-            <Text style={[styles.emptyFeedText, { fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginBottom: 8 }]}>
-              No Tournaments Yet
-            </Text>
-            <Text style={[styles.emptyFeedText, { textAlign: 'center', lineHeight: 20 }]}>
-              Tournament data will appear here once leagues and matches are created.
-            </Text>
-          </View>
-          <View style={{ height: 100 }} />
-        </ScrollView>
-      </View>
+      <TournamentScreen
+        onBack={() => setActiveTab('home')}
+        matches={matches}
+        userStats={userStats}
+      />
     );
   };
+
 
   const renderProfileTab = () => {
     return <ProfileScreen onBack={() => setActiveTab('home')} />;
@@ -2203,25 +2189,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 14,
   },
-  floatingHelpBubble: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 100 : 90,
-    right: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#A8CD55',
-    shadowColor: '#A8CD55',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-    zIndex: 1000,
-  },
   emptyFeedCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -2254,5 +2221,4 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
-
 });

@@ -49,26 +49,30 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="create-matches" options={{ headerShown: false }} />
-      <Stack.Screen name="scorecard" options={{ headerShown: false }} />
-      <Stack.Screen name="my-teams" options={{ headerShown: false }} />
-      <Stack.Screen name="team-details/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="my-players" options={{ headerShown: false }} />
-      <Stack.Screen name="my-grounds" options={{ headerShown: false }} />
-      <Stack.Screen name="ground-details/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="support" options={{ headerShown: false }} />
-      <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
-      <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-      <Stack.Screen name="player-profile/[id]" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="modal"
-        options={{ presentation: 'modal', title: 'Modal', headerShown: true }}
-      />
-    </Stack>
+    <View style={styles.appWrapper}>
+      <View style={styles.appContainer}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="create-matches" options={{ headerShown: false }} />
+          <Stack.Screen name="scorecard" options={{ headerShown: false }} />
+          <Stack.Screen name="my-teams" options={{ headerShown: false }} />
+          <Stack.Screen name="team-details/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="my-players" options={{ headerShown: false }} />
+          <Stack.Screen name="my-grounds" options={{ headerShown: false }} />
+          <Stack.Screen name="ground-details/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="support" options={{ headerShown: false }} />
+          <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+          <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="player-profile/[id]" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="modal"
+            options={{ presentation: 'modal', title: 'Modal', headerShown: true }}
+          />
+        </Stack>
+      </View>
+    </View>
   );
 }
 
@@ -93,5 +97,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  appWrapper: {
+    flex: 1,
+    backgroundColor: '#050F08', // Premium dark green background for desktop/tablets web page frame
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 600, // Capped mobile-first width
+    backgroundColor: '#000000',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });
