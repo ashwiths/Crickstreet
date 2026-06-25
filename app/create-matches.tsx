@@ -43,7 +43,7 @@ const C = {
   milky:   '#FFFDF1',
 } as const;
 
-const { width: W } = Dimensions.get('window');
+const W = Math.min(Dimensions.get('window').width, 600);
 
 // Steps for wizard
 const STEPS = ['Team Setup', 'Match Setup', 'Venue', 'Review'] as const;
