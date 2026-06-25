@@ -477,28 +477,17 @@ export default function HomeScreen() {
 
   const renderEmptyState = () => {
     return (
-      <View style={{ flex: 1, backgroundColor: '#F3F4F1' }}>
-        <LinearGradient
-          colors={['#E5F2D9', '#F9E5C8', '#F3F4F1']}
-          locations={[0, 0.4, 0.8]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.emptyHeaderGradient}
-        />
+      <View style={styles.emptyRoot}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.emptyBody}
           showsVerticalScrollIndicator={false}
         >
-          {/* Soft decorative gradient circles */}
-          <View style={styles.emptyDeco1} />
-          <View style={styles.emptyDeco2} />
-          <View style={styles.emptyDeco3} />
-
           {/* Welcome Header */}
           <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyHeaderRow}>
             <View style={styles.headerLeft}>
-              <View style={styles.avatar}>
+              <View style={[styles.avatar, { backgroundColor: '#111827' }]}>
                 <Text style={styles.avatarTxt}>{user?.displayName ? user.displayName.slice(0, 1).toUpperCase() : 'P'}</Text>
                 <View style={styles.emptyOnlineDot} />
               </View>
@@ -508,12 +497,12 @@ export default function HomeScreen() {
               </View>
             </View>
             <Pressable style={styles.emptyBellBtn}>
-              <Feather name="bell" size={18} color="#1A1A1A" />
+              <Feather name="bell" size={18} color="#111827" />
               <Animated.View style={[styles.emptyBellDot, pulseStyle]} />
             </Pressable>
           </Animated.View>
 
-          {/* Hero Animated Cricket Graphic */}
+          {/* Hero Section */}
           <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.emptyHeroSection}>
             <Animated.View style={[styles.emptyBallContainer, floatStyle]}>
               <Text style={styles.emptyBatEmoji}>🏏</Text>
@@ -524,7 +513,7 @@ export default function HomeScreen() {
             </Text>
           </Animated.View>
 
-          {/* Primary Floating Gradient Button with Pulse */}
+          {/* Primary CTA Button */}
           <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.emptyCtaWrapper}>
             <Animated.View style={buttonPulseStyle}>
               <TouchableOpacity
@@ -533,7 +522,7 @@ export default function HomeScreen() {
                 style={styles.floatingGradientBtn}
               >
                 <LinearGradient
-                  colors={['#59C749', '#E3A85B']}
+                  colors={[C.green, '#43A047']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.floatingGradientBtnGradient}
@@ -547,51 +536,62 @@ export default function HomeScreen() {
             </Animated.View>
           </Animated.View>
 
-          {/* Feature Preview (Locked) */}
-          <Animated.View entering={FadeInDown.delay(600).duration(500)} style={styles.emptyPreviewSection}>
-            <Text style={styles.emptySectionHeader}>PREMIUM FEATURES (LOCKED)</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.previewScrollContent}
+          {/* Secondary Actions: 3 stacked cards */}
+          <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.emptySecondaryContainer}>
+            <Text style={styles.emptySectionHeader}>Quick Start Setup</Text>
+            
+            {/* Action 1: Create Team */}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => router.push('/my-teams')}
+              style={styles.secondaryCard}
             >
-              {previewFeatures.map((f, idx) => (
-                <View key={idx} style={styles.previewCard}>
-                  <View style={styles.previewLockBadge}>
-                    <Feather name="lock" size={10} color="#E3A85B" style={{ marginRight: 4 }} />
-                    <Text style={styles.previewLockBadgeText}>LOCKED</Text>
-                  </View>
-                  <Text style={styles.previewCardTitle}>{f.title}</Text>
-                  <Text style={styles.previewCardDesc}>{f.desc}</Text>
-                  <Text style={styles.previewCardBadge}>Coming after your first match</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </Animated.View>
+              <View style={[styles.secondaryIconContainer, { backgroundColor: 'rgba(108, 99, 255, 0.08)' }]}>
+                <Text style={styles.secondaryIconText}>👥</Text>
+              </View>
+              <View style={styles.secondaryCardText}>
+                <Text style={styles.secondaryCardTitle}>Create Team</Text>
+                <Text style={styles.secondaryCardDesc}>Create your playing XI, manage profiles, and track statistics.</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
 
-          {/* Friendly Statistics Placeholders */}
-          <Animated.View entering={FadeInDown.delay(700).duration(500)} style={styles.emptyStatsPlaceholderCard}>
-            <Text style={styles.emptyStatsPlaceholderHeader}>📈 ANALYTICS PREVIEW</Text>
-            <View style={styles.emptyStatsPlaceholderDivider} />
-            
-            <View style={styles.emptyStatPlaceholderRow}>
-              <MaterialCommunityIcons name="scoreboard-outline" size={18} color="rgba(255,255,255,0.4)" />
-              <Text style={styles.emptyStatPlaceholderText}>No matches played yet</Text>
-            </View>
-            <View style={styles.emptyStatPlaceholderRow}>
-              <Feather name="trending-up" size={18} color="rgba(255,255,255,0.4)" />
-              <Text style={styles.emptyStatPlaceholderText}>No player statistics yet</Text>
-            </View>
-            
-            <Text style={styles.emptyStatPlaceholderFooter}>
-              Start your first match to unlock analytics.
-            </Text>
+            {/* Action 2: Add Ground */}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => router.push('/my-grounds')}
+              style={[styles.secondaryCard, { marginTop: 12 }]}
+            >
+              <View style={[styles.secondaryIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
+                <Text style={styles.secondaryIconText}>📍</Text>
+              </View>
+              <View style={styles.secondaryCardText}>
+                <Text style={styles.secondaryCardTitle}>Add Ground</Text>
+                <Text style={styles.secondaryCardDesc}>Register local grounds, coordinate maps, and manage bookings.</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Action 3: Scan Player QR */}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => router.push('/qr-scanner')}
+              style={[styles.secondaryCard, { marginTop: 12 }]}
+            >
+              <View style={[styles.secondaryIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+                <Text style={styles.secondaryIconText}>🔍</Text>
+              </View>
+              <View style={styles.secondaryCardText}>
+                <Text style={styles.secondaryCardTitle}>Scan Player QR</Text>
+                <Text style={styles.secondaryCardDesc}>Instantly add new players to your team roster via camera scan.</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
           </Animated.View>
 
           {/* Spacer for bottom navigation */}
           <View style={{ height: 120 }} />
         </ScrollView>
-
       </View>
     );
   };
@@ -677,31 +677,7 @@ export default function HomeScreen() {
           <View style={styles.curve} />
         </View>
 
-        {/* ═══════════════════════════════════════════
-            QUICK ACTIONS  (white card)
-        ═══════════════════════════════════════════ */}
-        <View style={styles.section}>
-          <View style={styles.card}>
-            <View style={styles.qaRow}>
-              <QuickAction
-                icon={<Feather name="zap"        size={20} color={C.green}   />}
-                label="Live"   bg={C.greenDim}        delay={380}
-              />
-              <QuickAction
-                icon={<Feather name="bar-chart-2" size={20} color="#6C63FF"  />}
-                label="Stats"  bg="rgba(108,99,255,.12)" delay={460}
-              />
-              <QuickAction
-                icon={<Feather name="radio"       size={20} color="#FF6B6B"  />}
-                label="Scores" bg="rgba(255,107,107,.12)" delay={540}
-              />
-              <QuickAction
-                icon={<Feather name="award"       size={20} color="#F59E0B"  />}
-                label="Ranks"  bg="rgba(245,158,11,.12)"  delay={620}
-              />
-            </View>
-          </View>
-        </View>
+
 
 
 
@@ -2082,16 +2058,13 @@ const styles = StyleSheet.create({
   },
 
   // ── Empty State Redesign Styles ─────────────────────────────────────────────
-  emptyHeaderGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 300,
+  emptyRoot: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#F3F4F1',
+    backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2101,34 +2074,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     position: 'relative',
-    backgroundColor: 'transparent',
-  },
-  emptyDeco1: {
-    position: 'absolute',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(168, 205, 85, 0.22)',
-    top: -50,
-    right: -50,
-  },
-  emptyDeco2: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(227, 168, 91, 0.16)',
-    top: 250,
-    left: -80,
-  },
-  emptyDeco3: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(168, 205, 85, 0.12)',
-    bottom: 100,
-    right: -40,
+    backgroundColor: '#F8F9FA',
   },
   emptyHeaderRow: {
     flexDirection: 'row',
@@ -2141,14 +2087,14 @@ const styles = StyleSheet.create({
   },
   emptyHelloTxt: {
     fontSize: 11,
-    color: '#8A8A8A',
+    color: '#6B7280',
     fontWeight: '600',
     lineHeight: 14,
   },
   emptyNameTxt: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: '#111827',
     letterSpacing: -0.2,
     lineHeight: 20,
   },
@@ -2171,7 +2117,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(168, 205, 85, 0.25)',
+    borderColor: '#E5E7EB',
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -2186,7 +2132,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: C.green,
+    backgroundColor: '#59C749',
     borderWidth: 1,
     borderColor: '#FFFFFF',
   },
@@ -2197,35 +2143,35 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   emptyBallContainer: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: 'rgba(168, 205, 85, 0.45)',
-    shadowColor: '#A8CD55',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 3,
   },
   emptyBatEmoji: {
-    fontSize: 40,
+    fontSize: 38,
   },
   emptyTitleText: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#2D5016',
+    color: '#111827',
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   emptyDescText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#555555',
+    color: '#4B5563',
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 8,
@@ -2240,7 +2186,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#59C749',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.25,
     shadowRadius: 14,
     elevation: 8,
   },
@@ -2275,30 +2221,26 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptySectionHeader: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#2D5016',
+    color: '#6B7280',
     letterSpacing: 1.0,
     marginBottom: 12,
     textTransform: 'uppercase',
-  },
-  secondaryRow: {
-    marginBottom: 10,
-    width: '100%',
   },
   secondaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(168, 205, 85, 0.18)',
+    borderColor: '#E5E7EB',
     gap: 12,
     width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.02,
     shadowRadius: 10,
     elevation: 2,
   },
@@ -2319,112 +2261,13 @@ const styles = StyleSheet.create({
   secondaryCardTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#111827',
   },
   secondaryCardDesc: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#666666',
+    color: '#6B7280',
     lineHeight: 14,
-  },
-  emptyPreviewSection: {
-    width: '100%',
-    marginBottom: 24,
-    paddingHorizontal: 4,
-  },
-  previewScrollContent: {
-    gap: 12,
-    paddingRight: 20,
-  },
-  previewCard: {
-    width: 170,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(168, 205, 85, 0.12)',
-    gap: 4,
-    opacity: 0.85,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  previewLockBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(227, 168, 91, 0.1)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginBottom: 4,
-  },
-  previewLockBadgeText: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#E3A85B',
-    letterSpacing: 0.5,
-  },
-  previewCardTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  previewCardDesc: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#666666',
-    marginBottom: 6,
-  },
-  previewCardBadge: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#A8CD55',
-  },
-  emptyStatsPlaceholderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 205, 85, 0.18)',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  emptyStatsPlaceholderHeader: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8A8A8A',
-    letterSpacing: 0.8,
-  },
-  emptyStatsPlaceholderDivider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 12,
-  },
-  emptyStatPlaceholderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  emptyStatPlaceholderText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#444444',
-  },
-  emptyStatPlaceholderFooter: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#2D5016',
-    marginTop: 4,
-    textAlign: 'center',
   },
   floatingHelpBubble: {
     position: 'absolute',

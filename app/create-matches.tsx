@@ -1,7 +1,18 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withDelay,
+  withRepeat,
+  withSequence,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +34,7 @@ import { collection, addDoc, serverTimestamp, query, limit, onSnapshot } from 'f
 import { LinearGradient } from 'expo-linear-gradient';
 
 const C = {
-  hero:    '#1B3F14',
+  hero:    '#0E110E',
   green:   '#59C749',
   white:   '#FFFFFF',
   black:   '#0A0A0A',
@@ -44,6 +55,53 @@ export default function CreateMatchesScreen() {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [matchFlow, setMatchFlow] = useState<'practice' | 'tournament' | null>(null);
   const [hasMatches, setHasMatches] = useState<boolean>(true);
+  const [selectedCard, setSelectedCard] = useState<'practice' | 'tournament' | null>(null);
+
+  // ─── ANIMATION SHARED VALUES ─────────────────────────────────────────────
+  const headerOpacity   = useSharedValue(0);
+  const card1TranslateY = useSharedValue(60);
+  const card1Opacity    = useSharedValue(0);
+  const card2TranslateY = useSharedValue(60);
+  const card2Opacity    = useSharedValue(0);
+  const bannerOpacity   = useSharedValue(0);
+  const btnOpacity      = useSharedValue(0);
+  const card1Scale      = useSharedValue(1);
+  const card2Scale      = useSharedValue(1);
+  const floatY          = useSharedValue(0);
+
+  // Entrance animation trigger
+  useEffect(() => {
+    if (matchFlow !== null) return;
+    // Reset
+    headerOpacity.value   = 0;
+    card1TranslateY.value = 60; card1Opacity.value = 0;
+    card2TranslateY.value = 60; card2Opacity.value = 0;
+    bannerOpacity.value   = 0;
+    btnOpacity.value      = 0;
+    // Play
+    headerOpacity.value   = withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) });
+    card1Opacity.value    = withDelay(120, withTiming(1, { duration: 500 }));
+    card1TranslateY.value = withDelay(120, withSpring(0, { damping: 18, stiffness: 120 }));
+    card2Opacity.value    = withDelay(270, withTiming(1, { duration: 500 }));
+    card2TranslateY.value = withDelay(270, withSpring(0, { damping: 18, stiffness: 120 }));
+    bannerOpacity.value   = withDelay(420, withTiming(1, { duration: 400 }));
+    btnOpacity.value      = withDelay(520, withTiming(1, { duration: 400 }));
+    // Subtle float loop
+    floatY.value = withRepeat(
+      withSequence(
+        withTiming(-6, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0,  { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      true
+    );
+  }, [matchFlow]);
+
+  // Card scale on selection
+  useEffect(() => {
+    card1Scale.value = withSpring(selectedCard === 'practice'   ? 1.025 : 1, { damping: 15 });
+    card2Scale.value = withSpring(selectedCard === 'tournament' ? 1.025 : 1, { damping: 15 });
+  }, [selectedCard]);
 
   // Firestore user matches listener
   useEffect(() => {
@@ -1211,148 +1269,214 @@ export default function CreateMatchesScreen() {
     );
   };
 
-  const renderChooseMatchTypeScreen = () => {
-    return (
-      <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor={C.hero} />
-        <View style={styles.hero}>
-          <View style={styles.deco1} />
-          <View style={styles.deco2} />
-          <View style={{ height: insets.top > 0 ? insets.top + 6 : 28 }} />
-          <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/(tabs)')}>
-              <Feather name="chevron-left" size={24} color={C.white} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Match Setup</Text>
-            <View style={{ width: 40 }} />
-          </View>
-          <View style={styles.curve} />
-        </View>
+  // ─── ANIMATED STYLES ────────────────────────────────────────────────────
+  const aHeaderStyle   = useAnimatedStyle(() => ({ opacity: headerOpacity.value }));
+  const aCard1Style    = useAnimatedStyle(() => ({
+    opacity: card1Opacity.value,
+    transform: [{ translateY: card1TranslateY.value }, { scale: card1Scale.value }],
+  }));
+  const aCard2Style    = useAnimatedStyle(() => ({
+    opacity: card2Opacity.value,
+    transform: [{ translateY: card2TranslateY.value }, { scale: card2Scale.value }],
+  }));
+  const aBannerStyle   = useAnimatedStyle(() => ({ opacity: bannerOpacity.value }));
+  const aBtnStyle      = useAnimatedStyle(() => ({ opacity: btnOpacity.value }));
+  const aFloatStyle    = useAnimatedStyle(() => ({ transform: [{ translateY: floatY.value }] }));
 
-        <ScrollView 
-          style={styles.scroll} 
-          contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 40 }]} 
+  const renderChooseMatchTypeScreen = () => {
+    const practiceChips  = [
+      { icon: '🏏', label: 'Solo Team' },
+      { icon: '⚡', label: 'Fast Setup' },
+      { icon: '📊', label: 'Player Stats' },
+      { icon: '🏠', label: 'Street Cricket' },
+    ];
+    const tournamentChips = [
+      { icon: '👥', label: 'Two Teams' },
+      { icon: '🏆', label: 'Official Match' },
+      { icon: '📍', label: 'Venue' },
+      { icon: '🎯', label: 'Full Scorecard' },
+    ];
+
+    const isPracticeSelected   = selectedCard === 'practice';
+    const isTournamentSelected = selectedCard === 'tournament';
+    const hasSelection         = selectedCard !== null;
+
+    return (
+      <View style={choiceStyles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#0A0D0A" />
+
+        {/* ─── Background radial deco layers ─── */}
+        <View style={choiceStyles.bgDeco1} />
+        <View style={choiceStyles.bgDeco2} />
+        <View style={choiceStyles.bgDeco3} />
+        {/* Watermark cricket ball */}
+        <Animated.Text style={[choiceStyles.watermark, aFloatStyle]}>🏏</Animated.Text>
+
+        {/* ─── Safe area top spacer ─── */}
+        <View style={{ height: insets.top > 0 ? insets.top : 20 }} />
+
+        {/* ─── Header ─── */}
+        <Animated.View style={[choiceStyles.headerRow, aHeaderStyle]}>
+          <TouchableOpacity
+            style={choiceStyles.backBtn}
+            onPress={() => router.replace('/(tabs)')}
+            activeOpacity={0.7}
+          >
+            <Feather name="chevron-left" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View style={[choiceStyles.heroTextBlock, aHeaderStyle]}>
+          <Text style={choiceStyles.headerTitle}>Choose Match Type</Text>
+          <Text style={choiceStyles.headerSubtitle}>Choose how you'd like to start today's cricket match.</Text>
+        </Animated.View>
+
+        {/* ─── First-time banner ─── */}
+        {!hasMatches && (
+          <Animated.View style={[choiceStyles.firstTimeBanner, aBannerStyle]}>
+            <Text style={choiceStyles.firstTimeBannerIcon}>💡</Text>
+            <Text style={choiceStyles.firstTimeBannerText}>
+              New here? We recommend starting with a <Text style={{ fontWeight: '800', color: '#D4AF37' }}>Practice Match</Text>.
+            </Text>
+          </Animated.View>
+        )}
+
+        {/* ─── Scrollable cards ─── */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            choiceStyles.scrollContent,
+            { paddingBottom: insets.bottom + (hasSelection ? 100 : 40) }
+          ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.choiceHeaderContainer}>
-            <Text style={styles.choiceTitle}>Choose Match Type</Text>
-            <Text style={styles.choiceSubtitle}>How would you like to start today's match?</Text>
-          </View>
+          {/* ── Practice Card ── */}
+          <Animated.View style={[aCard1Style, { width: '100%' }]}>
+            <TouchableOpacity
+              activeOpacity={0.95}
+              onPress={() => setSelectedCard(isPracticeSelected ? null : 'practice')}
+            >
+              <View style={[
+                choiceStyles.card,
+                isPracticeSelected && choiceStyles.cardSelectedPractice,
+              ]}>
+                {/* Header Badge & Radio Box */}
+                <View style={choiceStyles.badgeRow}>
+                  <View style={choiceStyles.practiceBadge}>
+                    <Text style={choiceStyles.practiceBadgeText}>⚡ SOLO PRACTICE</Text>
+                  </View>
+                  <View style={isPracticeSelected ? choiceStyles.checkBadgePractice : choiceStyles.checkBadgeEmpty}>
+                    {isPracticeSelected && <Feather name="check" size={12} color="#0A0D0A" />}
+                  </View>
+                </View>
 
-          <View style={styles.premiumCardContainer}>
-            {/* Option 1: Single Practice Match */}
-            <View style={styles.premiumCard}>
-              {!hasMatches && (
-                <View style={styles.cardBadge}>
-                  <Text style={styles.cardBadgeText}>⭐ Recommended for Beginners</Text>
+                {/* Icon + Title */}
+                <View style={choiceStyles.cardTopRow}>
+                  <Animated.View style={[
+                    choiceStyles.cardIconWrap,
+                    isPracticeSelected && choiceStyles.cardIconWrapPracticeSelected,
+                    aFloatStyle
+                  ]}>
+                    <Text style={choiceStyles.cardIcon}>🏏</Text>
+                  </Animated.View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={choiceStyles.cardTitle}>Practice Match</Text>
+                    <Text style={choiceStyles.cardDesc}>Perfect for street cricket and solo score tracking.</Text>
+                  </View>
                 </View>
-              )}
-              
-              <View style={styles.cardMainRow}>
-                <View style={styles.cardIconContainer}>
-                  <Text style={{ fontSize: 28 }}>🏏</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitleText}>Single Practice Match</Text>
-                  <Text style={styles.cardDescText}>
-                    Perfect for practice sessions, street cricket, and friendly games where only your own team needs to be tracked.
-                  </Text>
+
+                {/* Feature chips */}
+                <View style={choiceStyles.chipsRow}>
+                  {practiceChips.map((chip) => (
+                    <View key={chip.label} style={choiceStyles.chip}>
+                      <Text style={choiceStyles.chipIcon}>{chip.icon}</Text>
+                      <Text style={choiceStyles.chipLabel}>{chip.label}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
+            </TouchableOpacity>
+          </Animated.View>
 
-              <View style={styles.featureList}>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Only My Team is required.</Text>
+          {/* ── Tournament Card ── */}
+          <Animated.View style={[aCard2Style, { width: '100%', marginTop: 16 }]}>
+            <TouchableOpacity
+              activeOpacity={0.95}
+              onPress={() => setSelectedCard(isTournamentSelected ? null : 'tournament')}
+            >
+              <View style={[
+                choiceStyles.card,
+                isTournamentSelected && choiceStyles.cardSelectedTournament,
+              ]}>
+                {/* Header Badge & Radio Box */}
+                <View style={choiceStyles.badgeRow}>
+                  <View style={choiceStyles.tournamentBadge}>
+                    <Text style={choiceStyles.tournamentBadgeText}>🏆 TWO TEAMS</Text>
+                  </View>
+                  <View style={isTournamentSelected ? choiceStyles.checkBadgeTournament : choiceStyles.checkBadgeEmpty}>
+                    {isTournamentSelected && <Feather name="check" size={12} color="#0A0D0A" />}
+                  </View>
                 </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>No opponent team information required.</Text>
+
+                {/* Icon + Title */}
+                <View style={choiceStyles.cardTopRow}>
+                  <View style={[
+                    choiceStyles.cardIconWrap,
+                    isTournamentSelected && choiceStyles.cardIconWrapTournamentSelected
+                  ]}>
+                    <Text style={choiceStyles.cardIcon}>🏆</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={choiceStyles.cardTitle}>Tournament Match</Text>
+                    <Text style={choiceStyles.cardDesc}>Complete official match with two teams.</Text>
+                  </View>
                 </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Track batting, bowling, wickets, overs, and player statistics.</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Match results are stored in player history.</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Player rankings and statistics must still update normally.</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Faster setup with fewer steps.</Text>
+
+                {/* Feature chips */}
+                <View style={choiceStyles.chipsRow}>
+                  {tournamentChips.map((chip) => (
+                    <View key={chip.label} style={choiceStyles.chip}>
+                      <Text style={choiceStyles.chipIcon}>{chip.icon}</Text>
+                      <Text style={choiceStyles.chipLabel}>{chip.label}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
-
-              <TouchableOpacity 
-                style={styles.cardBtn} 
-                onPress={handleSelectPracticeFlow}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={[C.green, '#D4AF37']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.cardBtnGradient}
-                >
-                  <Text style={styles.cardBtnText}>Start Practice Match</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-
-            {/* Option 2: Tournament Match */}
-            <View style={[styles.premiumCard, { marginTop: 24 }]}>
-              <View style={styles.cardMainRow}>
-                <View style={styles.cardIconContainer}>
-                  <Text style={{ fontSize: 28 }}>🏆</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitleText}>Tournament Match</Text>
-                  <Text style={styles.cardDescText}>
-                    Create a complete competitive match between two teams.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.featureList}>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Setup both My Team and Opponent Team.</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Configure toss details, match formats, and venue location.</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Complete, official rulebook calculations and scoring stats.</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureItemText}>Perfect for tournament fixtures, club matches, and league games.</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity 
-                style={styles.cardBtn} 
-                onPress={handleSelectTournamentFlow}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={[C.green, '#2E7D32']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.cardBtnGradient}
-                >
-                  <Text style={styles.cardBtnText}>Continue to Setup</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
+            </TouchableOpacity>
+          </Animated.View>
         </ScrollView>
+
+        {/* ─── Sticky bottom continue button ─── */}
+        <Animated.View style={[
+          choiceStyles.stickyBottom,
+          { paddingBottom: insets.bottom + 16 },
+          aBtnStyle,
+        ]}>
+          <TouchableOpacity
+            activeOpacity={hasSelection ? 0.8 : 1}
+            onPress={() => {
+              if (!hasSelection) return;
+              if (selectedCard === 'practice')   handleSelectPracticeFlow();
+              if (selectedCard === 'tournament') handleSelectTournamentFlow();
+            }}
+            style={{ borderRadius: 18, overflow: 'hidden' }}
+          >
+            <LinearGradient
+              colors={hasSelection ? [C.green, '#D4AF37'] : ['#2A2F2A', '#2A2F2A']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={[choiceStyles.continueBtn, !hasSelection && choiceStyles.continueBtnDisabled]}
+            >
+              <Text style={[choiceStyles.continueBtnText, !hasSelection && { color: 'rgba(255,255,255,0.35)' }]}>
+                {hasSelection
+                  ? `Continue with ${selectedCard === 'practice' ? 'Practice' : 'Tournament'} Match`
+                  : 'Select a Match Type to Continue'}
+              </Text>
+              {hasSelection && (
+                <Feather name="arrow-right" size={18} color="#0A0D0A" style={{ marginLeft: 8 }} />
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     );
   };
@@ -1435,7 +1559,7 @@ const styles = StyleSheet.create({
     width: W * 0.60,
     height: W * 0.60,
     borderRadius: W * 0.30,
-    backgroundColor: 'rgba(89,199,73,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
     top: -W * 0.18,
     right: -W * 0.14,
   },
@@ -2199,127 +2323,298 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
-  choiceHeaderContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-    paddingHorizontal: 16,
+});
+
+// ─── CHOOSE MATCH TYPE SCREEN STYLES (separate StyleSheet) ─────────────────
+const choiceStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#0A0D0A',
   },
-  choiceTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: C.white,
-    textAlign: 'center',
-    marginBottom: 8,
+  // Background deco radial layers
+  bgDeco1: {
+    position: 'absolute',
+    width: W * 1.4,
+    height: W * 1.4,
+    borderRadius: W * 0.7,
+    backgroundColor: 'rgba(89, 199, 73, 0.03)',
+    top: -W * 0.5,
+    left: -W * 0.2,
   },
-  choiceSubtitle: {
-    fontSize: 13,
-    color: '#828880',
-    textAlign: 'center',
-    lineHeight: 18,
+  bgDeco2: {
+    position: 'absolute',
+    width: W * 0.9,
+    height: W * 0.9,
+    borderRadius: W * 0.45,
+    backgroundColor: 'rgba(212, 175, 55, 0.02)',
+    bottom: W * 0.1,
+    right: -W * 0.25,
   },
-  premiumCardContainer: {
-    width: '100%',
-    paddingBottom: 20,
+  bgDeco3: {
+    position: 'absolute',
+    width: W * 0.5,
+    height: W * 0.5,
+    borderRadius: W * 0.25,
+    backgroundColor: 'rgba(255, 255, 255, 0.01)',
+    bottom: -W * 0.1,
+    left: W * 0.1,
   },
-  premiumCard: {
-    width: '80%',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 24,
-    padding: 20,
+  watermark: {
+    position: 'absolute',
+    fontSize: 220,
+    opacity: 0.02,
+    bottom: '15%',
+    right: -30,
+    transform: [{ rotate: '-20deg' }],
+  },
+  // Header
+  headerRow: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  heroTextBlock: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    position: 'relative',
-    shadowColor: C.green,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
+    borderColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  // First-time banner
+  firstTimeBanner: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(212,175,55,0.06)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  firstTimeBannerIcon: {
+    fontSize: 16,
+  },
+  firstTimeBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    lineHeight: 17,
+  },
+  // Scroll area
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
+  // Card
+  card: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
     overflow: 'hidden',
   },
-  cardBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    borderBottomLeftRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderLeftWidth: 1,
-    borderBottomWidth: 1,
+  cardSelectedPractice: {
+    borderColor: '#59C749',
+    backgroundColor: 'rgba(89, 199, 73, 0.03)',
+    shadowColor: '#59C749',
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  cardSelectedTournament: {
     borderColor: '#D4AF37',
+    backgroundColor: 'rgba(212, 175, 55, 0.03)',
+    shadowColor: '#D4AF37',
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  cardBadgeText: {
-    color: '#D4AF37',
-    fontSize: 9,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  cardMainRow: {
+  // Badge row
+  badgeRow: {
     flexDirection: 'row',
-    gap: 14,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  cardIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  practiceBadge: {
+    backgroundColor: 'rgba(89, 199, 73, 0.08)',
+    borderColor: 'rgba(89, 199, 73, 0.2)',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  practiceBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#59C749',
+    letterSpacing: 0.5,
+  },
+  tournamentBadge: {
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    borderColor: 'rgba(212, 175, 55, 0.2)',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  tournamentBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#D4AF37',
+    letterSpacing: 0.5,
+  },
+  checkBadgePractice: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#59C749',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  cardTitleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: C.white,
-    marginBottom: 4,
+  checkBadgeTournament: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#D4AF37',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardDescText: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.5)',
-    lineHeight: 15,
+  checkBadgeEmpty: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  featureList: {
-    gap: 6,
-    marginBottom: 20,
-    paddingLeft: 4,
-  },
-  featureItem: {
+  // Card top row: icon + title/desc
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 6,
+    gap: 16,
+    marginBottom: 20,
   },
-  featureBullet: {
-    color: C.green,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  featureItemText: {
-    flex: 1,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 11,
-    lineHeight: 15,
-  },
-  cardBtn: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: C.green,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-  },
-  cardBtnGradient: {
-    paddingVertical: 12,
+  cardIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardBtnText: {
+  cardIconWrapPracticeSelected: {
+    backgroundColor: 'rgba(89, 199, 73, 0.12)',
+    borderColor: 'rgba(89, 199, 73, 0.3)',
+  },
+  cardIconWrapTournamentSelected: {
+    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+  },
+  cardIcon: {
+    fontSize: 28,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  cardDesc: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.45)',
+    lineHeight: 18,
+  },
+  // Feature chips
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  chipIcon: {
+    fontSize: 12,
+  },
+  chipLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 0.1,
+  },
+  // Sticky bottom button
+  stickyBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: 'rgba(10, 13, 10, 0.94)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  continueBtn: {
+    height: 56,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  continueBtnDisabled: {
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  continueBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#0A0D0A',
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
 });
