@@ -722,7 +722,7 @@ export default function HomeScreen() {
                 activeOpacity={0.85}
               >
                 <Image
-                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3076/3076935.png' }}
+                  source={require('@/assets/images/cricket-ball.png')}
                   style={styles.cricketBallImage}
                 />
               </TouchableOpacity>
