@@ -14,6 +14,7 @@ import { useAuth } from '../hooks/useAuth';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProfileScreen from '@/app/(tabs)/profile';
 import TournamentScreen from './TournamentScreen';
 import { useTour, TourHighlight } from '../hooks/useTour';
@@ -205,6 +206,7 @@ function ActivityRow({
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<'home' | 'matches' | 'tournament' | 'profile'>('home');
   const [matchFilter, setMatchFilter] = useState<'live' | 'history'>('live');
@@ -1041,262 +1043,426 @@ export default function HomeScreen() {
   };
 
   const renderEmptyState = () => {
+    const headerGreeting = getGreeting();
+    const displayName = user?.displayName || 'Player';
+    const avatarInitial = displayName.slice(0, 1).toUpperCase();
+
     return (
-      <View style={styles.emptyRoot}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+      <View style={styles.emptyContainerFull}>
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.emptyBody}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Welcome Header */}
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyHeaderRow}>
-            <View style={styles.headerLeft}>
-              <View style={[styles.avatar, { backgroundColor: '#111827' }]}>
-                <Text style={styles.avatarTxt}>{user?.displayName ? user.displayName.slice(0, 1).toUpperCase() : 'P'}</Text>
-                <View style={styles.emptyOnlineDot} />
-              </View>
-              <View>
-                <Text style={styles.emptyHelloTxt}>Welcome back to</Text>
-                <Text style={styles.emptyNameTxt}>{user?.displayName || 'Player'} 👋</Text>
-              </View>
-            </View>
-            <Pressable style={styles.emptyBellBtn}>
-              <Feather name="bell" size={18} color="#111827" />
-              <Animated.View style={[styles.emptyBellDot, pulseStyle]} />
-            </Pressable>
-          </Animated.View>
-
-          {/* Hero Section */}
-          <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.emptyHeroSection}>
-            <Animated.View style={[styles.emptyBallContainer, floatStyle]}>
-              <Text style={styles.emptyBatEmoji}>🏏</Text>
-            </Animated.View>
-            <Text style={styles.emptyTitleText}>No Matches Yet</Text>
-            <Text style={styles.emptyDescText}>
-              Start your first cricket match and begin tracking scores, player statistics, rankings, and achievements.
-            </Text>
-          </Animated.View>
-
-          {/* Primary CTA Button */}
-          <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.emptyCtaWrapper}>
-            <Animated.View style={buttonPulseStyle}>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => router.push('/create-matches')}
-                style={styles.floatingGradientBtn}
+          {/* Header */}
+          <View style={[styles.headerContainer, { paddingTop: insets.top > 0 ? insets.top + 8 : 16 }]}>
+            <View style={styles.headerProfileRow}>
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setActiveTab('profile')}
+                style={styles.headerAvatarCircle}
               >
-                <LinearGradient
-                  colors={[C.green, '#43A047']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.floatingGradientBtnGradient}
-                >
-                  <View style={styles.ctaIconBg}>
-                    <Text style={styles.ctaIconEmoji}>➕</Text>
-                  </View>
-                  <Text style={styles.ctaButtonText}>Start New Match</Text>
-                </LinearGradient>
+                <Text style={styles.headerAvatarText}>{avatarInitial}</Text>
+                <View style={styles.headerOnlineBadge} />
               </TouchableOpacity>
+              
+              <View style={styles.headerGreetingCol}>
+                <Text style={styles.headerGreetingLabel}>{headerGreeting},</Text>
+                <Text style={styles.headerNameText} numberOfLines={1}>{displayName}</Text>
+              </View>
+              
+              <TouchableOpacity 
+                activeOpacity={0.75}
+                onPress={() => router.push('/notification-settings')}
+                style={styles.headerNotificationBtn}
+              >
+                <Feather name="bell" size={20} color="#1A1A1A" />
+                <Animated.View style={[styles.headerBellDot, pulseStyle]} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Welcome Illustration & Message */}
+          <View style={styles.welcomeIllustrationCard}>
+            <LinearGradient
+              colors={['#E5F2D9', '#F9E5C8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Animated.View style={[styles.welcomeBatIconContainer, floatStyle]}>
+              <Text style={{ fontSize: 72 }}>🏏</Text>
             </Animated.View>
-          </Animated.View>
+            <Text style={styles.welcomeTitleText}>Welcome to Crickstreet</Text>
+            <Text style={styles.welcomeSubtitleText}>
+              Start your first Practice Match or Tournament Match to begin your cricket journey.
+            </Text>
+          </View>
 
-          {/* Secondary Actions: 3 stacked cards */}
-          <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.emptySecondaryContainer}>
-            <Text style={styles.emptySectionHeader}>Quick Start Setup</Text>
-            
-            {/* Action 1: Create Team */}
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={() => router.push('/my-teams')}
-              style={styles.secondaryCard}
+          {/* Buttons Stack directly below the illustration */}
+          <View style={styles.welcomeButtonsContainer}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.welcomeBtnSolid}
+              onPress={() => router.push('/create-matches?flow=practice')}
             >
-              <View style={[styles.secondaryIconContainer, { backgroundColor: 'rgba(108, 99, 255, 0.08)' }]}>
-                <Text style={styles.secondaryIconText}>👥</Text>
-              </View>
-              <View style={styles.secondaryCardText}>
-                <Text style={styles.secondaryCardTitle}>Create Team</Text>
-                <Text style={styles.secondaryCardDesc}>Create your playing XI, manage profiles, and track statistics.</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color="#9CA3AF" />
+              <Text style={styles.welcomeBtnSolidText}>🏏 Start Practice Match</Text>
             </TouchableOpacity>
-
-            {/* Action 2: Add Ground */}
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={() => router.push('/my-grounds')}
-              style={[styles.secondaryCard, { marginTop: 12 }]}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.welcomeBtnOutline}
+              onPress={() => router.push('/create-matches?flow=tournament')}
             >
-              <View style={[styles.secondaryIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
-                <Text style={styles.secondaryIconText}>📍</Text>
-              </View>
-              <View style={styles.secondaryCardText}>
-                <Text style={styles.secondaryCardTitle}>Add Ground</Text>
-                <Text style={styles.secondaryCardDesc}>Register local grounds, coordinate maps, and manage bookings.</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color="#9CA3AF" />
+              <Text style={styles.welcomeBtnOutlineText}>🏆 Start Tournament Match</Text>
             </TouchableOpacity>
+          </View>
 
-            {/* Action 3: Scan Player QR */}
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={() => router.push('/qr-scanner')}
-              style={[styles.secondaryCard, { marginTop: 12 }]}
-            >
-              <View style={[styles.secondaryIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
-                <Text style={styles.secondaryIconText}>🔍</Text>
-              </View>
-              <View style={styles.secondaryCardText}>
-                <Text style={styles.secondaryCardTitle}>Scan Player QR</Text>
-                <Text style={styles.secondaryCardDesc}>Instantly add new players to your team roster via camera scan.</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color="#9CA3AF" />
-            </TouchableOpacity>
-          </Animated.View>
+          {/* Setup checklist cards to help them set up */}
+          <View style={styles.dashboardSection}>
+            <Text style={styles.dashboardSectionTitle}>QUICK SETUP</Text>
+            <View style={styles.quickActionsGridContainer}>
+              {[
+                { label: 'Create Team', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
+                { label: 'Add Ground', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
+                { label: 'Scan Player', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') }
+              ].map((action) => (
+                <TouchableOpacity
+                  key={action.label}
+                  activeOpacity={0.85}
+                  onPress={action.onPress}
+                  style={[styles.quickActionCardCell, { width: '30%' }]}
+                >
+                  <View style={[styles.quickActionIconBg, { backgroundColor: action.color }]}>
+                    <Text style={styles.quickActionEmoji}>{action.icon}</Text>
+                  </View>
+                  <Text style={styles.quickActionLabelText}>{action.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-          {/* Spacer for bottom navigation */}
-          <View style={{ height: 120 }} />
+          <View style={{ height: 140 }} />
         </ScrollView>
       </View>
     );
   };
 
   const renderHomeTab = () => {
+    const headerGreeting = getGreeting();
+    const displayName = user?.displayName || 'Player';
+    const avatarInitial = displayName.slice(0, 1).toUpperCase();
+    const unfinishedMatch = liveMatches[0] || null;
+
     return (
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.body}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces
       >
-        {/* ═══════════════════════════════════════════
-            HERO  (dark green)
-        ═══════════════════════════════════════════ */}
-        <View style={styles.hero}>
-          {/* Deco circles */}
-          <View style={styles.deco1} />
-          <View style={styles.deco2} />
+        {/* Header */}
+        <View style={[styles.headerContainer, { paddingTop: insets.top > 0 ? insets.top + 8 : 16 }]}>
+          <View style={styles.headerProfileRow}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => setActiveTab('profile')}
+              style={styles.headerAvatarCircle}
+            >
+              <Text style={styles.headerAvatarText}>{avatarInitial}</Text>
+              <View style={styles.headerOnlineBadge} />
+            </TouchableOpacity>
+            
+            <View style={styles.headerGreetingCol}>
+              <Text style={styles.headerGreetingLabel}>{headerGreeting},</Text>
+              <Text style={styles.headerNameText} numberOfLines={1}>{displayName}</Text>
+            </View>
+            
+            <TouchableOpacity 
+              activeOpacity={0.75}
+              onPress={() => router.push('/notification-settings')}
+              style={styles.headerNotificationBtn}
+            >
+              <Feather name="bell" size={20} color="#1A1A1A" />
+              <Animated.View style={[styles.headerBellDot, pulseStyle]} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          {/* Safe-area top */}
-          <View style={{ height: Platform.OS === 'ios' ? 48 : 28 }} />
-
-          {/* ── Row 1: Header ── */}
-          <Animated.View
-            entering={FadeInDown.delay(60).duration(500).springify()}
-            style={styles.headerRow}
+        {/* Hero Section */}
+        <View style={styles.dashHeroCardContainer}>
+          <LinearGradient
+            colors={['#1B3F14', '#0E1E0B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.dashHeroCardGradient}
           >
-            {/* Avatar + Greeting */}
-            <View style={styles.headerLeft}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarTxt}>{user?.displayName ? user.displayName.slice(0, 1).toUpperCase() : 'P'}</Text>
-                <View style={styles.onlineDot} />
+            <View style={styles.dashHeroDecoCircle1} />
+            <View style={styles.dashHeroDecoCircle2} />
+            
+            <View style={styles.dashHeroContent}>
+              <View style={styles.dashHeroBadgeRow}>
+                <View style={styles.dashHeroBadge}>
+                  <Text style={styles.dashHeroBadgeText}>🏏 CRICKSTREET PRO</Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.helloTxt}>Hello,</Text>
-                <Text style={styles.nameTxt}>{user?.displayName || 'Player'} 👋</Text>
+              <Text style={styles.dashHeroTitle}>Ready for Today's Match?</Text>
+              <Text style={styles.dashHeroSubtitle}>Start live scoring or setup tournament games instantly.</Text>
+              
+              <View style={styles.dashHeroButtonsRow}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={styles.dashHeroBtnSolid}
+                  onPress={() => router.push('/create-matches?flow=practice')}
+                >
+                  <Text style={styles.dashHeroBtnSolidText}>🏏 Practice Match</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={styles.dashHeroBtnOutline}
+                  onPress={() => router.push('/create-matches?flow=tournament')}
+                >
+                  <Text style={styles.dashHeroBtnOutlineText}>🏆 Tournament</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          </LinearGradient>
+        </View>
 
-            {/* Bell */}
-            <Pressable style={styles.bellBtn}>
-              <Feather name="bell" size={18} color={C.white} />
-              <Animated.View style={[styles.bellDot, pulseStyle]} />
-            </Pressable>
-          </Animated.View>
+        {/* Resume Match Card */}
+        {unfinishedMatch && (
+          <View style={styles.dashboardSection}>
+            <Text style={styles.dashboardSectionTitle}>CONTINUE SCORES</Text>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => router.push({ pathname: '/scorecard', params: { matchId: unfinishedMatch.id, myTeamName: unfinishedMatch.myTeamName, oppTeamName: unfinishedMatch.oppTeamName } })}
+              style={styles.continueMatchCard}
+            >
+              <View style={styles.continueMatchHeader}>
+                <View style={styles.liveIndicatorBadge}>
+                  <View style={styles.liveIndicatorDot} />
+                  <Text style={styles.liveIndicatorText}>LIVE</Text>
+                </View>
+                <Text style={styles.continueMatchTime}>{formatLastUpdated(unfinishedMatch.updatedAt || unfinishedMatch.createdAt)}</Text>
+              </View>
+              
+              <View style={styles.continueMatchTeamsRow}>
+                <View style={styles.continueMatchTeamCol}>
+                  <Text style={styles.continueMatchTeamName} numberOfLines={1}>{unfinishedMatch.myTeamName || 'My Team'}</Text>
+                  <Text style={styles.continueMatchTeamScore}>{unfinishedMatch.myScore || '0/0'}</Text>
+                </View>
+                <Text style={styles.continueMatchVsText}>vs</Text>
+                <View style={styles.continueMatchTeamCol}>
+                  <Text style={styles.continueMatchTeamName} numberOfLines={1}>{unfinishedMatch.oppTeamName || 'Opp Team'}</Text>
+                  <Text style={styles.continueMatchTeamScore}>{unfinishedMatch.oppScore || '0/0'}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.continueMatchFooter}>
+                <Text style={styles.continueMatchFormatText}>🏏 Format: {unfinishedMatch.format || 'Overs'}</Text>
+                <View style={styles.continueActionBtn}>
+                  <Text style={styles.continueActionBtnText}>Resume</Text>
+                  <Feather name="arrow-right" size={14} color="#FFF" />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
-          {/* ── Row 2: Balance-style hero block ── */}
-          <Animated.View
-            entering={FadeIn.delay(180).duration(550)}
-            style={styles.heroCenter}
-          >
-            <Text style={styles.heroSub}>Welcome back to</Text>
-            <Text style={styles.heroTitle}>Crickstreet</Text>
-
-            {/* CTA Buttons */}
-            <View style={styles.btnRow}>
-              <TouchableOpacity style={styles.btnSolid} onPress={() => setActiveTab('matches')}>
-                <Text style={styles.btnSolidTxt}>Explore</Text>
+        {/* Quick Actions Grid */}
+        <View style={styles.dashboardSection}>
+          <Text style={styles.dashboardSectionTitle}>QUICK ACTIONS</Text>
+          <View style={styles.quickActionsGridContainer}>
+            {[
+              { label: 'My Teams', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
+              { label: 'Grounds', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
+              { label: 'Scan QR', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') },
+              { label: 'Tournament', icon: '🏆', color: '#F0F4EC', onPress: () => setActiveTab('tournament') },
+              { label: 'Match History', icon: '📊', color: '#FFF9E6', onPress: () => { setActiveTab('matches'); setMatchFilter('history'); } },
+              { label: 'Settings', icon: '⚙️', color: '#F0F4EC', onPress: () => router.push('/notification-settings') }
+            ].map((action) => (
+              <TouchableOpacity
+                key={action.label}
+                activeOpacity={0.85}
+                onPress={action.onPress}
+                style={styles.quickActionCardCell}
+              >
+                <View style={[styles.quickActionIconBg, { backgroundColor: action.color }]}>
+                  <Text style={styles.quickActionEmoji}>{action.icon}</Text>
+                </View>
+                <Text style={styles.quickActionLabelText}>{action.label}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.btnGhost} onPress={() => router.push('/create-matches')}>
-                <Text style={styles.btnGhostTxt}>Go Live</Text>
-              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* My Cricket Statistics Section */}
+        <View style={styles.dashboardSection}>
+          <Text style={styles.dashboardSectionTitle}>MY CRICKET STATISTICS</Text>
+          <View style={styles.statsDashboardGrid}>
+            <View style={styles.statGridCard}>
+              <View style={[styles.statIconBg, { backgroundColor: '#F0F4EC' }]}>
+                <Text style={styles.statIconEmoji}>🏏</Text>
+              </View>
+              <Text style={styles.statCardValue}>
+                <AnimatedNumber value={totalMatchesCount} />
+              </Text>
+              <Text style={styles.statCardLabel}>Matches Played</Text>
             </View>
-          </Animated.View>
 
-          {/* ── Row 3: Sport filter pills ── */}
-          <Animated.View
-            entering={FadeInDown.delay(300).duration(400)}
-            style={styles.pillsSection}
-          >
-            <Text style={styles.pillsLabel}>YOUR FEED</Text>
-            <View style={styles.pillsRow}>
-              {['Cricket', 'Football', 'Tennis', '+ Add'].map((p, i) => (
-                <View key={p} style={[styles.pill, i === 0 && styles.pillActive]}>
-                  <Text style={[styles.pillTxt, i === 0 && styles.pillTxtActive]}>{p}</Text>
+            <View style={styles.statGridCard}>
+              <View style={[styles.statIconBg, { backgroundColor: '#FFF9E6' }]}>
+                <Text style={styles.statIconEmoji}>⚡</Text>
+              </View>
+              <Text style={styles.statCardValue}>
+                <AnimatedNumber value={totalRunsCount} />
+              </Text>
+              <Text style={styles.statCardLabel}>Total Runs</Text>
+            </View>
+
+            <View style={styles.statGridCard}>
+              <View style={[styles.statIconBg, { backgroundColor: '#FFF0F0' }]}>
+                <Text style={styles.statIconEmoji}>🎯</Text>
+              </View>
+              <Text style={styles.statCardValue}>
+                <AnimatedNumber value={totalWicketsCount} />
+              </Text>
+              <Text style={styles.statCardLabel}>Total Wickets</Text>
+            </View>
+
+            <View style={styles.statGridCard}>
+              <View style={[styles.statIconBg, { backgroundColor: '#F0F4EC' }]}>
+                <Text style={styles.statIconEmoji}>📈</Text>
+              </View>
+              <Text style={styles.statCardValue}>
+                <AnimatedNumber value={winRatePct} suffix="%" />
+              </Text>
+              <Text style={styles.statCardLabel}>Win Rate</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Achievements Card */}
+        <View style={styles.dashboardSection}>
+          <Text style={styles.dashboardSectionTitle}>🏆 EARNED ACHIEVEMENTS</Text>
+          <View style={styles.achievementsCard}>
+            <View style={styles.badgesHorizontalRow}>
+              {dashboardAchievements.badges.map(badge => (
+                <View
+                  key={badge.id}
+                  style={[
+                    styles.badgeWrapperCell,
+                    !badge.unlocked && { opacity: 0.45 }
+                  ]}
+                >
+                  <View style={[styles.badgeIconCircle, { backgroundColor: badge.unlocked ? '#F0F4EC' : '#F5F5F5', borderColor: badge.unlocked ? badge.color : '#CCCCCC' }]}>
+                    <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
+                    {!badge.unlocked && (
+                      <View style={styles.badgeLockContainer}>
+                        <Feather name="lock" size={9} color="#8A8A8A" />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.badgeTitleText} numberOfLines={1}>{badge.title}</Text>
+                  <Text style={styles.badgeProgressText}>{badge.progressText}</Text>
                 </View>
               ))}
             </View>
-          </Animated.View>
-
-          {/* Curved bottom transition */}
-          <View style={styles.curve} />
-        </View>
-
-
-
-
-
-        {/* ═══════════════════════════════════════════
-            OVERVIEW  (3 stat cards)
-        ═══════════════════════════════════════════ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Overview</Text>
-            <Pressable><Text style={styles.seeAll}>See all</Text></Pressable>
-          </View>
-          <View style={styles.statsRow}>
-            <StatCard
-              icon={<MaterialCommunityIcons name="trophy-outline" size={18} color={C.green} />}
-              label="MATCHES" value={String(userStats?.matches || 0)} note="Total Matches" delay={420}
-            />
-            <StatCard
-              icon={<Feather name="trending-up" size={18} color="#F59E0B" />}
-              label="RUNS" value={String(userStats?.runs || 0)} note="Total Runs" delay={500}
-            />
-            <StatCard
-              icon={<Feather name="award" size={18} color="#6C63FF" />}
-              label="WICKETS" value={String(userStats?.wickets || 0)} note="Total Wickets" delay={580}
-            />
-          </View>
-        </View>
-
-        {/* ═══════════════════════════════════════════
-            RECENT UPDATES  (activity list)
-        ═══════════════════════════════════════════ */}
-        <View style={[styles.section, { marginBottom: 8 }]}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Recent Updates</Text>
-            <Pressable><Text style={styles.seeAll}>See all</Text></Pressable>
-          </View>
-
-          <View style={styles.actCard}>
-            <View style={[styles.emptyFeedCard, { margin: 0, borderRadius: 0, borderWidth: 0, backgroundColor: 'transparent', paddingVertical: 32 }]}>
-              <Feather name="bell" size={28} color="rgba(255,255,255,0.2)" style={{ marginBottom: 10 }} />
-              <Text style={styles.emptyFeedText}>No recent updates yet.</Text>
-              <Text style={[styles.emptyFeedText, { marginTop: 4, fontSize: 12 }]}>Play matches to see activity here.</Text>
+            
+            <View style={styles.badgeProgressWrapper}>
+              <View style={styles.progressLabelRow}>
+                <Text style={styles.progressNextText}>Next Milestone: {dashboardAchievements.nextBadge}</Text>
+                <Text style={styles.progressPercentText}>{dashboardAchievements.progressPercent}%</Text>
+              </View>
+              <View style={styles.progressBarBackground}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${dashboardAchievements.progressPercent}%` }
+                  ]}
+                />
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Spacer for nav bar */}
-        <View style={{ height: 120 }} />
+        {/* Recent Activity Timeline */}
+        <View style={styles.dashboardSection}>
+          <Text style={styles.dashboardSectionTitle}>🕒 RECENT ACTIVITY</Text>
+          <View style={styles.activitiesContainerCard}>
+            {recentActivities.length > 0 ? (
+              recentActivities.map((act, index) => (
+                <View key={index} style={styles.activityTimelineItem}>
+                  <View style={styles.activityLeftLineCol}>
+                    <View style={styles.activityEmojiCircle}>
+                      <Text style={styles.activityEmojiText}>{act.emoji}</Text>
+                    </View>
+                    {index < recentActivities.length - 1 && (
+                      <View style={styles.activityConnectorLine} />
+                    )}
+                  </View>
+                  <View style={styles.activityTextContent}>
+                    <View style={styles.activityRowHeader}>
+                      <Text style={styles.activityItemTitle}>{act.title}</Text>
+                      <Text style={styles.activityItemTime}>
+                        {act.timestamp.toLocaleDateString([], {month: 'short', day: 'numeric'})}
+                      </Text>
+                    </View>
+                    <Text style={styles.activityItemDesc}>{act.desc}</Text>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyActivitiesPlaceholder}>
+                <Feather name="bell-off" size={24} color="#8A8A8A" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivitiesTitle}>No recent activities yet</Text>
+                <Text style={styles.emptyActivitiesDesc}>
+                  Your activity feed will automatically populate as you play matches, register teams, and scan player cards.
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Tip of the Day */}
+        <View style={styles.dashboardSection}>
+          <View style={styles.tipCardContainer}>
+            <LinearGradient
+              colors={['#F0F4EC', '#FFF9E6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={styles.tipHeaderRow}>
+              <Text style={styles.tipHeaderEmoji}>💡</Text>
+              <Text style={styles.tipHeaderTitle}>TIP OF THE DAY</Text>
+            </View>
+            <Text style={styles.tipBodyText}>"{tipOfTheDay}"</Text>
+          </View>
+        </View>
+
+        {/* Spacer for bottom navigation */}
+        <View style={{ height: 140 }} />
       </ScrollView>
     );
   };
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={activeTab === 'home' ? C.hero : '#0A0D0A'} />
+      <StatusBar 
+        barStyle={activeTab === 'home' ? 'dark-content' : 'light-content'} 
+        backgroundColor={activeTab === 'home' ? 'transparent' : '#0A0D0A'} 
+        translucent={activeTab === 'home'}
+      />
+
+      {activeTab === 'home' && (
+        <LinearGradient
+          colors={['#E5F2D9', '#F9E5C8', '#F3F4F1']}
+          locations={[0, 0.4, 0.8]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerGradient, { height: Math.max(300, 300 + insets.top) }]}
+        />
+      )}
 
       {activeTab === 'home' && (
         loadingDb ? (
@@ -1405,7 +1571,7 @@ export default function HomeScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root:  { flex: 1, backgroundColor: C.milky },
+  root:  { flex: 1, backgroundColor: '#F3F4F1' },
   scroll:{ flex: 1 },
   body:  { /* no global padding — sections own it */ },
 
@@ -3340,5 +3506,688 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F5F5F5',
     borderRadius: 10,
+  },
+
+  // ─── Redesigned Dashboard Styles ──────────────────────────────────────────
+  emptyContainerFull: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 140,
+  },
+  headerContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  headerProfileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerAvatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#A8CD55',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerAvatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#2D5016',
+  },
+  headerOnlineBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#59C749',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  headerGreetingCol: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  headerGreetingLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8A8A8A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  headerNameText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  headerNotificationBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  headerBellDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF4D4D',
+  },
+  dashHeroCardContainer: {
+    paddingHorizontal: 16,
+    marginVertical: 12,
+  },
+  dashHeroCardGradient: {
+    borderRadius: 24,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  dashHeroDecoCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  dashHeroDecoCircle2: {
+    position: 'absolute',
+    bottom: -60,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  dashHeroContent: {
+    zIndex: 2,
+  },
+  dashHeroBadgeRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  dashHeroBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dashHeroBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#A8CD55',
+    letterSpacing: 0.8,
+  },
+  dashHeroTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFF',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  dashHeroSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 16,
+    lineHeight: 16,
+  },
+  dashHeroButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dashHeroBtnSolid: {
+    flex: 1,
+    backgroundColor: '#A8CD55',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dashHeroBtnSolidText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1B3F14',
+  },
+  dashHeroBtnOutline: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashHeroBtnOutlineText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  dashboardSection: {
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  dashboardSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8A8A8A',
+    letterSpacing: 1,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  quickActionsGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickActionCardCell: {
+    width: '31%',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  quickActionIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionEmoji: {
+    fontSize: 18,
+  },
+  quickActionLabelText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    textAlign: 'center',
+  },
+  statsDashboardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statGridCard: {
+    width: '48%',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  statIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  statIconEmoji: {
+    fontSize: 13,
+  },
+  statCardValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  statCardLabel: {
+    fontSize: 11,
+    color: '#8A8A8A',
+    fontWeight: '600',
+  },
+  continueMatchCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  continueMatchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  liveIndicatorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    borderColor: '#FFC1C1',
+  },
+  liveIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF4D4D',
+    marginRight: 6,
+  },
+  liveIndicatorText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FF4D4D',
+  },
+  continueMatchTime: {
+    fontSize: 10,
+    color: '#8A8A8A',
+    fontWeight: '600',
+  },
+  continueMatchTeamsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F1',
+    marginBottom: 10,
+  },
+  continueMatchTeamCol: {
+    flex: 1.2,
+  },
+  continueMatchTeamName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  continueMatchTeamScore: {
+    fontSize: 13,
+    color: '#2D5016',
+    fontWeight: '700',
+  },
+  continueMatchVsText: {
+    flex: 0.3,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8A8A8A',
+  },
+  continueMatchFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  continueMatchFormatText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8A8A8A',
+  },
+  continueActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D5016',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 4,
+  },
+  continueActionBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  achievementsCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  badgesHorizontalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  badgeWrapperCell: {
+    alignItems: 'center',
+    width: '23%',
+  },
+  badgeIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    position: 'relative',
+  },
+  badgeEmoji: {
+    fontSize: 20,
+  },
+  badgeLockContainer: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFF',
+  },
+  badgeTitleText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  badgeProgressText: {
+    fontSize: 8,
+    color: '#8A8A8A',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  badgeProgressWrapper: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F1',
+    paddingTop: 12,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressNextText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2D5016',
+  },
+  progressPercentText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8A8A8A',
+  },
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: '#F3F4F1',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#A8CD55',
+    borderRadius: 3,
+  },
+  activitiesContainerCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  activityTimelineItem: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  activityLeftLineCol: {
+    width: 32,
+    alignItems: 'center',
+  },
+  activityEmojiCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F0F4EC',
+    borderWidth: 1,
+    borderColor: 'rgba(168,205,85,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  activityEmojiText: {
+    fontSize: 13,
+  },
+  activityConnectorLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#F3F4F1',
+    marginVertical: 4,
+  },
+  activityTextContent: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: 'center',
+  },
+  activityRowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  activityItemTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  activityItemTime: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#8A8A8A',
+  },
+  activityItemDesc: {
+    fontSize: 10,
+    color: '#8A8A8A',
+    fontWeight: '600',
+    lineHeight: 14,
+  },
+  emptyActivitiesPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  emptyActivitiesTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  emptyActivitiesDesc: {
+    fontSize: 10,
+    color: '#8A8A8A',
+    textAlign: 'center',
+    lineHeight: 14,
+    paddingHorizontal: 12,
+  },
+  tipCardContainer: {
+    borderRadius: 20,
+    padding: 14,
+    position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tipHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    zIndex: 2,
+  },
+  tipHeaderEmoji: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  tipHeaderTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#2D5016',
+    letterSpacing: 0.8,
+  },
+  tipBodyText: {
+    fontSize: 11,
+    color: '#4B5563',
+    fontWeight: '600',
+    lineHeight: 16,
+    zIndex: 2,
+  },
+  welcomeIllustrationCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    borderRadius: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  welcomeBatIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  welcomeTitleText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1B3F14',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  welcomeSubtitleText: {
+    fontSize: 12,
+    color: '#2D5016',
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 12,
+  },
+  welcomeButtonsContainer: {
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 16,
+  },
+  welcomeBtnSolid: {
+    backgroundColor: '#2D5016',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  welcomeBtnSolidText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  welcomeBtnOutline: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#2D5016',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  welcomeBtnOutlineText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#2D5016',
   },
 });
