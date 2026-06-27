@@ -1,6 +1,7 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import Animated, {
   useSharedValue,
@@ -50,12 +51,63 @@ const STEPS = ['Team Setup', 'Match Setup', 'Venue', 'Review'] as const;
 
 export default function CreateMatchesScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ resume?: string; flow?: string }>();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [matchFlow, setMatchFlow] = useState<'practice' | 'tournament' | null>(null);
   const [hasMatches, setHasMatches] = useState<boolean>(true);
   const [selectedCard, setSelectedCard] = useState<'practice' | 'tournament' | null>(null);
+
+  useEffect(() => {
+    if (params.resume === 'true') {
+      const loadDraft = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('@crickstreet:match_draft');
+          if (stored) {
+            const draft = JSON.parse(stored);
+            if (draft.currentStep !== undefined) setCurrentStep(draft.currentStep);
+            if (draft.matchFlow !== undefined) setMatchFlow(draft.matchFlow);
+            if (draft.myTeamName !== undefined) setMyTeamName(draft.myTeamName);
+            if (draft.myCaptain !== undefined) setMyCaptain(draft.myCaptain);
+            if (draft.myViceCaptain !== undefined) setMyViceCaptain(draft.myViceCaptain);
+            if (draft.myPlayers !== undefined) setMyPlayers(draft.myPlayers);
+            if (draft.mySubs !== undefined) setMySubs(draft.mySubs);
+            if (draft.oppTeamName !== undefined) setOppTeamName(draft.oppTeamName);
+            if (draft.oppCaptain !== undefined) setOppCaptain(draft.oppCaptain);
+            if (draft.oppViceCaptain !== undefined) setOppViceCaptain(draft.oppViceCaptain);
+            if (draft.oppPlayers !== undefined) setOppPlayers(draft.oppPlayers);
+            if (draft.oppSubs !== undefined) setOppSubs(draft.oppSubs);
+            if (draft.format !== undefined) setFormat(draft.format);
+            if (draft.customOvers !== undefined) setCustomOvers(draft.customOvers);
+            if (draft.matchType !== undefined) setMatchType(draft.matchType);
+            if (draft.venueName !== undefined) setVenueName(draft.venueName);
+            if (draft.groundName !== undefined) setGroundName(draft.groundName);
+            if (draft.manualAddress !== undefined) setManualAddress(draft.manualAddress);
+            if (draft.selectedLat !== undefined) setSelectedLat(draft.selectedLat);
+            if (draft.selectedLng !== undefined) setSelectedLng(draft.selectedLng);
+            if (draft.isVenueConfirmed !== undefined) setIsVenueConfirmed(draft.isVenueConfirmed);
+            if (draft.selectedCard !== undefined) setSelectedCard(draft.selectedCard);
+            
+            if (draft.selectedLat !== undefined && draft.selectedLng !== undefined) {
+              setMapRegion(prev => ({
+                ...prev,
+                latitude: draft.selectedLat,
+                longitude: draft.selectedLng,
+              }));
+            }
+          }
+        } catch (err) {
+          console.error('Error loading draft:', err);
+        }
+      };
+      loadDraft();
+    } else if (params.flow === 'practice') {
+      handleSelectPracticeFlow();
+    } else if (params.flow === 'tournament') {
+      handleSelectTournamentFlow();
+    }
+  }, [params.resume, params.flow]);
 
   // ─── ANIMATION SHARED VALUES ─────────────────────────────────────────────
   const headerOpacity   = useSharedValue(0);
@@ -577,6 +629,8 @@ export default function CreateMatchesScreen() {
           myScore: '0/0',
           oppScore: '0/0',
           statusText: 'Match started',
+          myPlayers: myPlayers,
+          oppPlayers: oppPlayers,
         });
         matchId = docRef.id;
       } catch (err) {
@@ -591,6 +645,7 @@ export default function CreateMatchesScreen() {
         {
           text: 'Start Scoring',
           onPress: () => {
+            AsyncStorage.removeItem('@crickstreet:match_draft').catch(console.error);
             router.replace({
               pathname: '/scorecard',
               params: {
@@ -607,11 +662,42 @@ export default function CreateMatchesScreen() {
     );
   };
 
-  const handleSaveDraft = () => {
-    Alert.alert('Draft Saved 💾', 'Your match configurations are successfully saved locally as a draft.');
+  const handleSaveDraft = async () => {
+    try {
+      const draftObj = {
+        currentStep,
+        matchFlow,
+        myTeamName,
+        myCaptain,
+        myViceCaptain,
+        myPlayers,
+        mySubs,
+        oppTeamName,
+        oppCaptain,
+        oppViceCaptain,
+        oppPlayers,
+        oppSubs,
+        format,
+        customOvers,
+        matchType,
+        venueName,
+        groundName,
+        manualAddress,
+        selectedLat,
+        selectedLng,
+        isVenueConfirmed,
+        selectedCard,
+      };
+      await AsyncStorage.setItem('@crickstreet:match_draft', JSON.stringify(draftObj));
+      Alert.alert('Draft Saved 💾', 'Your match configurations are successfully saved locally as a draft.');
+    } catch (err) {
+      console.error('Error saving draft:', err);
+      Alert.alert('Save Draft Failed', 'Could not save the draft configurations locally.');
+    }
   };
 
   const handleCancel = () => {
+    AsyncStorage.removeItem('@crickstreet:match_draft').catch(console.error);
     router.replace('/(tabs)');
   };
 
