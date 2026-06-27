@@ -65,6 +65,65 @@ const C = {
   shadowC: 'rgba(0,0,0,0.06)',
 } as const;
 
+// ─── Dashboard Helpers & Sub-Components ───────────────────────────────────────
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'Good Morning';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+
+function formatLastUpdated(timestamp: any) {
+  if (!timestamp) return 'Just now';
+  const date = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
+  const diffMs = new Date().getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const [displayVal, setDisplayVal] = useState(0);
+  
+  useEffect(() => {
+    let start = 0;
+    const end = value;
+    if (end === 0) {
+      setDisplayVal(0);
+      return;
+    }
+    const duration = 800; // 0.8 seconds duration
+    const range = end - start;
+    let current = start;
+    const increment = end > start ? 1 : -1;
+    const stepTime = Math.abs(Math.floor(duration / range));
+    const timer = setInterval(() => {
+      current += increment;
+      setDisplayVal(current);
+      if (current === end) {
+        clearInterval(timer);
+      }
+    }, Math.max(stepTime, 16)); // max 60fps
+    
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return <Text>{displayVal}{suffix}</Text>;
+}
+
+const CRICKET_TIPS = [
+  "Update every ball to keep player statistics accurate.",
+  "Assign vice-captain and captain roles to track leadership achievements.",
+  "Register your local pitch in 'Grounds' to load auto-coordinates next time.",
+  "Scan player QR codes at the pitch to add them to your squad instantly.",
+  "Check out your profile page for advanced statistics graphs and run rates.",
+  "A practice match is perfect for informal games with no tournament restrictions."
+];
+
 const W = Math.min(Dimensions.get('window').width, 600);
 
 // ─── Quick Action ─────────────────────────────────────────────────────────────
