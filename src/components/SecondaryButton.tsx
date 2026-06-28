@@ -9,6 +9,7 @@ import Animated, {
 
 import { Colors } from '../constants/colors';
 import { ButtonProps } from '../types';
+import { fs, sp, br, iconSz } from '../theme/responsive';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -35,7 +36,7 @@ export function SecondaryButton({ label, onPress }: ButtonProps) {
       style={[styles.button, animatedStyle]}
     >
       <View style={styles.inner}>
-        <FontAwesome name="google" size={18} color={Colors.white} />
+        <FontAwesome name="google" size={iconSz.md2} color={Colors.white} />
         <Text style={styles.label}>{label}</Text>
       </View>
     </AnimatedPressable>
@@ -44,15 +45,16 @@ export function SecondaryButton({ label, onPress }: ButtonProps) {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)', // Premium subtle glassmorphism background
-    borderRadius: 100,
-    paddingVertical: 17,
-    paddingHorizontal: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    borderRadius: br.full,
+    paddingVertical: sp.md3,
+    paddingHorizontal: sp.xxl,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    minHeight: 52,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)', // Dynamic translucent border
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     shadowColor: Colors.white,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
@@ -61,11 +63,11 @@ const styles = StyleSheet.create({
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: sp.md,
   },
   label: {
     color: Colors.white,
-    fontSize: 16,
+    fontSize: fs.lg,
     fontWeight: '600',
     letterSpacing: 0.3,
   },

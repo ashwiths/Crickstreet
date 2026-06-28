@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   Linking,
   Pressable,
   StatusBar,
@@ -11,6 +10,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,8 +20,7 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { SecondaryButton } from '../components/SecondaryButton';
 import { Colors } from '../constants/colors';
 import { useAuth } from '../hooks/useAuth';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { s, fs, sp, br, iconSz, avatarSz } from '../theme/responsive';
 
 // ─── Footer ──────────────────────────────────────────────────────────────────
 
@@ -54,13 +53,14 @@ function Footer() {
 export default function WelcomeScreen() {
   const router = useRouter();
   const { signInWithGoogle, loading, error, clearError } = useAuth();
+  // useWindowDimensions ensures proper re-layout on foldables / rotation
+  const { height: screenHeight } = useWindowDimensions();
 
   const handlePhone = useCallback(() => {
     // router.push('/(auth)/welcome');
   }, []);
 
   const handleGoogle = useCallback(() => {
-    // Trigger Google Sign-In
     signInWithGoogle();
   }, [signInWithGoogle]);
 
@@ -68,13 +68,23 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
-      {/* Ambient soft glow background behind the particle sphere */}
-      <View style={[styles.ambientGlow, { pointerEvents: 'none' } as any]} />
+      {/* Ambient soft glow background */}
+      <View
+        style={[
+          styles.ambientGlow,
+          {
+            top: screenHeight * 0.14,
+            width: screenHeight * 0.28,
+            height: screenHeight * 0.28,
+            borderRadius: (screenHeight * 0.28) / 2,
+          },
+          { pointerEvents: 'none' } as any,
+        ]}
+      />
 
       {/* ── Top Section: Branding & Profile Icon ─────────────────── */}
       <TouchableOpacity
         onPress={() => {
-          console.log('[DEBUG] Crickstreet logo clicked! Navigating to tabs...');
           router.replace('/(tabs)');
         }}
         style={styles.topSection}
@@ -85,7 +95,7 @@ export default function WelcomeScreen() {
           style={styles.iconWrapper}
         >
           <View style={styles.iconCircle}>
-            <AntDesign name="user" size={18} color={Colors.background} />
+            <AntDesign name="user" size={iconSz.md2} color={Colors.background} />
           </View>
         </Animated.View>
 
@@ -100,7 +110,7 @@ export default function WelcomeScreen() {
       {/* ── Hero: Particle Animation ──────────────────────────────── */}
       <Animated.View
         entering={FadeIn.delay(300).duration(1000)}
-        style={styles.particleWrapper}
+        style={[styles.particleWrapper, { height: screenHeight * 0.28 }]}
       >
         <AnimatedParticles />
       </Animated.View>
@@ -119,7 +129,7 @@ export default function WelcomeScreen() {
         <Animated.View entering={FadeIn.duration(400)} style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <Pressable onPress={clearError} style={styles.errorClose} hitSlop={8}>
-            <AntDesign name="close" size={14} color="#FF453A" />
+            <AntDesign name="close" size={iconSz.sm} color="#FF453A" />
           </Pressable>
         </Animated.View>
       )}
@@ -142,7 +152,7 @@ export default function WelcomeScreen() {
         <Footer />
       </Animated.View>
 
-      {/* ── Fullscreen Overlay Loading Spinner during Google Login ── */}
+      {/* ── Fullscreen Overlay Loading Spinner ── */}
       {loading && (
         <View style={styles.overlayLoader}>
           <ActivityIndicator size="large" color="#FFFFFF" />
@@ -159,19 +169,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
     alignItems: 'center',
-    paddingHorizontal: 24,
-    justifyContent: 'space-between', // Push contents vertically for elegant spacing
+    paddingHorizontal: sp.xxl,
+    justifyContent: 'space-between',
     position: 'relative',
   },
 
-  // Soft ambient glow behind the sphere
   ambientGlow: {
     position: 'absolute',
-    top: SCREEN_HEIGHT * 0.14,
-    width: SCREEN_HEIGHT * 0.30,
-    height: SCREEN_HEIGHT * 0.30,
-    borderRadius: (SCREEN_HEIGHT * 0.30) / 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)', // Translucent ambient lighting
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     shadowColor: Colors.white,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.16,
@@ -180,18 +185,17 @@ const styles = StyleSheet.create({
 
   topSection: {
     alignItems: 'center',
-    marginTop: 8,
-    gap: 12,
+    marginTop: sp.sm,
+    gap: sp.md,
   },
 
-  // Top icon
   iconWrapper: {
     alignItems: 'center',
   },
   iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: avatarSz.sm,
+    height: avatarSz.sm,
+    borderRadius: avatarSz.sm / 2,
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -203,62 +207,57 @@ const styles = StyleSheet.create({
   },
   brandingLabel: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: fs.base,
     fontWeight: '700',
     letterSpacing: 4.5,
     textAlign: 'center',
   },
 
-  // Particle area
   particleWrapper: {
-    height: SCREEN_HEIGHT * 0.28, // Align exactly with optimized SPHERE_HEIGHT
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
   },
 
-  // Welcome text
   textBlock: {
     alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 12,
+    marginBottom: sp.lg,
+    paddingHorizontal: sp.md,
   },
   heading: {
     color: Colors.white,
-    fontSize: 50, // Bold, premium, large presence
+    fontSize: fs.hero,
     fontWeight: '800',
-    letterSpacing: -1.2, // Clean modern font spacing
+    letterSpacing: -1.2,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: sp.sm,
   },
   subtitle: {
     color: Colors.subtitleGray,
-    fontSize: 15,
+    fontSize: fs.md2,
     fontWeight: '500',
     textAlign: 'center',
     letterSpacing: 0.3,
-    lineHeight: 22,
+    lineHeight: fs.md2 * 1.5,
   },
 
-  // Buttons
   buttonStack: {
     width: '100%',
-    marginBottom: 12,
+    marginBottom: sp.md,
   },
   buttonSpacer: {
-    height: 12,
+    height: sp.md,
   },
 
-  // Footer
   footerWrapper: {
-    paddingBottom: 16,
-    paddingHorizontal: 8,
+    paddingBottom: sp.lg,
+    paddingHorizontal: sp.sm,
     alignItems: 'center',
   },
   footerText: {
     color: Colors.footerGray,
-    fontSize: 11.5,
-    lineHeight: 18,
+    fontSize: fs.sm,
+    lineHeight: fs.sm * 1.6,
     textAlign: 'center',
   },
   footerLink: {
@@ -277,21 +276,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 69, 58, 0.08)',
     borderColor: 'rgba(255, 69, 58, 0.2)',
     borderWidth: 1,
-    borderRadius: 100, // Matches button shapes
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    borderRadius: br.full,
+    paddingVertical: sp.md3,
+    paddingHorizontal: sp.xl,
     width: '100%',
-    marginBottom: 16,
+    marginBottom: sp.lg,
     justifyContent: 'space-between',
   },
   errorText: {
     color: '#FF453A',
-    fontSize: 13,
+    fontSize: fs.md,
     fontWeight: '500',
     flex: 1,
   },
   errorClose: {
-    marginLeft: 8,
-    padding: 2,
+    marginLeft: sp.sm,
+    padding: sp.xs,
   },
 });

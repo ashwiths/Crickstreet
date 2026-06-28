@@ -12,6 +12,7 @@ import Animated, {
 
 import { Colors } from '../constants/colors';
 import { ButtonProps } from '../types';
+import { fs, sp, br } from '../theme/responsive';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -45,12 +46,13 @@ export function PrimaryButton({ label, onPress }: ButtonProps) {
 const styles = StyleSheet.create({
   button: {
     backgroundColor: Colors.white,
-    borderRadius: 100,
-    paddingVertical: 17,
-    paddingHorizontal: 24,
+    borderRadius: br.full,
+    paddingVertical: sp.md3,
+    paddingHorizontal: sp.xxl,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    minHeight: 52,
     shadowColor: Colors.white,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -59,7 +61,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: Colors.background,
-    fontSize: 16,
+    fontSize: fs.lg,
     fontWeight: '600',
     letterSpacing: 0.3,
   },
