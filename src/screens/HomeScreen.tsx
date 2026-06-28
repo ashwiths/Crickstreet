@@ -34,6 +34,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -47,6 +48,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { s, vs, ms, fs, sp, br, iconSz, avatarSz, gridCardWidth, isTablet } from '../theme/responsive';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -125,7 +127,7 @@ const CRICKET_TIPS = [
   "A practice match is perfect for informal games with no tournament restrictions."
 ];
 
-const W = Math.min(Dimensions.get('window').width, 600);
+// W is available from responsive.ts screen.width — no static Dimensions needed
 
 // ─── Quick Action ─────────────────────────────────────────────────────────────
 function QuickAction({
