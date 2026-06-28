@@ -1606,7 +1606,7 @@ export default function HomeScreen() {
                 size={20}
                 color={activeTab === 'tournament' ? C.green : 'rgba(255,255,255,0.42)'}
               />
-              <Text style={[styles.navLabel, activeTab === 'tournament' && styles.navLabelActive]}>Tourney</Text>
+              <Text style={[styles.navLabel, activeTab === 'tournament' && styles.navLabelActive]}>Tournament</Text>
               {activeTab === 'tournament' && <View style={styles.activeDot} />}
             </TouchableOpacity>
           </TourHighlight>
@@ -1633,6 +1633,11 @@ export default function HomeScreen() {
   );
 }
 
+// ─── Responsive layout pre-compute (module level) ────────────────────────────
+const _W = Math.min(s(375), 600);
+const CARD_2COL_HOME = gridCardWidth(2, s(10), sp.lg);
+const CARD_3COL_HOME = gridCardWidth(3, s(10), sp.lg);
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:  { flex: 1, backgroundColor: '#F3F4F1' },
@@ -1642,34 +1647,34 @@ const styles = StyleSheet.create({
   // ── Hero ──────────────────────────────────────────────────────────────────
   hero: {
     backgroundColor: C.hero,
-    paddingHorizontal: 20,
+    paddingHorizontal: sp.lg,
     position: 'relative',
     overflow: 'hidden',
   },
   deco1: {
     position: 'absolute',
-    width: W * 0.60,
-    height: W * 0.60,
-    borderRadius: W * 0.30,
+    width: _W * 0.60,
+    height: _W * 0.60,
+    borderRadius: _W * 0.30,
     backgroundColor: 'rgba(89,199,73,0.07)',
-    top: -W * 0.18,
-    right: -W * 0.14,
+    top: -_W * 0.18,
+    right: -_W * 0.14,
   },
   deco2: {
     position: 'absolute',
-    width: W * 0.38,
-    height: W * 0.38,
-    borderRadius: W * 0.19,
+    width: _W * 0.38,
+    height: _W * 0.38,
+    borderRadius: _W * 0.19,
     backgroundColor: 'rgba(255,255,255,0.03)',
-    bottom: 30,
-    left: -W * 0.10,
+    bottom: sp.lg,
+    left: -_W * 0.10,
   },
   curve: {
-    height: 28,
+    height: s(28),
     backgroundColor: C.milky,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: 20,
+    borderTopLeftRadius: s(28),
+    borderTopRightRadius: s(28),
+    marginTop: sp.xl,
   },
 
   // Header row
@@ -1677,7 +1682,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: sp.xl,
   },
   headerLeft: {
     flexDirection: 'row',
