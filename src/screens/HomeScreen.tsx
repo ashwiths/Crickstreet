@@ -1141,6 +1141,41 @@ export default function HomeScreen() {
     );
   };
 
+  const renderHeader = () => {
+    const headerGreeting = getGreeting();
+    const displayName = user?.displayName || 'Player';
+    const avatarInitial = displayName.slice(0, 1).toUpperCase();
+
+    return (
+      <View style={[styles.headerContainer, { paddingTop: insets.top > 0 ? insets.top + 8 : 16 }]}>
+        <View style={styles.headerProfileRow}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => setActiveTab('profile')}
+            style={styles.headerAvatarCircle}
+          >
+            <Text style={styles.headerAvatarText}>{avatarInitial}</Text>
+            <View style={styles.headerOnlineBadge} />
+          </TouchableOpacity>
+          
+          <View style={styles.headerGreetingCol}>
+            <Text style={styles.headerGreetingLabel}>{headerGreeting},</Text>
+            <Text style={styles.headerNameText} numberOfLines={1}>{displayName}</Text>
+          </View>
+          
+          <TouchableOpacity 
+            activeOpacity={0.75}
+            onPress={() => router.push('/notification-settings')}
+            style={styles.headerNotificationBtn}
+          >
+            <Feather name="bell" size={20} color="#1A1A1A" />
+            <Animated.View style={[styles.headerBellDot, pulseStyle]} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderEmptyState = () => {
     const headerGreeting = getGreeting();
     const displayName = user?.displayName || 'Player';
@@ -1154,32 +1189,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <View style={[styles.headerContainer, { paddingTop: insets.top > 0 ? insets.top + 8 : 16 }]}>
-            <View style={styles.headerProfileRow}>
-              <TouchableOpacity 
-                activeOpacity={0.8}
-                onPress={() => setActiveTab('profile')}
-                style={styles.headerAvatarCircle}
-              >
-                <Text style={styles.headerAvatarText}>{avatarInitial}</Text>
-                <View style={styles.headerOnlineBadge} />
-              </TouchableOpacity>
-              
-              <View style={styles.headerGreetingCol}>
-                <Text style={styles.headerGreetingLabel}>{headerGreeting},</Text>
-                <Text style={styles.headerNameText} numberOfLines={1}>{displayName}</Text>
-              </View>
-              
-              <TouchableOpacity 
-                activeOpacity={0.75}
-                onPress={() => router.push('/notification-settings')}
-                style={styles.headerNotificationBtn}
-              >
-                <Feather name="bell" size={20} color="#1A1A1A" />
-                <Animated.View style={[styles.headerBellDot, pulseStyle]} />
-              </TouchableOpacity>
-            </View>
-          </View>
+          {renderHeader()}
 
           {/* Welcome Illustration & Message */}
           <View style={styles.welcomeIllustrationCard}>
@@ -1262,32 +1272,7 @@ export default function HomeScreen() {
         bounces
       >
         {/* Header */}
-        <View style={[styles.headerContainer, { paddingTop: insets.top > 0 ? insets.top + 8 : 16 }]}>
-          <View style={styles.headerProfileRow}>
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={() => setActiveTab('profile')}
-              style={styles.headerAvatarCircle}
-            >
-              <Text style={styles.headerAvatarText}>{avatarInitial}</Text>
-              <View style={styles.headerOnlineBadge} />
-            </TouchableOpacity>
-            
-            <View style={styles.headerGreetingCol}>
-              <Text style={styles.headerGreetingLabel}>{headerGreeting},</Text>
-              <Text style={styles.headerNameText} numberOfLines={1}>{displayName}</Text>
-            </View>
-            
-            <TouchableOpacity 
-              activeOpacity={0.75}
-              onPress={() => router.push('/notification-settings')}
-              style={styles.headerNotificationBtn}
-            >
-              <Feather name="bell" size={20} color="#1A1A1A" />
-              <Animated.View style={[styles.headerBellDot, pulseStyle]} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        {renderHeader()}
 
         {/* Hero Section */}
         <View style={styles.dashHeroCardContainer}>

@@ -16,6 +16,10 @@ const BASE_HEIGHT = 812;
 
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 
+// Clamp the scaling width/height so elements don't become massive on tablets/web
+const SCALE_WIDTH = Math.min(WINDOW_WIDTH, 430);
+const SCALE_HEIGHT = Math.min(WINDOW_HEIGHT, 932);
+
 // ─── Is Tablet? ───────────────────────────────────────────────────────────────
 export const isTablet = WINDOW_WIDTH >= 600;
 
@@ -26,14 +30,14 @@ export const isTablet = WINDOW_WIDTH >= 600;
  * Linear proportional to screen width.
  */
 export function s(size: number): number {
-  return Math.round((WINDOW_WIDTH / BASE_WIDTH) * size);
+  return Math.round((SCALE_WIDTH / BASE_WIDTH) * size);
 }
 
 /**
  * Vertical scale — use for heights and vertical spacing.
  */
 export function vs(size: number): number {
-  return Math.round((WINDOW_HEIGHT / BASE_HEIGHT) * size);
+  return Math.round((SCALE_HEIGHT / BASE_HEIGHT) * size);
 }
 
 /**
