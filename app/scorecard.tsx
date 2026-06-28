@@ -4,7 +4,6 @@ import { collection, doc, getDoc, getDocs, updateDoc, writeBatch } from 'firebas
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Alert,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import { db } from '../src/services/firebase';
 import { useAuth } from '../src/hooks/useAuth';
 import { triggerLocalNotification } from '../src/services/notifications';
 import { TourHighlight } from '../src/hooks/useTour';
+import { s, fs, sp, br, avatarSz, iconSz } from '../src/theme/responsive';
 
 const C = {
   hero:    '#1B3F14',
@@ -621,120 +621,118 @@ export default function ScorecardScreen() {
   );
 }
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16,
+    paddingHorizontal: sp.xl, paddingTop: sp.md2, paddingBottom: sp.lg,
   },
   backBtn: {
-    width: 44, height: 44, borderRadius: 22,
+    width: avatarSz.md2, height: avatarSz.md2, borderRadius: avatarSz.md2 / 2,
     backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFF' },
-  scroll: { paddingHorizontal: 16, paddingBottom: 60 },
+  headerTitle: { fontSize: fs.lg, fontWeight: '700', color: '#FFF' },
+  scroll: { paddingHorizontal: sp.lg, paddingBottom: s(60) },
 
   // Team Tabs
   tabBar: {
     flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 14, padding: 4, marginBottom: 16,
+    borderRadius: br.md3, padding: sp.xs, marginBottom: sp.lg,
     borderWidth: 1, borderColor: C.border,
   },
-  tabButton: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+  tabButton: { flex: 1, paddingVertical: sp.md2, alignItems: 'center', borderRadius: br.md2 },
   tabButtonActive: { backgroundColor: C.green },
-  tabText: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '600' },
+  tabText: { color: 'rgba(255,255,255,0.5)', fontSize: fs.md, fontWeight: '600' },
   tabTextActive: { color: C.black, fontWeight: '800' },
 
   // Table Card
   rosterCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20,
-    borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: br.xxl,
+    borderWidth: 1, borderColor: C.border, padding: sp.md, marginBottom: sp.lg,
   },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderColor: C.border, paddingBottom: 10, marginBottom: 6 },
-  thText: { color: C.gray3, fontSize: 11, fontWeight: '700' },
-  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
-  playerName: { flex: 2, color: '#FFF', fontSize: 14, fontWeight: '600', paddingRight: 8 },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderColor: C.border, paddingBottom: sp.md2, marginBottom: sp.sm2 },
+  thText: { color: C.gray3, fontSize: fs.sm, fontWeight: '700' },
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: sp.sm, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
+  playerName: { flex: 2, color: '#FFF', fontSize: fs.md2, fontWeight: '600', paddingRight: sp.sm },
   cellInput: {
-    flex: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 8, color: '#FFF', textAlign: 'center', fontSize: 13, fontWeight: '700',
-    marginHorizontal: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    flex: 1, height: s(34), backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: br.sm, color: '#FFF', textAlign: 'center', fontSize: fs.md, fontWeight: '700',
+    marginHorizontal: sp.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
 
   // Settings Card
   settingsCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20,
-    borderWidth: 1, borderColor: C.border, padding: 16, marginBottom: 20,
+    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: br.xxl,
+    borderWidth: 1, borderColor: C.border, padding: sp.lg, marginBottom: sp.xl,
   },
-  settingsHeader: { color: '#FFF', fontSize: 13, fontWeight: '800', marginBottom: 16 },
-  inputLabel: { color: C.gray3, fontSize: 10, fontWeight: '800', letterSpacing: 0.8, marginBottom: 10 },
+  settingsHeader: { color: '#FFF', fontSize: fs.md, fontWeight: '800', marginBottom: sp.lg },
+  inputLabel: { color: C.gray3, fontSize: fs.xs, fontWeight: '800', letterSpacing: 0.8, marginBottom: sp.md2 },
   
   // Winner Selection
-  winnerRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  winnerRow: { flexDirection: 'row', gap: sp.md2, marginBottom: sp.lg },
   winnerBtn: {
-    flex: 1, paddingVertical: 12, borderRadius: 12,
+    flex: 1, paddingVertical: sp.md, borderRadius: br.md,
     backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
   winnerBtnActive: { backgroundColor: 'rgba(89, 199, 73, 0.15)', borderColor: C.green },
-  winnerBtnText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '700' },
+  winnerBtnText: { color: 'rgba(255,255,255,0.6)', fontSize: fs.md, fontWeight: '700' },
   winnerBtnTextActive: { color: C.green, fontWeight: '800' },
 
   // Dropdown Selector
   selectorDropdown: {
-    height: 48, backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    height: s(48), backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: br.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14,
+    paddingHorizontal: sp.md3,
   },
-  selectorDropdownTxt: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  selectorDropdownTxt: { color: '#FFF', fontSize: fs.md2, fontWeight: '600' },
   dropdownMenu: {
-    marginTop: 8, backgroundColor: '#131A15', borderRadius: 12,
-    borderWidth: 1, borderColor: 'rgba(89, 199, 73, 0.2)', paddingVertical: 6,
-    maxHeight: 200, overflow: 'scroll',
+    marginTop: sp.sm, backgroundColor: '#131A15', borderRadius: br.md,
+    borderWidth: 1, borderColor: 'rgba(89, 199, 73, 0.2)', paddingVertical: sp.sm2,
+    maxHeight: s(200), overflow: 'scroll',
   },
-  dropdownOption: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
-  dropdownOptionText: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+  dropdownOption: { paddingVertical: sp.md, paddingHorizontal: sp.lg, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
+  dropdownOptionText: { color: 'rgba(255,255,255,0.7)', fontSize: fs.md },
 
   // Buttons
-  completeBtn: { width: '100%', borderRadius: 100, overflow: 'hidden' },
-  completeGradient: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
-  completeBtnTxt: { color: '#FFF', fontSize: 15, fontWeight: '800' },
-  cancelBtn: { paddingVertical: 14, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
-  cancelBtnTxt: { color: C.gray3, fontSize: 14, fontWeight: '700' },
+  completeBtn: { width: '100%', borderRadius: br.full, overflow: 'hidden' },
+  completeGradient: { paddingVertical: sp.md, alignItems: 'center', justifyContent: 'center' },
+  completeBtnTxt: { color: '#FFF', fontSize: fs.md2, fontWeight: '800' },
+  cancelBtn: { paddingVertical: sp.md, borderRadius: br.full, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
+  cancelBtnTxt: { color: C.gray3, fontSize: fs.md2, fontWeight: '700' },
 
   // Live Match Control Panel
   controlPanelCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 20,
+    borderRadius: br.xxl,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    padding: 16,
-    marginBottom: 16,
+    padding: sp.lg,
+    marginBottom: sp.lg,
   },
   controlPanelHeader: {
-    fontSize: 13,
+    fontSize: fs.md,
     fontWeight: '800',
     color: '#FFF',
-    marginBottom: 14,
+    marginBottom: sp.md3,
   },
   controlLabel: {
-    fontSize: 9,
+    fontSize: fs.xs,
     fontWeight: '800',
     color: '#9CA3AF',
     letterSpacing: 0.8,
-    marginBottom: 8,
+    marginBottom: sp.sm,
   },
   statusButtonGrid: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 14,
+    gap: sp.sm2,
+    marginBottom: sp.md3,
   },
   statusSelectBtn: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: sp.sm,
+    borderRadius: br.sm,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -746,7 +744,7 @@ const styles = StyleSheet.create({
     borderColor: '#59C749',
   },
   statusSelectBtnTxt: {
-    fontSize: 10,
+    fontSize: fs.sm2,
     fontWeight: '700',
     color: 'rgba(255, 255, 255, 0.6)',
   },
@@ -756,16 +754,16 @@ const styles = StyleSheet.create({
   },
   inningsControlsRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: sp.md2,
   },
   inningsButtonGrid: {
     flexDirection: 'row',
-    gap: 6,
+    gap: sp.sm2,
   },
   inningsSelectBtn: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: sp.sm,
+    borderRadius: br.sm,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -777,7 +775,7 @@ const styles = StyleSheet.create({
     borderColor: '#59C749',
   },
   inningsSelectBtnTxt: {
-    fontSize: 10,
+    fontSize: fs.sm2,
     fontWeight: '700',
     color: 'rgba(255, 255, 255, 0.6)',
   },
@@ -787,8 +785,8 @@ const styles = StyleSheet.create({
   },
   simulateBtn: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: sp.sm,
+    borderRadius: br.sm,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
@@ -799,19 +797,19 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   simulateBtnTxt: {
-    fontSize: 10,
+    fontSize: fs.sm2,
     fontWeight: '700',
     color: '#FFF',
   },
   timerBadge: {
-    fontSize: 10,
+    fontSize: fs.sm2,
     fontWeight: '600',
     color: '#EAB308',
     backgroundColor: 'rgba(234, 179, 8, 0.1)',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: sp.sm2,
+    paddingHorizontal: sp.md2,
+    borderRadius: br.sm2,
     alignSelf: 'flex-start',
-    marginTop: 6,
+    marginTop: sp.sm2,
   },
 });

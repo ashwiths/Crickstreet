@@ -33,8 +33,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import GroundMapView from '../src/components/GroundMapView';
 import { useAuth } from '../src/hooks/useAuth';
 import { db } from '../src/services/firebase';
+import { s, fs, sp, br, avatarSz, iconSz, screen } from '../src/theme/responsive';
 
-const { height } = Dimensions.get('window');
+const height = screen.height;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Ground {
@@ -1068,95 +1069,95 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: sp.xl,
+    paddingTop: sp.md2,
+    paddingBottom: sp.lg,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: avatarSz.md2,
+    height: avatarSz.md2,
+    borderRadius: avatarSz.md2 / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sp.sm,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fs.xl,
     fontWeight: '700',
   },
   badgeContainer: {
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingHorizontal: sp.sm,
+    paddingVertical: sp.px2,
+    borderRadius: br.md,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: fs.sm,
     fontWeight: '800',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
-    paddingTop: 8,
+    paddingHorizontal: sp.xl,
+    paddingBottom: s(120),
+    paddingTop: sp.sm,
   },
 
   // List Cards
   card: {
-    borderRadius: 20,
+    borderRadius: br.xxl,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: sp.lg,
     overflow: 'hidden',
   },
   cardImage: {
     width: '100%',
-    height: 140,
+    height: s(140),
     backgroundColor: '#E0E0E0',
   },
   cardDetails: {
-    padding: 16,
+    padding: sp.lg,
   },
   cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: sp.sm2,
   },
   cardName: {
-    fontSize: 16,
+    fontSize: fs.lg,
     fontWeight: '800',
     flex: 1,
-    marginRight: 12,
+    marginRight: sp.md,
   },
   typeTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: sp.sm,
+    paddingVertical: sp.xs,
+    borderRadius: br.sm2,
   },
   typeTagText: {
-    fontSize: 9,
+    fontSize: fs.xs,
     fontWeight: '800',
   },
   cardAddress: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 10,
+    fontSize: fs.base,
+    lineHeight: fs.base * 1.5,
+    marginBottom: sp.md2,
   },
   cardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: sp.md,
   },
   cardCoords: {
-    fontSize: 11,
+    fontSize: fs.sm,
     fontWeight: '600',
   },
   cardDate: {
-    fontSize: 10,
+    fontSize: fs.xs,
   },
 
   // Actions footer
@@ -1165,27 +1166,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    paddingTop: 12,
-    marginTop: 4,
+    paddingTop: sp.md,
+    marginTop: sp.xs,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sp.sm2,
   },
   actionBtnText: {
-    fontSize: 12,
+    fontSize: fs.base,
     fontWeight: '700',
   },
 
   // List FAB
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: sp.xl,
+    right: sp.lg,
+    width: s(56),
+    height: s(56),
+    borderRadius: s(28),
     shadowColor: '#A8CD55',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -1195,7 +1196,7 @@ const styles = StyleSheet.create({
   fabGradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
+    borderRadius: s(28),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1205,41 +1206,41 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 80,
+    paddingHorizontal: sp.xxl,
+    paddingBottom: s(80),
   },
   emptyIconBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 28,
+    width: s(80),
+    height: s(80),
+    borderRadius: br.h,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: sp.xl,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: fs.xl2,
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: sp.sm,
   },
   emptyDesc: {
-    fontSize: 13,
+    fontSize: fs.md,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: fs.md * 1.5,
+    marginBottom: sp.xxl,
   },
   emptyBtn: {
-    borderRadius: 100,
+    borderRadius: br.full,
     overflow: 'hidden',
   },
   emptyBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: sp.xxl,
+    paddingVertical: sp.md,
   },
   emptyBtnText: {
     color: '#050A08',
-    fontSize: 14,
+    fontSize: fs.md2,
     fontWeight: '900',
   },
 
@@ -1249,7 +1250,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A1628',
   },
   glassPanel: {
-    borderRadius: 20,
+    borderRadius: br.xxl,
     borderWidth: 1,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
@@ -1262,65 +1263,65 @@ const styles = StyleSheet.create({
   // Floating Search bar
   topSearchWrapper: {
     position: 'absolute',
-    top: 20,
-    left: 16,
-    right: 16,
-    maxWidth: 568,
+    top: sp.xl,
+    left: sp.lg,
+    right: sp.lg,
+    maxWidth: s(568),
     alignSelf: 'center',
     width: '100%',
     zIndex: 999,
-    gap: 8,
+    gap: sp.sm,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    height: 52,
+    paddingHorizontal: sp.lg,
+    height: s(52),
   },
   searchInputText: {
     flex: 1,
-    fontSize: 14,
-    paddingHorizontal: 12,
+    fontSize: fs.md2,
+    paddingHorizontal: sp.md,
     height: '100%',
   },
 
   // Search Results Container
   suggestionsContainer: {
-    marginTop: 4,
-    paddingVertical: 6,
+    marginTop: sp.xs,
+    paddingVertical: sp.sm2,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: sp.lg,
+    paddingVertical: sp.md,
     borderBottomWidth: 0.5,
   },
   suggestionTextContainer: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: sp.md2,
   },
   suggestionDisplayName: {
-    fontSize: 13,
+    fontSize: fs.md,
     fontWeight: '700',
   },
   suggestionSubText: {
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: fs.sm,
+    marginTop: sp.px2,
   },
 
   // Right Side Floating controls
   floatingControlsContainer: {
     position: 'absolute',
-    right: 16,
+    right: sp.lg,
     top: height * 0.18,
     zIndex: 99,
-    gap: 12,
+    gap: sp.md,
   },
   controlBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: s(46),
+    height: s(46),
+    borderRadius: s(23),
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1334,27 +1335,27 @@ const styles = StyleSheet.create({
   // Premium Bottom Card
   bottomGlassCard: {
     position: 'absolute',
-    bottom: 24,
-    left: 16,
-    right: 16,
-    maxWidth: 568,
+    bottom: sp.xxl,
+    left: sp.lg,
+    right: sp.lg,
+    maxWidth: s(568),
     alignSelf: 'center',
     width: '100%',
     maxHeight: height * 0.45,
-    padding: 16,
+    padding: sp.lg,
     zIndex: 99,
   },
   bottomCardScroll: {
-    paddingVertical: 6,
+    paddingVertical: sp.sm2,
   },
   
   // Segment Toggle
   modeToggleContainer: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 3,
-    marginBottom: 12,
+    borderRadius: br.md3,
+    padding: sp.px2,
+    marginBottom: sp.md,
     overflow: 'hidden',
   },
   modeToggleTab: {
@@ -1362,9 +1363,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 11,
+    gap: sp.sm2,
+    paddingVertical: sp.md2,
+    borderRadius: br.md,
   },
   modeToggleActiveTab: {
     shadowColor: '#000000',
@@ -1374,67 +1375,67 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   modeToggleText: {
-    fontSize: 12,
+    fontSize: fs.base,
   },
 
   // Form Inside Card
   inputLabel: {
-    fontSize: 9,
+    fontSize: fs.xs,
     fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 6,
-    marginTop: 8,
+    marginBottom: sp.sm2,
+    marginTop: sp.sm,
   },
   textInput: {
-    height: 44,
+    height: s(44),
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 13,
-    marginBottom: 8,
+    borderRadius: br.md2,
+    paddingHorizontal: sp.md,
+    fontSize: fs.md,
+    marginBottom: sp.sm,
   },
   rowForm: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: sp.xs,
   },
   coordsTextVal: {
-    fontSize: 13,
+    fontSize: fs.md,
     fontWeight: '700',
-    paddingVertical: 4,
+    paddingVertical: sp.xs,
   },
 
   // Type chips
   typeSelectorRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-    marginTop: 4,
+    gap: sp.sm,
+    marginBottom: sp.sm,
+    marginTop: sp.xs,
   },
   typeChip: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: sp.sm,
+    borderRadius: br.sm,
     borderWidth: 1,
     alignItems: 'center',
   },
   typeChipText: {
-    fontSize: 11,
+    fontSize: fs.sm,
   },
 
   // Save btn
   saveBtn: {
-    borderRadius: 100,
+    borderRadius: br.full,
     overflow: 'hidden',
-    marginTop: 18,
+    marginTop: sp.lg2,
   },
   saveBtnGradient: {
-    paddingVertical: 12,
+    paddingVertical: sp.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
     color: '#050A08',
-    fontSize: 14,
+    fontSize: fs.md2,
     fontWeight: '900',
   },
 });

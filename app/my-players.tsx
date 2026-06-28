@@ -14,7 +14,6 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   Alert,
   Animated,
-  Dimensions,
   Image,
   Modal,
   ScrollView,
@@ -24,13 +23,13 @@ import {
   TouchableOpacity,
   View,
   useColorScheme,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../src/hooks/useAuth';
 import { db } from '../src/services/firebase';
-
-const { width } = Dimensions.get('window');
+import { s, fs, sp, br, avatarSz, iconSz } from '../src/theme/responsive';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Player {
@@ -227,6 +226,7 @@ export default function MyPlayersScreen() {
   const { user } = useAuth();
   const uid = user?.uid || '';
   const systemScheme = useColorScheme();
+  const { width } = useWindowDimensions();
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -793,39 +793,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: sp.xl,
+    paddingTop: sp.md2,
+    paddingBottom: sp.lg,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: avatarSz.md2,
+    height: avatarSz.md2,
+    borderRadius: avatarSz.md2 / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sp.sm,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fs.xl,
     fontWeight: '700',
   },
   badgeContainer: {
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingHorizontal: sp.sm,
+    paddingVertical: sp.px2,
+    borderRadius: br.md,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: fs.sm,
     fontWeight: '800',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
+    paddingHorizontal: sp.xl,
+    paddingBottom: s(120),
   },
 
   // Section Headers
@@ -833,24 +833,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: sp.md,
   },
   sectionTitleWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sp.sm,
   },
   sectionMarker: {
-    width: 4,
-    height: 18,
-    borderRadius: 2,
+    width: s(4),
+    height: s(18),
+    borderRadius: s(2),
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: fs.lg,
     fontWeight: '800',
   },
   counterText: {
-    fontSize: 12,
+    fontSize: fs.base,
     fontWeight: '600',
   },
 
@@ -858,18 +858,18 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: s(12),
   },
 
   // Card Playing XI
   card: {
-    borderRadius: 16,
+    borderRadius: br.lg,
     borderWidth: 1,
-    padding: 12,
-    minHeight: 130,
+    padding: sp.md,
+    minHeight: s(130),
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: sp.md,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -878,35 +878,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   jerseyBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: sp.sm2,
+    paddingVertical: sp.px2,
+    borderRadius: br.sm,
   },
   jerseyBadgeText: {
-    fontSize: 10,
+    fontSize: fs.sm2,
     fontWeight: '800',
   },
   editCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: s(26),
+    height: s(26),
+    borderRadius: s(13),
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardBody: {
     alignItems: 'center',
     width: '100%',
-    marginTop: 4,
+    marginTop: sp.xs,
   },
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: avatarSz.md2,
+    height: avatarSz.md2,
+    borderRadius: avatarSz.md2 / 2,
     backgroundColor: '#E0E0E0',
-    marginBottom: 8,
+    marginBottom: sp.sm,
   },
   playerNameText: {
-    fontSize: 12,
+    fontSize: fs.base,
     fontWeight: '700',
     textAlign: 'center',
     width: '100%',
@@ -914,49 +914,49 @@ const styles = StyleSheet.create({
 
   // Role badge
   roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: sp.sm,
+    paddingVertical: sp.px2,
+    borderRadius: br.sm2,
   },
   roleBadgeText: {
-    fontSize: 9,
+    fontSize: fs.xs,
     fontWeight: '800',
   },
 
   // Substitutes List Layout
   subscribersContainer: {
-    gap: 10,
+    gap: sp.md2,
   },
   subCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: br.lg,
     borderWidth: 1,
-    padding: 12,
+    padding: sp.md,
   },
   subAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: avatarSz.md2,
+    height: avatarSz.md2,
+    borderRadius: avatarSz.md2 / 2,
     backgroundColor: '#E0E0E0',
-    marginRight: 12,
+    marginRight: sp.md,
   },
   subInfo: {
     flex: 1,
     justifyContent: 'center',
   },
   subName: {
-    fontSize: 14,
+    fontSize: fs.md2,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: sp.xs,
   },
   detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sp.sm,
   },
   jerseyText: {
-    fontSize: 12,
+    fontSize: fs.base,
     fontWeight: '600',
   },
 
@@ -967,12 +967,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptySlotTitle: {
-    fontSize: 11,
+    fontSize: fs.sm,
     fontWeight: '700',
   },
   emptySlotDesc: {
-    fontSize: 9,
-    marginTop: 2,
+    fontSize: fs.xs,
+    marginTop: sp.px2,
   },
   emptyAvatarPlace: {
     alignItems: 'center',
@@ -988,52 +988,52 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 80,
+    paddingHorizontal: sp.xxl,
+    paddingBottom: s(80),
   },
   emptyIconBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 28,
+    width: s(80),
+    height: s(80),
+    borderRadius: br.h,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: sp.xl,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: fs.xl2,
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: sp.sm,
   },
   emptyDesc: {
-    fontSize: 13,
+    fontSize: fs.md,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: fs.md * 1.5,
+    marginBottom: sp.xxl,
   },
   emptyBtn: {
-    borderRadius: 100,
+    borderRadius: br.full,
     overflow: 'hidden',
   },
   emptyBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: sp.xxl,
+    paddingVertical: sp.md,
   },
   emptyBtnText: {
     color: '#050A08',
-    fontSize: 14,
+    fontSize: fs.md2,
     fontWeight: '900',
   },
 
   // Floating Action Button
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: sp.xl,
+    right: sp.lg,
+    width: s(56),
+    height: s(56),
+    borderRadius: s(28),
     shadowColor: '#A8CD55',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -1043,7 +1043,7 @@ const styles = StyleSheet.create({
   fabGradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
+    borderRadius: s(28),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1057,9 +1057,9 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '90%',
-    maxWidth: 440,
+    maxWidth: s(440),
     maxHeight: '85%',
-    borderRadius: 24,
+    borderRadius: br.xxl,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -1067,97 +1067,97 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: sp.xl,
+    paddingTop: sp.xl,
+    paddingBottom: sp.lg,
     borderBottomWidth: 1,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: fs.lg,
     fontWeight: '800',
   },
   closeModalBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: s(36),
+    height: s(36),
+    borderRadius: s(18),
     alignItems: 'center',
     justifyContent: 'center',
   },
   formContainer: {
-    padding: 20,
+    padding: sp.xl,
   },
   inputLabel: {
-    fontSize: 9,
+    fontSize: fs.xs,
     fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 8,
+    marginBottom: sp.sm,
   },
   textInput: {
-    height: 48,
+    height: s(48),
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    marginBottom: 16,
+    borderRadius: br.md,
+    paddingHorizontal: sp.md3,
+    fontSize: fs.md2,
+    marginBottom: sp.lg,
   },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
+    gap: sp.sm,
+    marginBottom: sp.lg,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.sm,
+    borderRadius: br.xl,
     borderWidth: 1,
   },
   chipText: {
-    fontSize: 11,
+    fontSize: fs.sm,
   },
   assignmentRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    gap: sp.md,
+    marginBottom: sp.xl,
   },
   assignmentChoice: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: sp.sm,
+    paddingVertical: sp.md,
+    borderRadius: br.md,
     borderWidth: 1,
   },
   assignmentText: {
-    fontSize: 13,
+    fontSize: fs.md,
   },
   saveBtn: {
-    borderRadius: 100,
+    borderRadius: br.full,
     overflow: 'hidden',
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: sp.sm,
+    marginBottom: sp.md,
   },
   saveBtnGradient: {
-    paddingVertical: 14,
+    paddingVertical: sp.md3,
     alignItems: 'center',
   },
   saveBtnTxt: {
     color: '#050A08',
-    fontSize: 14,
+    fontSize: fs.md2,
     fontWeight: '900',
   },
   modalActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 100,
-    marginTop: 8,
+    paddingVertical: sp.md3,
+    borderRadius: br.full,
+    marginTop: sp.sm,
   },
   modalActionBtnTxt: {
-    fontSize: 13,
+    fontSize: fs.md,
     fontWeight: '700',
   },
 });
