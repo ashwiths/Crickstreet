@@ -360,6 +360,46 @@ export default function HomeScreen() {
     transform: [{ scale: pulseAnim.value }],
   }));
 
+  const radarProgress = useSharedValue(0);
+  useEffect(() => {
+    radarProgress.value = withRepeat(
+      withTiming(1, { duration: 3000, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, []);
+
+  const radarStyle1 = useAnimatedStyle(() => {
+    const t = radarProgress.value;
+    const scale = 1 + t * 0.8;
+    const opacity = 1 - t;
+    return {
+      transform: [{ scale }],
+      opacity: opacity * 0.5,
+    };
+  });
+
+  const radarStyle2 = useAnimatedStyle(() => {
+    const t = (radarProgress.value + 0.33) % 1;
+    const scale = 1 + t * 0.8;
+    const opacity = 1 - t;
+    return {
+      transform: [{ scale }],
+      opacity: opacity * 0.5,
+    };
+  });
+
+  const radarStyle3 = useAnimatedStyle(() => {
+    const t = (radarProgress.value + 0.66) % 1;
+    const scale = 1 + t * 0.8;
+    const opacity = 1 - t;
+    return {
+      transform: [{ scale }],
+      opacity: opacity * 0.5,
+    };
+  });
+
+
   const previewFeatures = [
     { title: '🏆 Rankings', desc: 'Global player leaderboard' },
     { title: '📈 Statistics', desc: 'In-depth performance analytics' },
@@ -764,10 +804,27 @@ export default function HomeScreen() {
                 </View>
               ))
             ) : (
-              <View style={styles.illustrationEmptyRoot}>
-                <View style={styles.emptyIllustrationRing}>
-                  <Text style={styles.emptyIllustrationEmoji}>Stadium</Text>
+              <Animated.View
+                entering={FadeInDown.duration(600).springify().damping(18)}
+                style={styles.illustrationEmptyRoot}
+              >
+                {/* Custom Pulsing Radar Stadium Graphic */}
+                <View style={styles.radarGraphicContainer}>
+                  {/* Radar waves */}
+                  <Animated.View style={[styles.radarRing, radarStyle1]} />
+                  <Animated.View style={[styles.radarRing, radarStyle2]} />
+                  <Animated.View style={[styles.radarRing, radarStyle3]} />
+                  
+                  {/* Central floating stadium badge */}
+                  <Animated.View style={[styles.radarCenterBadge, floatStyle]}>
+                    <LinearGradient
+                      colors={['#F0F4EC', '#D4E2C6']}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <MaterialCommunityIcons name="stadium" size={36} color="#2D5016" />
+                  </Animated.View>
                 </View>
+
                 <Text style={styles.emptyIllustrationTitle}>No Live Matches</Text>
                 <Text style={styles.emptyIllustrationDesc}>
                   Start scoring your live cricket matches in real-time. Manage your team roster, coordinate grounds, and track player stats automatically.
@@ -776,17 +833,19 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => router.push('/create-matches')}
-                  style={styles.emptyIllustrationCta}
+                  style={{ width: '100%', marginBottom: 24 }}
                 >
-                  <LinearGradient
-                    colors={['#A8CD55', '#E3A85B']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.emptyIllustrationCtaGradient}
-                  >
-                    <Feather name="plus-circle" size={18} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.emptyIllustrationCtaText}>Start New Match</Text>
-                  </LinearGradient>
+                  <Animated.View style={[styles.emptyIllustrationCta, buttonPulseStyle]}>
+                    <LinearGradient
+                      colors={['#A8CD55', '#E3A85B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.emptyIllustrationCtaGradient}
+                    >
+                      <Feather name="plus-circle" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.emptyIllustrationCtaText}>Start New Match</Text>
+                    </LinearGradient>
+                  </Animated.View>
                 </TouchableOpacity>
 
                 <View style={styles.quickGridContainer}>
@@ -833,7 +892,7 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
+              </Animated.View>
             )}
             <View style={{ height: 120 }} />
           </ScrollView>
@@ -1006,7 +1065,10 @@ export default function HomeScreen() {
                 );
               })
             ) : (
-              <View style={styles.illustrationEmptyRoot}>
+              <Animated.View
+                entering={FadeInDown.duration(600).springify().damping(18)}
+                style={styles.illustrationEmptyRoot}
+              >
                 <View style={[styles.emptyIllustrationRing, { backgroundColor: '#F5F5F5' }]}>
                   <Feather name="archive" size={28} color="#8A8A8A" />
                 </View>
@@ -1014,7 +1076,7 @@ export default function HomeScreen() {
                 <Text style={styles.emptyIllustrationDesc}>
                   No matches were found matching the filters or search query. Play more matches or clear the filters.
                 </Text>
-              </View>
+              </Animated.View>
             )}
             <View style={{ height: 120 }} />
           </ScrollView>
@@ -1205,7 +1267,7 @@ export default function HomeScreen() {
                   <Text style={styles.dashHeroBadgeText}>🏏 CRICKSTREET PRO</Text>
                 </View>
               </View>
-              <Text style={styles.dashHeroTitle}>Ready for Today's Match?</Text>
+              <Text style={styles.dashHeroTitle}>Ready for Today&apos;s Match?</Text>
               <Text style={styles.dashHeroSubtitle}>Start live scoring or setup tournament games instantly.</Text>
               
               <View style={styles.dashHeroButtonsRow}>
@@ -1436,7 +1498,7 @@ export default function HomeScreen() {
               <Text style={styles.tipHeaderEmoji}>💡</Text>
               <Text style={styles.tipHeaderTitle}>TIP OF THE DAY</Text>
             </View>
-            <Text style={styles.tipBodyText}>"{tipOfTheDay}"</Text>
+            <Text style={styles.tipBodyText}>&quot;{tipOfTheDay}&quot;</Text>
           </View>
         </View>
 
@@ -4190,4 +4252,38 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#2D5016',
   },
+  radarGraphicContainer: {
+    width: 160,
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
+  radarRing: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1.5,
+    borderColor: '#A8CD55',
+    backgroundColor: 'rgba(168, 205, 85, 0.08)',
+  },
+  radarCenterBadge: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    shadowColor: '#2D5016',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+    zIndex: 10,
+  },
 });
+

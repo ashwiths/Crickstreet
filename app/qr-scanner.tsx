@@ -178,7 +178,7 @@ export default function QRScannerScreen() {
                 >
                   <Feather name="grid" size={18} color="#A8CD55" />
                   <Text style={styles.instructionText}>
-                    Point camera at a Crickstreet player's QR code
+                    Point camera at a Crickstreet player&apos;s QR code
                   </Text>
                 </LinearGradient>
               </View>

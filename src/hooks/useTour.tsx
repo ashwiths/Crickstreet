@@ -402,7 +402,7 @@ function TourOverlay() {
               <View style={styles.completedHeader}>
                 <Ionicons name="sparkles" size={32} color="#59C749" style={styles.sparkleIcon} />
                 <Text style={styles.completedTitle}>🎉 Tour Completed</Text>
-                <Text style={styles.completedSubtitle}>You're ready to use Crickstreet.</Text>
+                <Text style={styles.completedSubtitle}>You&apos;re ready to use Crickstreet.</Text>
               </View>
 
               <TouchableOpacity style={styles.startAppBtn} onPress={completeTour}>

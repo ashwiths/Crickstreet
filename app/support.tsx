@@ -710,7 +710,7 @@ export default function SupportCenterScreen() {
                         <MaterialCommunityIcons name="ticket-outline" size={54} color={theme.textSecondary} />
                         <Text style={[styles.emptyTitle, { color: theme.text }]}>No Ticket History</Text>
                         <Text style={[styles.emptyDesc, { color: theme.textSecondary }]}>
-                          You haven't filed any complaints or requests. If you run into matches, payments, or grounds issues, submit a ticket above.
+                          You haven&apos;t filed any complaints or requests. If you run into matches, payments, or grounds issues, submit a ticket above.
                         </Text>
                       </View>
                     ) : (

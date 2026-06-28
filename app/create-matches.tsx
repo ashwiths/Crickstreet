@@ -1406,7 +1406,7 @@ export default function CreateMatchesScreen() {
 
         <Animated.View style={[choiceStyles.heroTextBlock, aHeaderStyle]}>
           <Text style={choiceStyles.headerTitle}>Choose Match Type</Text>
-          <Text style={choiceStyles.headerSubtitle}>Choose how you'd like to start today's cricket match.</Text>
+          <Text style={choiceStyles.headerSubtitle}>Choose how you&apos;d like to start today&apos;s cricket match.</Text>
         </Animated.View>
 
         {/* ─── First-time banner ─── */}

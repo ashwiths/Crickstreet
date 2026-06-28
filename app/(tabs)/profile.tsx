@@ -120,7 +120,7 @@ function QRModal({
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Image source={{ uri: photoURL || 'https://i.pravatar.cc/150?img=11' }} style={styles.modalAvatar} />
+                <Image source={{ uri: photoURL }} style={styles.modalAvatar} />
               </LinearGradient>
             </View>
 
@@ -136,7 +136,7 @@ function QRModal({
                 size={190}
                 color="#0A1628"
                 backgroundColor="#FFF"
-                logo={{ uri: photoURL || 'https://i.pravatar.cc/40?img=11' }}
+                logo={{ uri: photoURL }}
                 logoSize={32}
                 logoBackgroundColor="#FFF"
                 logoBorderRadius={16}
@@ -294,7 +294,7 @@ function EditProfileModal({
             <Text style={styles.editInputLabel}>DISPLAY NAME</Text>
             <TextInput
               style={styles.editTextInput}
-              placeholder="e.g. Richard Galangal"
+              placeholder="e.g. Player Name"
               value={formName}
               onChangeText={setFormName}
             />
@@ -446,10 +446,10 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
   const [editVisible, setEditVisible] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
 
-  const displayName = profileData?.displayName || user?.displayName || 'Galangal Richard';
-  const email = user?.email || 'galangal82@gmail.com';
-  const photoURL = profileData?.photoURL || user?.photoURL || 'https://i.pravatar.cc/150?img=11';
-  const uid = user?.uid || 'demo-user-uid-0001';
+  const displayName = profileData?.displayName || user?.displayName || 'Player';
+  const email = user?.email || '';
+  const photoURL = profileData?.photoURL || user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0D1F3C&color=A8CD55&size=150&bold=true`;
+  const uid = user?.uid || '';
 
   // Live profile data sync
   useEffect(() => {

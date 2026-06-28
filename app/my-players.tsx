@@ -632,7 +632,7 @@ export default function MyPlayersScreen() {
                 <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>PLAYER NAME</Text>
                 <TextInput
                   style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                  placeholder="e.g. Richard Galangal"
+                  placeholder="e.g. Player Name"
                   placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
                   value={formName}
                   onChangeText={setFormName}

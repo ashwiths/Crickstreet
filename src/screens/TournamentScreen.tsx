@@ -30,15 +30,7 @@ export default function TournamentScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'all' | 'tournament' | 'practice' | 'won' | 'lost' | 'newest' | 'oldest'>('all');
-
-  const sampleMatches = [
-    { id: 's1', tournamentName: 'Street League 2026', date: 'Jun 22, 2026', ground: 'Central Park Ground', matchType: 'Tournament', myTeam: 'Storm XI', oppTeam: 'Thunder Bulls', result: 'Won', myScore: '167/4', oppScore: '154/8', overs: '20', potm: 'R. Sharma', venue: 'Central Park' },
-    { id: 's2', tournamentName: 'City Cup 2026', date: 'Jun 18, 2026', ground: 'Lions Den Stadium', matchType: 'Practice', myTeam: 'Storm XI', oppTeam: 'Royal Kings', result: 'Lost', myScore: '112/9', oppScore: '145/6', overs: '20', potm: 'A. Kumar', venue: 'Lions Den' },
-    { id: 's3', tournamentName: 'Friendly Match', date: 'Jun 14, 2026', ground: 'Riverside Ground', matchType: 'Friendly', myTeam: 'Storm XI', oppTeam: 'Blazing Tigers', result: 'Won', myScore: '198/3', oppScore: '176/7', overs: '20', potm: 'S. Patel', venue: 'Riverside' },
-    { id: 's4', tournamentName: 'Street League 2026', date: 'Jun 10, 2026', ground: 'Central Park Ground', matchType: 'Tournament', myTeam: 'Storm XI', oppTeam: 'Iron Hawks', result: 'Draw', myScore: '143/5', oppScore: '143/6', overs: '20', potm: 'M. Khan', venue: 'Central Park' },
-  ];
-
-  // Map real matches if available, otherwise fallback to sample matches
+  // Map real matches if available
   const displayMatches = matches.length > 0 ? matches.map((m: any, index: number) => {
     let result = 'Draw';
     if (m.result) {
@@ -359,6 +351,94 @@ export default function TournamentScreen({
                 </View>
               </View>
             </View>
+          </Animated.View>
+
+          {/* Section: Match History */}
+          <Animated.View entering={FadeInDown.delay(650).duration(400)}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Match History</Text>
+            </View>
+            {filteredMatches.length > 0 ? (
+              filteredMatches.map((m) => {
+                const colors = getResultColor(m.result);
+                const badge = getMatchTypeBadge(m.matchType);
+                return (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={[styles.matchCard, { borderLeftColor: colors.border }]}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      router.push({
+                        pathname: '/scorecard',
+                        params: {
+                          matchId: m.id,
+                          myTeamName: m.myTeam,
+                          oppTeamName: m.oppTeam,
+                        },
+                      });
+                    }}
+                  >
+                    <View style={styles.matchTop}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.matchTournament}>{m.tournamentName}</Text>
+                        <Text style={styles.matchDate}>{m.date} • {m.venue}</Text>
+                      </View>
+                      <View style={[styles.matchTypeBadge, { backgroundColor: badge.bg }]}>
+                        <Text style={[styles.matchTypeTxt, { color: badge.text }]}>
+                          {m.matchType}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.vsRow}>
+                      <View style={styles.vsTeamCol}>
+                        <View style={styles.teamLogo}>
+                          <Text style={styles.teamLogoTxt}>
+                            {m.myTeam.slice(0, 2).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.teamName} numberOfLines={1}>{m.myTeam}</Text>
+                      </View>
+
+                      <View style={styles.vsScoreCol}>
+                        <Text style={styles.scoreTextA}>{m.myScore}</Text>
+                        <Text style={styles.vsSmall}>vs</Text>
+                        <Text style={styles.scoreTextB}>{m.oppScore}</Text>
+                      </View>
+
+                      <View style={styles.vsTeamCol}>
+                        <View style={[styles.teamLogo, { backgroundColor: '#FFF0F0' }]}>
+                          <Text style={[styles.teamLogoTxt, { color: '#FF4D4D' }]}>
+                            {m.oppTeam.slice(0, 2).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.teamName} numberOfLines={1}>{m.oppTeam}</Text>
+                      </View>
+
+                      <View style={[styles.resultBadge, { backgroundColor: colors.bg, borderColor: colors.border }]}>
+                        <Text style={[styles.resultTxt, { color: colors.text }]}>{m.result}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardDivider} />
+
+                    <View style={styles.matchBottom}>
+                      <View style={styles.matchMeta}>
+                        <Feather name="award" size={12} color="#8A8A8A" />
+                        <Text style={styles.metaTxt}>POM: {m.potm}</Text>
+                      </View>
+                      <View style={styles.chevronBtn}>
+                        <Feather name="chevron-right" size={14} color="#2D5016" />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No matches found in history.</Text>
+              </View>
+            )}
           </Animated.View>
 
           {/* Section: Quick Actions */}
