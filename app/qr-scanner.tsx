@@ -4,21 +4,26 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Easing,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { s, fs, sp, br, avatarSz, iconSz } from '../src/theme/responsive';
 
-const { width, height } = Dimensions.get('window');
-const FRAME_SIZE = width * 0.72;
+const CORNER_SIZE = 24;
+const CORNER_THICKNESS = 4;
+const CORNER_COLOR = '#A8CD55';
 
 export default function QRScannerScreen() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const FRAME_SIZE = width * 0.72;
+
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -130,7 +135,7 @@ export default function QRScannerScreen() {
           <View style={[styles.overlaySection, { width: (width - FRAME_SIZE) / 2, height: FRAME_SIZE }]} />
 
           {/* Transparent viewfinder */}
-          <View style={styles.viewfinder}>
+          <View style={[styles.viewfinder, { width: FRAME_SIZE, height: FRAME_SIZE }]}>
             {/* Corner brackets */}
             <View style={[styles.corner, styles.cornerTL]} />
             <View style={[styles.corner, styles.cornerTR]} />
@@ -190,10 +195,6 @@ export default function QRScannerScreen() {
   );
 }
 
-const CORNER_SIZE = 28;
-const CORNER_THICKNESS = 4;
-const CORNER_COLOR = '#A8CD55';
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   centered: {
@@ -201,15 +202,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D1117',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
-    gap: 16,
+    padding: sp.xl,
+    gap: sp.md,
   },
   overlay: { flex: 1 },
   overlaySection: { backgroundColor: 'rgba(0,0,0,0.72)' },
   middleRow: { flexDirection: 'row' },
   viewfinder: {
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
     overflow: 'hidden',
   },
   // Corner brackets
@@ -221,22 +220,22 @@ const styles = StyleSheet.create({
   cornerTL: {
     top: 0, left: 0,
     borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR, borderTopLeftRadius: 4,
+    borderColor: CORNER_COLOR, borderTopLeftRadius: br.xs,
   },
   cornerTR: {
     top: 0, right: 0,
     borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR, borderTopRightRadius: 4,
+    borderColor: CORNER_COLOR, borderTopRightRadius: br.xs,
   },
   cornerBL: {
     bottom: 0, left: 0,
     borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR, borderBottomLeftRadius: 4,
+    borderColor: CORNER_COLOR, borderBottomLeftRadius: br.xs,
   },
   cornerBR: {
     bottom: 0, right: 0,
     borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR, borderBottomRightRadius: 4,
+    borderColor: CORNER_COLOR, borderBottomRightRadius: br.xs,
   },
   scanLine: {
     height: 2,
@@ -251,70 +250,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: sp.lg,
+    paddingTop: sp.xs,
+    paddingBottom: sp.md,
   },
   closeButton: {
-    width: 44, height: 44, borderRadius: 22,
+    width: avatarSz.md2, height: avatarSz.md2, borderRadius: avatarSz.md2 / 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: fs.lg,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
   bottomUI: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
-    paddingHorizontal: 24,
-    paddingBottom: 48,
+    paddingHorizontal: sp.xl,
+    paddingBottom: sp.h,
   },
-  instructionCard: { borderRadius: 16, overflow: 'hidden' },
+  instructionCard: { borderRadius: br.lg, overflow: 'hidden' },
   instructionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    borderRadius: 16,
+    gap: sp.md,
+    padding: sp.lg,
+    borderRadius: br.lg,
     borderWidth: 1,
     borderColor: 'rgba(168,205,85,0.3)',
   },
   instructionText: {
     color: '#E8E8E8',
-    fontSize: 14,
+    fontSize: fs.md,
     flex: 1,
-    lineHeight: 20,
+    lineHeight: fs.md * 1.4,
   },
   errorCard: {
     backgroundColor: 'rgba(255,107,107,0.15)',
-    borderRadius: 16,
+    borderRadius: br.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,107,107,0.3)',
-    padding: 16,
+    padding: sp.lg,
     alignItems: 'center',
-    gap: 8,
+    gap: sp.sm,
   },
-  errorText: { color: '#FF6B6B', fontSize: 14, textAlign: 'center' },
-  retryText: { color: '#A8CD55', fontSize: 14, fontWeight: '600', marginTop: 4 },
+  errorText: { color: '#FF6B6B', fontSize: fs.md, textAlign: 'center' },
+  retryText: { color: '#A8CD55', fontSize: fs.md, fontWeight: '600', marginTop: sp.xs },
   permissionTitle: {
     color: '#FFF',
-    fontSize: 22,
+    fontSize: fs.xl2,
     fontWeight: '700',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: sp.sm,
   },
   permissionText: {
     color: '#8A9BA8',
-    fontSize: 15,
+    fontSize: fs.lg,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: fs.lg * 1.4,
   },
-  grantButton: { borderRadius: 14, overflow: 'hidden', marginTop: 8 },
-  grantButtonGradient: { paddingHorizontal: 32, paddingVertical: 14 },
-  grantButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  backLinkBtn: { marginTop: 4 },
-  backLinkText: { color: '#A8CD55', fontSize: 14 },
+  grantButton: { borderRadius: br.md, overflow: 'hidden', marginTop: sp.sm },
+  grantButtonGradient: { paddingHorizontal: sp.xxl, paddingVertical: sp.md },
+  grantButtonText: { color: '#FFF', fontSize: fs.md2, fontWeight: '700' },
+  backLinkBtn: { marginTop: sp.xs },
+  backLinkText: { color: '#A8CD55', fontSize: fs.md },
 });

@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
@@ -80,14 +81,16 @@ import { TourProvider } from '../src/hooks/useTour';
 
 export default function RootLayout() {
   return (
-    <ThemeProvider value={CustomDarkTheme}>
-      <AuthProvider>
-        <TourProvider>
-          <RootLayoutNav />
-          <StatusBar style="light" />
-        </TourProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={CustomDarkTheme}>
+        <AuthProvider>
+          <TourProvider>
+            <RootLayoutNav />
+            <StatusBar style="light" />
+          </TourProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

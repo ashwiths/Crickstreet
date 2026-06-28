@@ -5,19 +5,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/src/services/firebase';
-
-const width = Math.min(Dimensions.get('window').width, 600);
+import { s, fs, sp, br, avatarSz, iconSz } from '../../src/theme/responsive';
 
 function SkeletonView({ style }: { style: any }) {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
@@ -58,16 +57,16 @@ const MAX_BAR_HEIGHT = 80;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: keyof typeof Feather.glyphMap }) {
+function StatCard({ label, value, icon, cardWidth }: { label: string; value: string | number; icon: keyof typeof Feather.glyphMap; cardWidth: number }) {
   return (
-    <View style={statStyles.card}>
+    <View style={[statStyles.card, { width: cardWidth }]}>
       <LinearGradient
         colors={['rgba(168,205,85,0.12)', 'rgba(227,168,91,0.06)']}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      <Feather name={icon} size={16} color="#A8CD55" />
+      <Feather name={icon} size={iconSz.sm} color="#A8CD55" />
       <Text style={statStyles.value}>{value}</Text>
       <Text style={statStyles.label}>{label}</Text>
     </View>
@@ -78,15 +77,17 @@ function AchievementBadge({
   label,
   icon,
   colors,
+  badgeWidth,
 }: {
   label: string;
   icon: keyof typeof Feather.glyphMap;
   colors: [string, string];
+  badgeWidth: number;
 }) {
   return (
-    <View style={badgeStyles.wrapper}>
+    <View style={[badgeStyles.wrapper, { width: badgeWidth }]}>
       <LinearGradient colors={colors} style={badgeStyles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-        <Feather name={icon} size={16} color="#FFF" />
+        <Feather name={icon} size={iconSz.sm} color="#FFF" />
       </LinearGradient>
       <Text style={badgeStyles.label}>{label}</Text>
     </View>
@@ -98,6 +99,11 @@ function AchievementBadge({
 export default function PlayerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
+  const containerWidth = Math.min(windowWidth, 600);
+  const cardWidth = (containerWidth - sp.lg * 2 - sp.md2) / 3;
+  const badgeWidth = (containerWidth - sp.lg * 2 - sp.md * 3) / 4;
+
   const [loading, setLoading] = useState(true);
   const [playerData, setPlayerData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +218,7 @@ export default function PlayerProfileScreen() {
             <SkeletonView style={{ width: 150, height: 20, borderRadius: 6, marginBottom: 14 }} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {Array.from({ length: 9 }).map((_, i) => (
-                <SkeletonView key={i} style={{ width: (width - 32 - 20) / 3, height: 74, borderRadius: 16 }} />
+                <SkeletonView key={i} style={{ width: cardWidth, height: 74, borderRadius: 16 }} />
               ))}
             </View>
           </ScrollView>
@@ -321,15 +327,15 @@ export default function PlayerProfileScreen() {
           <Animated.View style={[styles.section, statsStyle]}>
             <SectionTitle icon="bar-chart-2" title="Player Statistics" />
             <View style={styles.statsGrid}>
-              <StatCard label="Matches" value={player.totalMatches} icon="calendar" />
-              <StatCard label="Total Runs" value={player.totalRuns.toLocaleString()} icon="trending-up" />
-              <StatCard label="Wickets" value={player.totalWickets} icon="activity" />
-              <StatCard label="Highest Score" value={player.highestScore} icon="zap" />
-              <StatCard label="Win %" value={`${player.winPercentage}%`} icon="percent" />
-              <StatCard label="Matches Won" value={player.matchesWon} icon="check-circle" />
-              <StatCard label="MoM Awards" value={player.momAwards} icon="star" />
-              <StatCard label="Batting Avg" value={player.battingAverage} icon="target" />
-              <StatCard label="Strike Rate" value={player.strikeRate} icon="crosshair" />
+              <StatCard label="Matches" value={player.totalMatches} icon="calendar" cardWidth={cardWidth} />
+              <StatCard label="Total Runs" value={player.totalRuns.toLocaleString()} icon="trending-up" cardWidth={cardWidth} />
+              <StatCard label="Wickets" value={player.totalWickets} icon="activity" cardWidth={cardWidth} />
+              <StatCard label="Highest Score" value={player.highestScore} icon="zap" cardWidth={cardWidth} />
+              <StatCard label="Win %" value={`${player.winPercentage}%`} icon="percent" cardWidth={cardWidth} />
+              <StatCard label="Matches Won" value={player.matchesWon} icon="check-circle" cardWidth={cardWidth} />
+              <StatCard label="MoM Awards" value={player.momAwards} icon="star" cardWidth={cardWidth} />
+              <StatCard label="Batting Avg" value={player.battingAverage} icon="target" cardWidth={cardWidth} />
+              <StatCard label="Strike Rate" value={player.strikeRate} icon="crosshair" cardWidth={cardWidth} />
             </View>
           </Animated.View>
 
@@ -347,6 +353,7 @@ export default function PlayerProfileScreen() {
                       label={ach.label}
                       icon={ach.icon}
                       colors={ach.colors}
+                      badgeWidth={badgeWidth}
                     />
                   );
                 })
@@ -443,18 +450,18 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: {
     color: '#8A9BA8',
-    fontSize: 13,
+    fontSize: fs.sm,
     fontStyle: 'italic',
     textAlign: 'center',
     width: '100%',
-    paddingVertical: 12,
+    paddingVertical: sp.md,
   },
   errorCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 24,
-    padding: 32,
+    borderRadius: br.xxl,
+    padding: sp.xl,
     alignItems: 'center',
     width: '100%',
     shadowColor: '#000',
@@ -464,73 +471,73 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   errorTitle: {
-    fontSize: 22,
+    fontSize: fs.xl,
     fontWeight: '800',
     color: '#FFF',
-    marginBottom: 12,
+    marginBottom: sp.sm,
   },
   errorText: {
-    fontSize: 14,
+    fontSize: fs.md,
     color: '#8A9BA8',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: fs.md * 1.4,
+    marginBottom: sp.lg,
   },
   errorBtn: {
     width: '100%',
-    borderRadius: 14,
+    borderRadius: br.md,
     overflow: 'hidden',
   },
   errorBtnGradient: {
-    paddingVertical: 14,
+    paddingVertical: sp.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   errorBtnText: {
     color: '#0A1628',
-    fontSize: 15,
+    fontSize: fs.md,
     fontWeight: '800',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: sp.lg,
+    paddingVertical: sp.sm,
   },
   backBtn: {
-    width: 44, height: 44, borderRadius: 22,
+    width: avatarSz.md2, height: avatarSz.md2, borderRadius: avatarSz.md2 / 2,
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center', justifyContent: 'center',
   },
-  headerLabel: { color: '#FFF', fontSize: 16, fontWeight: '600' },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  headerLabel: { color: '#FFF', fontSize: fs.md, fontWeight: '600' },
+  scrollContent: { paddingHorizontal: sp.lg, paddingBottom: sp.lg },
 
   // Hero
   heroBanner: {
-    borderRadius: 24,
+    borderRadius: br.xxl,
     overflow: 'hidden',
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingVertical: sp.xl,
+    paddingHorizontal: sp.lg,
+    marginBottom: sp.lg,
     borderWidth: 1,
     borderColor: 'rgba(168,205,85,0.2)',
   },
   heroGradient: { ...StyleSheet.absoluteFillObject },
   decorCircle1: {
-    position: 'absolute', top: -60, right: -60,
-    width: 200, height: 200, borderRadius: 100,
+    position: 'absolute', top: -s(60), right: -s(60),
+    width: s(200), height: s(200), borderRadius: s(100),
     backgroundColor: 'rgba(168,205,85,0.07)',
   },
   decorCircle2: {
-    position: 'absolute', bottom: -40, left: -40,
-    width: 160, height: 160, borderRadius: 80,
+    position: 'absolute', bottom: -s(40), left: -s(40),
+    width: s(160), height: s(160), borderRadius: s(80),
     backgroundColor: 'rgba(227,168,91,0.07)',
   },
-  avatarContainer: { marginBottom: 16 },
+  avatarContainer: { marginBottom: sp.lg },
   avatarRing: {
-    width: 104, height: 104, borderRadius: 52,
+    width: s(104), height: s(104), borderRadius: s(52),
     padding: 3,
     shadowColor: '#A8CD55',
     shadowOffset: { width: 0, height: 0 },
@@ -538,63 +545,63 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
   },
-  avatar: { width: 98, height: 98, borderRadius: 49, backgroundColor: '#1A2332' },
+  avatar: { width: s(98), height: s(98), borderRadius: s(49), backgroundColor: '#1A2332' },
   playerName: {
     color: '#FFF',
-    fontSize: 26,
+    fontSize: fs.xl2,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 0.3,
-    marginBottom: 4,
+    marginBottom: sp.xs,
   },
   playerIdText: {
     color: '#8A9BA8',
-    fontSize: 13,
+    fontSize: fs.sm,
     fontWeight: '500',
-    marginBottom: 14,
+    marginBottom: sp.md,
   },
-  badgesRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  badgesRow: { flexDirection: 'row', gap: sp.sm, marginBottom: sp.lg },
   rankBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    gap: sp.xs,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.sm,
+    borderRadius: br.full,
   },
-  rankBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  rankBadgeText: { color: '#FFF', fontSize: fs.sm, fontWeight: '700' },
   communityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: br.lg,
+    paddingVertical: sp.md,
   },
-  commDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.12)' },
+  commDivider: { width: 1, height: s(32), backgroundColor: 'rgba(255,255,255,0.12)' },
   commStatItem: { flex: 1, alignItems: 'center' },
-  commStatValue: { color: '#FFF', fontSize: 20, fontWeight: '800' },
-  commStatLabel: { color: '#8A9BA8', fontSize: 11, marginTop: 2 },
+  commStatValue: { color: '#FFF', fontSize: fs.xl, fontWeight: '800' },
+  commStatLabel: { color: '#8A9BA8', fontSize: fs.sm, marginTop: 2 },
 
   // Sections
-  section: { marginBottom: 20 },
-  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  section: { marginBottom: sp.lg },
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: sp.sm2, marginBottom: sp.md },
   sectionIconBg: {
-    width: 28, height: 28, borderRadius: 8,
+    width: s(28), height: s(28), borderRadius: br.sm,
     alignItems: 'center', justifyContent: 'center',
   },
-  sectionTitleText: { color: '#FFF', fontSize: 17, fontWeight: '700' },
+  sectionTitleText: { color: '#FFF', fontSize: fs.md2, fontWeight: '700' },
 
   // Stats grid
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: sp.sm2 },
 
   // Glass card
   glassCard: {
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 20,
+    borderRadius: br.xl,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    padding: 16,
+    padding: sp.lg,
   },
 
   // Bar graph
@@ -602,43 +609,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-around',
-    height: MAX_BAR_HEIGHT + 50,
-    marginBottom: 12,
+    height: MAX_BAR_HEIGHT + s(50),
+    marginBottom: sp.md,
   },
-  barWrapper: { alignItems: 'center', gap: 4, flex: 1 },
-  barRunsLabel: { color: '#E8E8E8', fontSize: 11, fontWeight: '600' },
-  bar: { width: 28, borderRadius: 6, minHeight: 8 },
-  barMatchLabel: { color: '#8A9BA8', fontSize: 11 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { color: '#8A9BA8', fontSize: 12 },
-  winRatioText: { color: '#8A9BA8', fontSize: 12 },
+  barWrapper: { alignItems: 'center', gap: sp.xs, flex: 1 },
+  barRunsLabel: { color: '#E8E8E8', fontSize: fs.sm, fontWeight: '600' },
+  bar: { width: s(28), borderRadius: br.xs, minHeight: 8 },
+  barMatchLabel: { color: '#8A9BA8', fontSize: fs.sm },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: sp.md },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: sp.xs },
+  legendDot: { width: s(8), height: s(8), borderRadius: s(4) },
+  legendText: { color: '#8A9BA8', fontSize: fs.sm },
+  winRatioText: { color: '#8A9BA8', fontSize: fs.sm },
 
   // Achievements
-  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: sp.md },
 });
 
 const statStyles = StyleSheet.create({
   card: {
-    width: (width - 32 - 20) / 3,
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
+    borderRadius: br.lg,
     borderWidth: 1,
     borderColor: 'rgba(168,205,85,0.15)',
-    padding: 12,
+    padding: sp.sm,
     alignItems: 'center',
-    gap: 6,
+    gap: sp.xs,
     overflow: 'hidden',
   },
-  value: { color: '#FFF', fontSize: 18, fontWeight: '800' },
-  label: { color: '#8A9BA8', fontSize: 10, textAlign: 'center', lineHeight: 14 },
+  value: { color: '#FFF', fontSize: fs.md2, fontWeight: '800' },
+  label: { color: '#8A9BA8', fontSize: fs.sm, textAlign: 'center', lineHeight: fs.sm * 1.4 },
 });
 
 const badgeStyles = StyleSheet.create({
-  wrapper: { alignItems: 'center', gap: 8, width: (width - 32 - 36) / 4 },
+  wrapper: { alignItems: 'center', gap: sp.sm },
   gradient: {
-    width: 52, height: 52, borderRadius: 16,
+    width: s(52), height: s(52), borderRadius: br.lg,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -646,5 +652,5 @@ const badgeStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  label: { color: '#C0C8D4', fontSize: 10, textAlign: 'center', lineHeight: 13 },
+  label: { color: '#C0C8D4', fontSize: fs.sm, textAlign: 'center', lineHeight: fs.sm * 1.3 },
 });

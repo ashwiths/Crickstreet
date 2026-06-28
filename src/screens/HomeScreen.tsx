@@ -1106,6 +1106,41 @@ export default function HomeScreen() {
     return styles.settingLeft;
   };
 
+  const renderWhyCrickstreetSection = () => {
+    return (
+      <View style={{ marginTop: sp.md }}>
+        <View style={styles.whyCardContainer}>
+          <View style={styles.whyHeaderRow}>
+            <Text style={styles.whyHeaderEmoji}>🏏</Text>
+            <Text style={styles.whyHeaderTitle}>Why Crickstreet?</Text>
+          </View>
+          
+          <Text style={styles.whyBodyText}>
+            Crickstreet is your all-in-one cricket companion built for street cricket, practice matches, and tournaments.
+          </Text>
+          
+          <Text style={styles.whyBodyText}>
+            Track every match, score runs ball-by-ball, manage players and teams, analyze performance, and build your complete cricket history—all from one place.
+          </Text>
+          
+          <Text style={styles.whyBodyTextLast}>
+            Whether you&apos;re playing with friends or organizing tournaments, Crickstreet helps you score smarter and play better.
+          </Text>
+        </View>
+
+        <View style={styles.premiumFooter}>
+          <View style={styles.footerDivider} />
+          <Text style={styles.footerText}>Made with ❤️ by BlueLab Technologies</Text>
+          <Text style={styles.footerVersion}>Crickstreet Version 1.0.0</Text>
+          <Text style={[styles.footerText, { marginTop: sp.xs }]}>
+            © 2026 BlueLab Technologies. All Rights Reserved.
+          </Text>
+          <View style={[styles.footerDivider, { marginTop: sp.lg }]} />
+        </View>
+      </View>
+    );
+  };
+
   const renderEmptyState = () => {
     const headerGreeting = getGreeting();
     const displayName = user?.displayName || 'Player';
@@ -1205,7 +1240,9 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View style={{ height: 140 }} />
+          {renderWhyCrickstreetSection()}
+
+          <View style={{ height: s(140) }} />
         </ScrollView>
       </View>
     );
@@ -1504,8 +1541,9 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Spacer for bottom navigation */}
-        <View style={{ height: 140 }} />
+        {renderWhyCrickstreetSection()}
+
+        <View style={{ height: s(140) }} />
       </ScrollView>
     );
   };
@@ -4291,6 +4329,74 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     zIndex: 10,
+  },
+  whyCardContainer: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: br.xl,
+    padding: sp.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(89,199,73,0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  whyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: sp.md,
+  },
+  whyHeaderEmoji: {
+    fontSize: fs.xl,
+    marginRight: sp.sm,
+  },
+  whyHeaderTitle: {
+    fontSize: fs.md2,
+    fontWeight: '800',
+    color: '#1B3F14',
+    letterSpacing: 0.2,
+  },
+  whyBodyText: {
+    fontSize: fs.sm,
+    color: '#4B5563',
+    fontWeight: '500',
+    lineHeight: fs.sm * 1.5,
+    marginBottom: sp.sm,
+  },
+  whyBodyTextLast: {
+    fontSize: fs.sm,
+    color: '#4B5563',
+    fontWeight: '500',
+    lineHeight: fs.sm * 1.5,
+    marginBottom: 0,
+  },
+  premiumFooter: {
+    marginTop: sp.xl,
+    alignItems: 'center',
+    paddingHorizontal: sp.xl,
+  },
+  footerDivider: {
+    width: '60%',
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginBottom: sp.md,
+  },
+  footerText: {
+    fontSize: fs.xs,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: fs.xs * 1.6,
+  },
+  footerVersion: {
+    fontSize: fs.xxs,
+    color: '#D1D5DB',
+    fontWeight: '700',
+    marginTop: sp.xs,
+    letterSpacing: 0.5,
   },
 });
 

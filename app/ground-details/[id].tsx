@@ -6,11 +6,9 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   Image,
   Linking,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,12 +17,11 @@ import {
   useColorScheme,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../src/hooks/useAuth';
 import { db } from '../../src/services/firebase';
-
-const width = Math.min(Dimensions.get('window').width, 600);
+import { s, fs, sp, br, avatarSz, iconSz } from '../../src/theme/responsive';
 
 import GroundMapView from '../../src/components/GroundMapView';
 
@@ -289,12 +286,12 @@ export default function GroundDetailsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { paddingBottom: 60 },
+  scrollContent: { paddingBottom: s(60) },
   
   // Banner
   bannerContainer: {
     width: '100%',
-    height: 240,
+    height: s(240),
     backgroundColor: '#000',
     position: 'relative',
   },
@@ -305,150 +302,149 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     position: 'absolute',
-    top: 24,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    left: sp.lg,
+    width: avatarSz.md,
+    height: avatarSz.md,
+    borderRadius: avatarSz.md / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   // Content
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: sp.lg,
+    paddingTop: sp.lg,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: sp.md,
   },
   groundName: {
-    fontSize: 22,
+    fontSize: fs.xl,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: sp.xs,
   },
   cityName: {
-    fontSize: 13,
+    fontSize: fs.sm,
     fontWeight: '500',
   },
   typeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.xs,
+    borderRadius: br.sm,
   },
   typeBadgeText: {
-    fontSize: 10,
+    fontSize: fs.sm2,
     fontWeight: '800',
   },
 
   // Quick stats
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
+    gap: sp.sm,
+    marginBottom: sp.lg,
   },
   statBox: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingVertical: sp.md,
+    borderRadius: br.lg,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statVal: {
-    fontSize: 16,
+    fontSize: fs.md2,
     fontWeight: '800',
-    marginBottom: 2,
+    marginBottom: sp.xs,
   },
   statLbl: {
-    fontSize: 9,
+    fontSize: fs.xs,
     fontWeight: '600',
     letterSpacing: 0.3,
   },
 
   // Attributes card
   infoCard: {
-    padding: 16,
-    borderRadius: 20,
+    padding: sp.md3,
+    borderRadius: br.xxl,
     borderWidth: 1,
-    marginBottom: 24,
+    marginBottom: sp.xl,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   infoLabel: {
-    fontSize: 8,
+    fontSize: fs.xs,
     fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 4,
+    marginBottom: sp.xs,
   },
   infoVal: {
-    fontSize: 13,
+    fontSize: fs.md,
     fontWeight: '600',
   },
 
   // Map preview
   sectionTitle: {
-    fontSize: 16,
+    fontSize: fs.md2,
     fontWeight: '800',
-    marginBottom: 10,
+    marginBottom: sp.sm,
   },
   addressText: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 14,
+    fontSize: fs.sm,
+    lineHeight: fs.sm * 1.5,
+    marginBottom: sp.md,
   },
   mapContainer: {
     width: '100%',
-    height: 180,
-    borderRadius: 16,
+    height: s(180),
+    borderRadius: br.lg,
     borderWidth: 1,
     overflow: 'hidden',
     backgroundColor: '#151715',
-    marginBottom: 16,
+    marginBottom: sp.md,
   },
 
   // Directions
   dirBtn: {
-    borderRadius: 100,
+    borderRadius: br.full,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: sp.sm,
   },
   dirBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: sp.md,
   },
   dirBtnText: {
     color: '#050A08',
-    fontSize: 14,
+    fontSize: fs.md,
     fontWeight: '900',
   },
 
   // Reviews
   reviewsCard: {
-    borderRadius: 20,
+    borderRadius: br.xxl,
     borderWidth: 1,
-    padding: 24,
+    padding: sp.lg2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
+    marginTop: sp.xs,
   },
   noReviewsTitle: {
-    fontSize: 14,
+    fontSize: fs.md,
     fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: sp.xs,
+    marginBottom: sp.xs,
   },
   noReviewsDesc: {
-    fontSize: 11,
+    fontSize: fs.sm,
     textAlign: 'center',
-    lineHeight: 16,
-    paddingHorizontal: 12,
+    lineHeight: fs.sm * 1.4,
+    paddingHorizontal: sp.md,
   },
 });
