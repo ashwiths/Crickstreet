@@ -1191,6 +1191,18 @@ export default function HomeScreen() {
           {/* Header */}
           {renderHeader()}
 
+          {/* AI Search Bar */}
+          <Pressable
+            style={styles.aiSearchBarContainer}
+            onPress={() => router.push('/ai-chat')}
+          >
+            <Ionicons name="search" size={20} color="#8A8A8A" style={styles.aiSearchIcon} />
+            <Text style={styles.aiSearchPlaceholder}>Ask Crickstreet AI anything about cricket...</Text>
+            <View style={styles.aiSearchSparkle}>
+              <Ionicons name="sparkles" size={16} color="#A8CD55" />
+            </View>
+          </Pressable>
+
           {/* Welcome Illustration & Message */}
           <View style={styles.welcomeIllustrationCard}>
             <LinearGradient
@@ -1233,13 +1245,14 @@ export default function HomeScreen() {
               {[
                 { label: 'Create Team', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
                 { label: 'Add Ground', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
-                { label: 'Scan Player', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') }
+                { label: 'Scan Player', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') },
+                { label: 'AI Chat', icon: '✨', color: '#E5F2D9', onPress: () => router.push('/ai-chat') }
               ].map((action) => (
                 <TouchableOpacity
                   key={action.label}
                   activeOpacity={0.85}
                   onPress={action.onPress}
-                  style={[styles.quickActionCardCell, { width: '30%' }]}
+                  style={[styles.quickActionCardCell, { width: '23%' }]}
                 >
                   <View style={[styles.quickActionIconBg, { backgroundColor: action.color }]}>
                     <Text style={styles.quickActionEmoji}>{action.icon}</Text>
@@ -1273,6 +1286,18 @@ export default function HomeScreen() {
       >
         {/* Header */}
         {renderHeader()}
+
+        {/* AI Search Bar */}
+        <Pressable
+          style={styles.aiSearchBarContainer}
+          onPress={() => router.push('/ai-chat')}
+        >
+          <Ionicons name="search" size={20} color="#8A8A8A" style={styles.aiSearchIcon} />
+          <Text style={styles.aiSearchPlaceholder}>Ask Crickstreet AI anything about cricket...</Text>
+          <View style={styles.aiSearchSparkle}>
+            <Ionicons name="sparkles" size={16} color="#A8CD55" />
+          </View>
+        </Pressable>
 
         {/* Hero Section */}
         <View style={styles.dashHeroCardContainer}>
@@ -1362,9 +1387,9 @@ export default function HomeScreen() {
               { label: 'My Teams', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
               { label: 'Grounds', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
               { label: 'Scan QR', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') },
+              { label: 'AI Chat', icon: '✨', color: '#E5F2D9', onPress: () => router.push('/ai-chat') },
               { label: 'Tournament', icon: '🏆', color: '#F0F4EC', onPress: () => setActiveTab('tournament') },
-              { label: 'Match History', icon: '📊', color: '#FFF9E6', onPress: () => { setActiveTab('matches'); setMatchFilter('history'); } },
-              { label: 'Settings', icon: '⚙️', color: '#F0F4EC', onPress: () => router.push('/notification-settings') }
+              { label: 'Match History', icon: '📊', color: '#FFF9E6', onPress: () => { setActiveTab('matches'); setMatchFilter('history'); } }
             ].map((action) => (
               <TouchableOpacity
                 key={action.label}
