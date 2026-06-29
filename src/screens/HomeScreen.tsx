@@ -1176,13 +1176,146 @@ export default function HomeScreen() {
     );
   };
 
-  const renderEmptyState = () => {
-    const headerGreeting = getGreeting();
-    const displayName = user?.displayName || 'Player';
-    const avatarInitial = displayName.slice(0, 1).toUpperCase();
+  const renderQuickMatchCards = () => (
+    <View style={styles.quickMatchCardsRow}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.quickMatchCard}
+        onPress={() => router.push('/create-matches?flow=practice')}
+      >
+        <View style={styles.quickMatchIconCircle}>
+          <Text style={{ fontSize: 20 }}>🏏</Text>
+        </View>
+        <Text style={styles.quickMatchTitle}>Street Cricket</Text>
+        <Text style={styles.quickMatchDesc}>Solo or casual practice</Text>
+        <View style={styles.quickMatchBtn}>
+          <Text style={styles.quickMatchBtnText}>Start</Text>
+        </View>
+      </TouchableOpacity>
 
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.quickMatchCard}
+        onPress={() => router.push('/create-matches?flow=tournament')}
+      >
+        <View style={[styles.quickMatchIconCircle, { backgroundColor: '#FFF9E6' }]}>
+          <Text style={{ fontSize: 20 }}>🏆</Text>
+        </View>
+        <Text style={styles.quickMatchTitle}>Official Match</Text>
+        <Text style={styles.quickMatchDesc}>Create tournament/series</Text>
+        <View style={styles.quickMatchBtnOutline}>
+          <Text style={styles.quickMatchBtnOutlineText}>Create</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderQuickActionsGrid = () => (
+    <View style={styles.dashboardSection}>
+      <Text style={styles.dashboardSectionTitle}>QUICK ACTIONS</Text>
+      <View style={styles.quickActionsGridContainer}>
+        {[
+          { label: 'Create Team', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
+          { label: 'Add Ground', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
+          { label: 'Scan Player', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') },
+          { label: 'AI Chat', icon: '✨', color: '#E5F2D9', onPress: () => router.push('/ai-chat') }
+        ].map((action) => (
+          <TouchableOpacity
+            key={action.label}
+            activeOpacity={0.85}
+            onPress={action.onPress}
+            style={[styles.quickActionCardCell, { width: '23%' }]}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: action.color }]}>
+              <Text style={styles.quickActionEmoji}>{action.icon}</Text>
+            </View>
+            <Text style={styles.quickActionLabelText}>{action.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderDashboardSection = () => (
+    <View style={styles.dashboardSection}>
+      <Text style={styles.dashboardSectionTitle}>YOUR CRICKET JOURNEY STARTS HERE</Text>
+      <View style={styles.featuresCard}>
+        {[
+          { icon: '🏏', text: 'Ball-by-ball live scoring' },
+          { icon: '📊', text: 'Detailed player statistics' },
+          { icon: '👥', text: 'Team & player management' },
+          { icon: '🏆', text: 'Tournament management' },
+          { icon: '🤖', text: 'Cricket AI Assistant' },
+        ].map((feature, idx) => (
+          <View key={idx} style={styles.featureListItem}>
+            <View style={styles.featureIconCircle}>
+              <Text style={styles.featureIconEmoji}>{feature.icon}</Text>
+            </View>
+            <Text style={styles.featureListText}>{feature.text}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderRecentActivitySection = (empty: boolean) => (
+    <View style={styles.dashboardSection}>
+      <Text style={styles.dashboardSectionTitle}>RECENT ACTIVITY</Text>
+      {empty ? (
+        <View style={styles.emptyActivityCard}>
+          <Text style={styles.emptyActivityEmoji}>🕒</Text>
+          <Text style={styles.emptyActivityText}>No matches played yet. Start your first match to build your cricket history.</Text>
+        </View>
+      ) : (
+        <View style={styles.activitiesContainerCard}>
+          {recentActivities.length > 0 ? (
+            recentActivities.map((act, index) => (
+              <View key={index} style={styles.activityTimelineItem}>
+                <View style={styles.activityLeftLineCol}>
+                  <View style={styles.activityEmojiCircle}>
+                    <Text style={styles.activityEmojiText}>{act.emoji}</Text>
+                  </View>
+                  {index < recentActivities.length - 1 && (
+                    <View style={styles.activityConnectorLine} />
+                  )}
+                </View>
+                <View style={styles.activityTextContent}>
+                  <View style={styles.activityRowHeader}>
+                    <Text style={styles.activityItemTitle}>{act.title}</Text>
+                    <Text style={styles.activityItemTime}>
+                      {act.timestamp.toLocaleDateString([], {month: 'short', day: 'numeric'})}
+                    </Text>
+                  </View>
+                  <Text style={styles.activityItemDesc}>{act.desc}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+             <View style={styles.emptyActivitiesPlaceholder}>
+                <Feather name="bell-off" size={24} color="#8A8A8A" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivitiesTitle}>No recent activities yet</Text>
+                <Text style={styles.emptyActivitiesDesc}>
+                  Your activity feed will automatically populate as you play matches, register teams, and scan player cards.
+                </Text>
+              </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+
+  const renderPremiumFooter = () => (
+    <View style={styles.premiumFooterContainer}>
+      <Text style={styles.footerVersion}>Crickstreet v1.0</Text>
+      <Text style={styles.footerTagline}>Built for every street cricketer.</Text>
+      <Text style={styles.footerCopyright}>© 2026 Crickstreet. All rights reserved.</Text>
+      <View style={{ height: s(140) }} />
+    </View>
+  );
+
+  const renderEmptyState = () => {
     return (
-      <View style={styles.emptyContainerFull}>
+      <View style={[styles.emptyContainerFull, { backgroundColor: 'transparent' }]}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -1204,207 +1337,106 @@ export default function HomeScreen() {
           </Pressable>
 
           {/* Welcome Illustration & Message */}
-          <View style={styles.welcomeIllustrationCard}>
+          <View style={styles.welcomeIllustrationCardSmall}>
             <LinearGradient
               colors={['#E5F2D9', '#F9E5C8']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
             />
-            <Animated.View style={[styles.welcomeBatIconContainer, floatStyle]}>
-              <Text style={{ fontSize: 72 }}>🏏</Text>
-            </Animated.View>
-            <Text style={styles.welcomeTitleText}>Welcome to Crickstreet</Text>
-            <Text style={styles.welcomeSubtitleText}>
-              Start your first Practice Match or Tournament Match to begin your cricket journey.
-            </Text>
+            <Text style={styles.welcomeTitleTextSmall}>Welcome to Crickstreet</Text>
           </View>
 
-          {/* Buttons Stack directly below the illustration */}
-          <View style={styles.welcomeButtonsContainer}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.welcomeBtnSolid}
-              onPress={() => router.push('/create-matches?flow=practice')}
-            >
-              <Text style={styles.welcomeBtnSolidText}>🏏 Start Practice Match</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.welcomeBtnOutline}
-              onPress={() => router.push('/create-matches?flow=tournament')}
-            >
-              <Text style={styles.welcomeBtnOutlineText}>🏆 Start Tournament Match</Text>
-            </TouchableOpacity>
-          </View>
+          {/* New Side-by-side Quick Match Cards */}
+          {renderQuickMatchCards()}
 
-          {/* Setup checklist cards to help them set up */}
-          <View style={styles.dashboardSection}>
-            <Text style={styles.dashboardSectionTitle}>QUICK SETUP</Text>
-            <View style={styles.quickActionsGridContainer}>
-              {[
-                { label: 'Create Team', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
-                { label: 'Add Ground', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
-                { label: 'Scan Player', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') },
-                { label: 'AI Chat', icon: '✨', color: '#E5F2D9', onPress: () => router.push('/ai-chat') }
-              ].map((action) => (
-                <TouchableOpacity
-                  key={action.label}
-                  activeOpacity={0.85}
-                  onPress={action.onPress}
-                  style={[styles.quickActionCardCell, { width: '23%' }]}
-                >
-                  <View style={[styles.quickActionIconBg, { backgroundColor: action.color }]}>
-                    <Text style={styles.quickActionEmoji}>{action.icon}</Text>
-                  </View>
-                  <Text style={styles.quickActionLabelText}>{action.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          {/* Standardized Quick Actions */}
+          {renderQuickActionsGrid()}
 
-          {renderWhyCrickstreetSection()}
+          {/* Dashboard Feature Highlights */}
+          {renderDashboardSection()}
 
-          <View style={{ height: s(140) }} />
+          {/* Recent Activity */}
+          {renderRecentActivitySection(true)}
+
+          {/* Footer */}
+          {renderPremiumFooter()}
         </ScrollView>
       </View>
     );
   };
 
   const renderHomeTab = () => {
-    const headerGreeting = getGreeting();
-    const displayName = user?.displayName || 'Player';
-    const avatarInitial = displayName.slice(0, 1).toUpperCase();
     const unfinishedMatch = liveMatches[0] || null;
 
     return (
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces
-      >
-        {/* Header */}
-        {renderHeader()}
-
-        {/* AI Search Bar */}
-        <Pressable
-          style={styles.aiSearchBarContainer}
-          onPress={() => router.push('/ai-chat')}
+      <View style={[styles.emptyContainerFull, { backgroundColor: 'transparent' }]}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces
         >
-          <Ionicons name="search" size={20} color="#8A8A8A" style={styles.aiSearchIcon} />
-          <Text style={styles.aiSearchPlaceholder}>Ask Crickstreet AI anything about cricket...</Text>
-          <View style={styles.aiSearchSparkle}>
-            <Ionicons name="sparkles" size={16} color="#A8CD55" />
-          </View>
-        </Pressable>
+          {/* Header */}
+          {renderHeader()}
 
-        {/* Hero Section */}
-        <View style={styles.dashHeroCardContainer}>
-          <LinearGradient
-            colors={['#1B3F14', '#0E1E0B']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.dashHeroCardGradient}
+          {/* AI Search Bar */}
+          <Pressable
+            style={styles.aiSearchBarContainer}
+            onPress={() => router.push('/ai-chat')}
           >
-            <View style={styles.dashHeroDecoCircle1} />
-            <View style={styles.dashHeroDecoCircle2} />
-            
-            <View style={styles.dashHeroContent}>
-              <View style={styles.dashHeroBadgeRow}>
-                <View style={styles.dashHeroBadge}>
-                  <Text style={styles.dashHeroBadgeText}>🏏 CRICKSTREET PRO</Text>
-                </View>
-              </View>
-              <Text style={styles.dashHeroTitle}>Ready for Today&apos;s Match?</Text>
-              <Text style={styles.dashHeroSubtitle}>Start live scoring or setup tournament games instantly.</Text>
-              
-              <View style={styles.dashHeroButtonsRow}>
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={styles.dashHeroBtnSolid}
-                  onPress={() => router.push('/create-matches?flow=practice')}
-                >
-                  <Text style={styles.dashHeroBtnSolidText}>🏏 Practice Match</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={styles.dashHeroBtnOutline}
-                  onPress={() => router.push('/create-matches?flow=tournament')}
-                >
-                  <Text style={styles.dashHeroBtnOutlineText}>🏆 Tournament</Text>
-                </TouchableOpacity>
-              </View>
+            <Ionicons name="search" size={20} color="#8A8A8A" style={styles.aiSearchIcon} />
+            <Text style={styles.aiSearchPlaceholder}>Ask Crickstreet AI anything about cricket...</Text>
+            <View style={styles.aiSearchSparkle}>
+              <Ionicons name="sparkles" size={16} color="#A8CD55" />
             </View>
-          </LinearGradient>
-        </View>
+          </Pressable>
 
-        {/* Resume Match Card */}
-        {unfinishedMatch && (
-          <View style={styles.dashboardSection}>
-            <Text style={styles.dashboardSectionTitle}>CONTINUE SCORES</Text>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => router.push({ pathname: '/scorecard', params: { matchId: unfinishedMatch.id, myTeamName: unfinishedMatch.myTeamName, oppTeamName: unfinishedMatch.oppTeamName } })}
-              style={styles.continueMatchCard}
-            >
-              <View style={styles.continueMatchHeader}>
-                <View style={styles.liveIndicatorBadge}>
-                  <View style={styles.liveIndicatorDot} />
-                  <Text style={styles.liveIndicatorText}>LIVE</Text>
-                </View>
-                <Text style={styles.continueMatchTime}>{formatLastUpdated(unfinishedMatch.updatedAt || unfinishedMatch.createdAt)}</Text>
-              </View>
-              
-              <View style={styles.continueMatchTeamsRow}>
-                <View style={styles.continueMatchTeamCol}>
-                  <Text style={styles.continueMatchTeamName} numberOfLines={1}>{unfinishedMatch.myTeamName || 'My Team'}</Text>
-                  <Text style={styles.continueMatchTeamScore}>{unfinishedMatch.myScore || '0/0'}</Text>
-                </View>
-                <Text style={styles.continueMatchVsText}>vs</Text>
-                <View style={styles.continueMatchTeamCol}>
-                  <Text style={styles.continueMatchTeamName} numberOfLines={1}>{unfinishedMatch.oppTeamName || 'Opp Team'}</Text>
-                  <Text style={styles.continueMatchTeamScore}>{unfinishedMatch.oppScore || '0/0'}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.continueMatchFooter}>
-                <Text style={styles.continueMatchFormatText}>🏏 Format: {unfinishedMatch.format || 'Overs'}</Text>
-                <View style={styles.continueActionBtn}>
-                  <Text style={styles.continueActionBtnText}>Resume</Text>
-                  <Feather name="arrow-right" size={14} color="#FFF" />
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
+          {/* New Side-by-side Quick Match Cards */}
+          {renderQuickMatchCards()}
 
-        {/* Quick Actions Grid */}
-        <View style={styles.dashboardSection}>
-          <Text style={styles.dashboardSectionTitle}>QUICK ACTIONS</Text>
-          <View style={styles.quickActionsGridContainer}>
-            {[
-              { label: 'My Teams', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
-              { label: 'Grounds', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
-              { label: 'Scan QR', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') },
-              { label: 'AI Chat', icon: '✨', color: '#E5F2D9', onPress: () => router.push('/ai-chat') },
-              { label: 'Tournament', icon: '🏆', color: '#F0F4EC', onPress: () => setActiveTab('tournament') },
-              { label: 'Match History', icon: '📊', color: '#FFF9E6', onPress: () => { setActiveTab('matches'); setMatchFilter('history'); } }
-            ].map((action) => (
+          {/* Resume Match Card */}
+          {unfinishedMatch && (
+            <View style={styles.dashboardSection}>
+              <Text style={styles.dashboardSectionTitle}>CONTINUE SCORES</Text>
               <TouchableOpacity
-                key={action.label}
-                activeOpacity={0.85}
-                onPress={action.onPress}
-                style={styles.quickActionCardCell}
+                activeOpacity={0.9}
+                onPress={() => router.push({ pathname: '/scorecard', params: { matchId: unfinishedMatch.id, myTeamName: unfinishedMatch.myTeamName, oppTeamName: unfinishedMatch.oppTeamName } })}
+                style={styles.continueMatchCard}
               >
-                <View style={[styles.quickActionIconBg, { backgroundColor: action.color }]}>
-                  <Text style={styles.quickActionEmoji}>{action.icon}</Text>
+                <View style={styles.continueMatchHeader}>
+                  <View style={styles.liveIndicatorBadge}>
+                    <View style={styles.liveIndicatorDot} />
+                    <Text style={styles.liveIndicatorText}>LIVE</Text>
+                  </View>
+                  <Text style={styles.continueMatchTime}>{formatLastUpdated(unfinishedMatch.updatedAt || unfinishedMatch.createdAt)}</Text>
                 </View>
-                <Text style={styles.quickActionLabelText}>{action.label}</Text>
+                
+                <View style={styles.continueMatchTeamsRow}>
+                  <View style={styles.continueMatchTeamCol}>
+                    <Text style={styles.continueMatchTeamName} numberOfLines={1}>{unfinishedMatch.myTeamName || 'My Team'}</Text>
+                    <Text style={styles.continueMatchTeamScore}>{unfinishedMatch.myScore || '0/0'}</Text>
+                  </View>
+                  <Text style={styles.continueMatchVsText}>vs</Text>
+                  <View style={styles.continueMatchTeamCol}>
+                    <Text style={styles.continueMatchTeamName} numberOfLines={1}>{unfinishedMatch.oppTeamName || 'Opp Team'}</Text>
+                    <Text style={styles.continueMatchTeamScore}>{unfinishedMatch.oppScore || '0/0'}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.continueMatchFooter}>
+                  <Text style={styles.continueMatchFormatText}>🏏 Format: {unfinishedMatch.format || 'Overs'}</Text>
+                  <View style={styles.continueActionBtn}>
+                    <Text style={styles.continueActionBtnText}>Resume</Text>
+                    <Feather name="arrow-right" size={14} color="#FFF" />
+                  </View>
+                </View>
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+            </View>
+          )}
+
+          {/* Standardized Quick Actions Grid */}
+          {renderQuickActionsGrid()}
 
         {/* My Cricket Statistics Section */}
         <View style={styles.dashboardSection}>
@@ -1497,42 +1529,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Recent Activity Timeline */}
-        <View style={styles.dashboardSection}>
-          <Text style={styles.dashboardSectionTitle}>🕒 RECENT ACTIVITY</Text>
-          <View style={styles.activitiesContainerCard}>
-            {recentActivities.length > 0 ? (
-              recentActivities.map((act, index) => (
-                <View key={index} style={styles.activityTimelineItem}>
-                  <View style={styles.activityLeftLineCol}>
-                    <View style={styles.activityEmojiCircle}>
-                      <Text style={styles.activityEmojiText}>{act.emoji}</Text>
-                    </View>
-                    {index < recentActivities.length - 1 && (
-                      <View style={styles.activityConnectorLine} />
-                    )}
-                  </View>
-                  <View style={styles.activityTextContent}>
-                    <View style={styles.activityRowHeader}>
-                      <Text style={styles.activityItemTitle}>{act.title}</Text>
-                      <Text style={styles.activityItemTime}>
-                        {act.timestamp.toLocaleDateString([], {month: 'short', day: 'numeric'})}
-                      </Text>
-                    </View>
-                    <Text style={styles.activityItemDesc}>{act.desc}</Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyActivitiesPlaceholder}>
-                <Feather name="bell-off" size={24} color="#8A8A8A" style={{ marginBottom: 8 }} />
-                <Text style={styles.emptyActivitiesTitle}>No recent activities yet</Text>
-                <Text style={styles.emptyActivitiesDesc}>
-                  Your activity feed will automatically populate as you play matches, register teams, and scan player cards.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
+        {renderRecentActivitySection(false)}
 
         {/* Tip of the Day */}
         <View style={styles.dashboardSection}>
@@ -1551,15 +1548,15 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {renderWhyCrickstreetSection()}
-
-        <View style={{ height: s(140) }} />
+        {/* Footer */}
+        {renderPremiumFooter()}
       </ScrollView>
+    </View>
     );
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, activeTab === 'home' && { backgroundColor: '#F3F4F1' }]}>
       <StatusBar 
         barStyle={activeTab === 'home' ? 'dark-content' : 'light-content'} 
         backgroundColor={activeTab === 'home' ? 'transparent' : '#0A0D0A'} 
@@ -4411,9 +4408,9 @@ const styles = StyleSheet.create({
   aiSearchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#131713',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#E5E7EB',
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -4421,16 +4418,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.04,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 2,
   },
   aiSearchIcon: {
     marginRight: 10,
   },
   aiSearchPlaceholder: {
     flex: 1,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#8A8A8A',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -4438,10 +4435,163 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(168, 205, 85, 0.1)',
+    backgroundColor: '#F0F4EC',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 10,
   },
+  welcomeIllustrationCardSmall: {
+    marginHorizontal: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(89,199,73,0.15)',
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  welcomeTitleTextSmall: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1B3F14',
+    letterSpacing: 0.5,
+  },
+  quickMatchCardsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 20,
+  },
+  quickMatchCard: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  quickMatchIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E5F2D9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  quickMatchTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  quickMatchDesc: {
+    fontSize: 11,
+    color: '#8A8A8A',
+    marginBottom: 16,
+    lineHeight: 16,
+  },
+  quickMatchBtn: {
+    backgroundColor: '#4ADE80',
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  quickMatchBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  quickMatchBtnOutline: {
+    backgroundColor: '#FFF',
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  quickMatchBtnOutlineText: {
+    color: '#1A1A1A',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  featuresCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  featureListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  featureIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F7F8FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  featureIconEmoji: {
+    fontSize: 14,
+  },
+  featureListText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  emptyActivityCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  emptyActivityEmoji: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
+  emptyActivityText: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  premiumFooterContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  footerTagline: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  footerCopyright: {
+    fontSize: 11,
+    color: '#D1D5DB',
+    marginTop: 8,
+  },
 });
-
