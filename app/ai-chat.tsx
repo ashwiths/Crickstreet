@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 
 interface Message {
   id: string;
@@ -23,6 +24,20 @@ interface Message {
   isUser: boolean;
   isError?: boolean;
 }
+
+const getApiUrl = (path: string) => {
+  if (Platform.OS === 'web') return path;
+  
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return `${process.env.EXPO_PUBLIC_API_URL}${path}`;
+  }
+  
+  const debuggerHost = Constants.expoConfig?.hostUri;
+  if (!debuggerHost) {
+    return `http://localhost:8081${path}`;
+  }
+  return `http://${debuggerHost}${path}`;
+};
 
 const SUGGESTIONS = [
   "🏏 What is LBW?",
@@ -99,7 +114,7 @@ export default function AiChatScreen() {
 
     try {
       // In production, this uses the secure Expo API route that protects the GEMINI_API_KEY
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch(getApiUrl('/api/ai/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
