@@ -1324,18 +1324,6 @@ export default function HomeScreen() {
           {/* Header */}
           {renderHeader()}
 
-          {/* AI Search Bar */}
-          <Pressable
-            style={styles.aiSearchBarContainer}
-            onPress={() => router.push('/ai-chat')}
-          >
-            <Ionicons name="search" size={20} color="#8A8A8A" style={styles.aiSearchIcon} />
-            <Text style={styles.aiSearchPlaceholder}>Ask Crickstreet AI anything about cricket...</Text>
-            <View style={styles.aiSearchSparkle}>
-              <Ionicons name="sparkles" size={16} color="#A8CD55" />
-            </View>
-          </Pressable>
-
           {/* Welcome Illustration & Message */}
           <View style={styles.welcomeIllustrationCardSmall}>
             <LinearGradient
@@ -1379,18 +1367,6 @@ export default function HomeScreen() {
         >
           {/* Header */}
           {renderHeader()}
-
-          {/* AI Search Bar */}
-          <Pressable
-            style={styles.aiSearchBarContainer}
-            onPress={() => router.push('/ai-chat')}
-          >
-            <Ionicons name="search" size={20} color="#8A8A8A" style={styles.aiSearchIcon} />
-            <Text style={styles.aiSearchPlaceholder}>Ask Crickstreet AI anything about cricket...</Text>
-            <View style={styles.aiSearchSparkle}>
-              <Ionicons name="sparkles" size={16} color="#A8CD55" />
-            </View>
-          </Pressable>
 
           {/* New Side-by-side Quick Match Cards */}
           {renderQuickMatchCards()}
@@ -1586,6 +1562,15 @@ export default function HomeScreen() {
       {activeTab === 'tournament' && renderTournamentTab()}
       {activeTab === 'profile' && renderProfileTab()}
 
+      <Animated.View style={[styles.aiChatFab, floatStyle]}>
+        <TouchableOpacity
+          style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+          onPress={() => router.push('/ai-chat')}
+        >
+          <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
+
       {/* ═══════════════════════════════════════════
           FLOATING BOTTOM NAV (Redesigned)
       ═══════════════════════════════════════════ */}
@@ -1625,18 +1610,21 @@ export default function HomeScreen() {
 
           {/* Tab 3: Center FAB (Cricket Ball Image) */}
           <View style={styles.navCenter}>
-            <TourHighlight id="create-match">
-              <TouchableOpacity
-                style={styles.navCenterBtn}
-                onPress={() => router.push('/create-matches')}
-                activeOpacity={0.85}
-              >
-                <Image
-                  source={require('@/assets/images/cricket-ball.png')}
-                  style={styles.cricketBallImage}
-                />
-              </TouchableOpacity>
-            </TourHighlight>
+            <View style={styles.navCenterInner}>
+              <TourHighlight id="create-match">
+                <TouchableOpacity
+                  style={styles.navCenterBtn}
+                  onPress={() => router.push('/create-matches')}
+                  activeOpacity={0.85}
+                >
+                  <Image
+                    source={require('@/assets/images/cricket-ball.png')}
+                    style={styles.cricketBallImage}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </TourHighlight>
+            </View>
           </View>
 
           {/* Tab 4: Tournament */}
@@ -2086,6 +2074,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 28 : 16,
     paddingTop: 6,
     zIndex: 999,
+    overflow: 'visible',
   },
   navBar: {
     flexDirection: 'row',
@@ -2101,6 +2090,7 @@ const styles = StyleSheet.create({
     elevation: 10,
     borderWidth: 1.5,
     borderColor: 'rgba(89, 199, 73, 0.15)',
+    overflow: 'visible',
   },
   navItem: {
     flex: 1,
@@ -2109,6 +2099,7 @@ const styles = StyleSheet.create({
     gap: sp.px2,
     paddingVertical: sp.xs,
     position: 'relative',
+    overflow: 'visible',
   },
   navLabel: {
     fontSize: fs.xs,
@@ -2123,7 +2114,14 @@ const styles = StyleSheet.create({
     flex: 1.2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -s(28),
+  },
+  navCenterInner: {
+    position: 'absolute',
+    top: -s(28),
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    elevation: 20,
   },
   navCenterBtn: {
     width: s(60),
@@ -4405,40 +4403,22 @@ const styles = StyleSheet.create({
     marginTop: sp.xs,
     letterSpacing: 0.5,
   },
-  aiSearchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  aiSearchIcon: {
-    marginRight: 10,
-  },
-  aiSearchPlaceholder: {
-    flex: 1,
-    color: '#8A8A8A',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  aiSearchSparkle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F0F4EC',
+  aiChatFab: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 140 : 120,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 10,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 99,
   },
   welcomeIllustrationCardSmall: {
     marginHorizontal: 16,

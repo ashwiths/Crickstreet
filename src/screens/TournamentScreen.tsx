@@ -237,7 +237,7 @@ export default function TournamentScreen({
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 160 }]}
         >
           {/* Stats Cards 2x2 */}
           <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.statsGrid}>
@@ -525,14 +525,15 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: s(12),
+    justifyContent: 'space-between',
     marginBottom: sp.xl,
   },
   statCard: {
-    width: CARD_2COL,
+    width: '48%',
     backgroundColor: '#FFF',
     borderRadius: br.xxl,
     padding: sp.lg,
+    marginBottom: s(12),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,

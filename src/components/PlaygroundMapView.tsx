@@ -40,16 +40,21 @@ export default function PlaygroundMapView({
 
   const { latitude, longitude, longitudeDelta } = mapRegion;
 
-  // Sync camera position when mapRegion changes from parent component
+  const prevCoords = useRef({ lat: latitude, lng: longitude });
+
+  // Sync camera position only when latitude or longitude explicitly changes (not on every delta change)
   useEffect(() => {
     if (cameraRef.current && isMapLibreSupported) {
-      cameraRef.current.setCamera({
-        centerCoordinate: [longitude, latitude],
-        zoomLevel: Math.max(1, Math.min(19, Math.round(Math.log2(360 / (longitudeDelta || 0.0121))))),
-        animationDuration: 500,
-      });
+      if (prevCoords.current.lat !== latitude || prevCoords.current.lng !== longitude) {
+        prevCoords.current = { lat: latitude, lng: longitude };
+        cameraRef.current.setCamera({
+          centerCoordinate: [longitude, latitude],
+          zoomLevel: Math.max(1, Math.min(19, Math.round(Math.log2(360 / (longitudeDelta || 0.0121))))),
+          animationDuration: 500,
+        });
+      }
     }
-  }, [latitude, longitude, longitudeDelta]);
+  }, [latitude, longitude]);
 
   const handleRegionChange = (event: any) => {
     if (!onRegionChangeComplete) return;
@@ -79,7 +84,7 @@ export default function PlaygroundMapView({
 
   // Custom interactive MapLibre GL JS HTML used as WebView fallback for multi-marker layout
   const maplibreHtml = useMemo(() => {
-    const calculatedZoom = Math.max(1, Math.min(19, Math.round(Math.log2(360 / (longitudeDelta || 0.0121)))));
+    const calculatedZoom = 14; // Static zoom for WebView fallback to prevent reloading HTML on pan
     const activeLat = currentGroundCoords?.latitude ?? latitude;
     const activeLng = currentGroundCoords?.longitude ?? longitude;
     const prevLat = previousGroundCoords?.latitude ?? activeLat - 0.003;
@@ -185,7 +190,7 @@ export default function PlaygroundMapView({
       </body>
       </html>
     `.trim();
-  }, [latitude, longitude, longitudeDelta, currentGroundCoords, previousGroundCoords]);
+  }, [latitude, longitude, currentGroundCoords?.latitude, currentGroundCoords?.longitude, previousGroundCoords?.latitude, previousGroundCoords?.longitude]);
 
   // Fallback to web-based multi-marker rendering in WebView inside Expo Go
   if (!isMapLibreSupported || !MapLibreGL) {
