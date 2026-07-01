@@ -1608,24 +1608,8 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </TourHighlight>
 
-          {/* Tab 3: Center FAB (Cricket Ball Image) */}
-          <View style={styles.navCenter}>
-            <View style={styles.navCenterInner}>
-              <TourHighlight id="create-match">
-                <TouchableOpacity
-                  style={styles.navCenterBtn}
-                  onPress={() => router.push('/create-matches')}
-                  activeOpacity={0.85}
-                >
-                  <Image
-                    source={require('@/assets/images/cricket-ball.png')}
-                    style={styles.cricketBallImage}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              </TourHighlight>
-            </View>
-          </View>
+          {/* Tab 3: Center FAB Placeholder */}
+          <View style={styles.navCenter} />
 
           {/* Tab 4: Tournament */}
           <TourHighlight id="tournament-tab" style={{ flex: 1 }}>
@@ -1658,6 +1642,23 @@ export default function HomeScreen() {
               />
               <Text style={[styles.navLabel, activeTab === 'profile' && styles.navLabelActive]}>Profile</Text>
               {activeTab === 'profile' && <View style={styles.activeDot} />}
+            </TouchableOpacity>
+          </TourHighlight>
+        </View>
+
+        {/* Floating Action Button - Positioned absolutely outside navBar to prevent clipping */}
+        <View style={styles.absoluteFabWrapper} pointerEvents="box-none">
+          <TourHighlight id="create-match">
+            <TouchableOpacity
+              style={styles.navCenterBtn}
+              onPress={() => router.push('/create-matches')}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={require('@/assets/images/cricket-ball.png')}
+                style={styles.cricketBallImage}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </TourHighlight>
         </View>
@@ -2115,13 +2116,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navCenterInner: {
+  absoluteFabWrapper: {
     position: 'absolute',
-    top: -s(28),
+    left: '50%',
+    transform: [{ translateX: -s(30) }],
+    bottom: Platform.OS === 'ios' ? 40 : 25,
+    zIndex: 1000,
+    elevation: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
-    elevation: 20,
   },
   navCenterBtn: {
     width: s(60),
