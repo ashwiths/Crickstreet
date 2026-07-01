@@ -37,13 +37,17 @@ import { s, fs, sp, br, avatarSz, iconSz } from '../src/theme/responsive';
 const W = Math.min(s(375), 600);
 
 const C = {
-  hero:    '#0E110E',
+  hero:    '#1B3F14',
   green:   '#59C749',
+  greenDim:'rgba(89,199,73,0.15)',
+  milky:   '#FFFDF1',
+  navBg:   '#111510',
   white:   '#FFFFFF',
   black:   '#0A0A0A',
+  gray1:   '#F5F3E8',
+  gray2:   '#E8E4D4',
   gray3:   '#9CA3AF',
-  navBg:   '#111510',
-  milky:   '#FFFDF1',
+  gray4:   '#6B7280',
 } as const;
 
 // Steps for wizard
@@ -638,28 +642,36 @@ export default function CreateMatchesScreen() {
       }
     }
 
-    Alert.alert(
-      'Match Initiated 🏏',
-      `Match successfully created!\n${myTeamName} vs ${opponentDisplay} (${getFormatText()}, ${matchType}) at ${venueName}.`,
-      [
-        {
-          text: 'Start Scoring',
-          onPress: () => {
-            AsyncStorage.removeItem('@crickstreet:match_draft').catch(console.error);
-            router.replace({
-              pathname: '/scorecard',
-              params: {
-                myTeamName,
-                oppTeamName,
-                myPlayers: JSON.stringify(myPlayers),
-                oppPlayers: JSON.stringify(oppPlayers),
-                matchId: matchId,
-              },
-            });
+    const proceedToScorecard = () => {
+      AsyncStorage.removeItem('@crickstreet:match_draft').catch(console.error);
+      router.replace({
+        pathname: '/player-roles',
+        params: {
+          myTeamName,
+          oppTeamName,
+          myPlayers: JSON.stringify(myPlayers),
+          oppPlayers: JSON.stringify(oppPlayers),
+          matchId: matchId,
+          format,
+          customOvers: String(customOvers),
+        },
+      });
+    };
+
+    if (Platform.OS === 'web') {
+      proceedToScorecard();
+    } else {
+      Alert.alert(
+        'Match Initiated 🏏',
+        `Match successfully created!\n${myTeamName} vs ${opponentDisplay} (${getFormatText()}, ${matchType}) at ${venueName}.`,
+        [
+          {
+            text: 'Set Up Match →',
+            onPress: proceedToScorecard
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleSaveDraft = async () => {
@@ -1381,7 +1393,7 @@ export default function CreateMatchesScreen() {
 
     return (
       <View style={choiceStyles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#0A0D0A" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F5F3E8" />
 
         {/* ─── Background radial deco layers ─── */}
         <View style={choiceStyles.bgDeco1} />
@@ -1400,7 +1412,7 @@ export default function CreateMatchesScreen() {
             onPress={() => router.replace('/(tabs)')}
             activeOpacity={0.7}
           >
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
+            <Feather name="chevron-left" size={22} color="#0A0A0A" />
           </TouchableOpacity>
         </Animated.View>
 
@@ -1409,12 +1421,12 @@ export default function CreateMatchesScreen() {
           <Text style={choiceStyles.headerSubtitle}>Choose how you&apos;d like to start today&apos;s cricket match.</Text>
         </Animated.View>
 
-        {/* ─── First-time banner ─── */}
+                {/* First-time banner */}
         {!hasMatches && (
           <Animated.View style={[choiceStyles.firstTimeBanner, aBannerStyle]}>
             <Text style={choiceStyles.firstTimeBannerIcon}>💡</Text>
             <Text style={choiceStyles.firstTimeBannerText}>
-              New here? We recommend starting with a <Text style={{ fontWeight: '800', color: '#D4AF37' }}>Practice Match</Text>.
+              New here? We recommend starting with a <Text style={{ fontWeight: '800', color: '#B58B00' }}>Practice Match</Text>.
             </Text>
           </Animated.View>
         )}
@@ -1540,11 +1552,11 @@ export default function CreateMatchesScreen() {
             style={{ borderRadius: 18, overflow: 'hidden' }}
           >
             <LinearGradient
-              colors={hasSelection ? [C.green, '#D4AF37'] : ['#2A2F2A', '#2A2F2A']}
+              colors={hasSelection ? [C.green, '#D4AF37'] : ['#E8E4D4', '#E8E4D4']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={[choiceStyles.continueBtn, !hasSelection && choiceStyles.continueBtnDisabled]}
             >
-              <Text style={[choiceStyles.continueBtnText, !hasSelection && { color: 'rgba(255,255,255,0.35)' }]}>
+              <Text style={[choiceStyles.continueBtnText, !hasSelection && { color: '#9CA3AF' }]}>
                 {hasSelection
                   ? `Continue with ${selectedCard === 'practice' ? 'Practice' : 'Tournament'} Match`
                   : 'Select a Match Type to Continue'}
@@ -2408,7 +2420,7 @@ const styles = StyleSheet.create({
 const choiceStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0A0D0A',
+    backgroundColor: '#F5F3E8', // Light background
   },
   // Background deco radial layers
   bgDeco1: {
@@ -2416,7 +2428,7 @@ const choiceStyles = StyleSheet.create({
     width: W * 1.4,
     height: W * 1.4,
     borderRadius: W * 0.7,
-    backgroundColor: 'rgba(89, 199, 73, 0.03)',
+    backgroundColor: 'rgba(89, 199, 73, 0.08)',
     top: -W * 0.5,
     left: -W * 0.2,
   },
@@ -2425,7 +2437,7 @@ const choiceStyles = StyleSheet.create({
     width: W * 0.9,
     height: W * 0.9,
     borderRadius: W * 0.45,
-    backgroundColor: 'rgba(212, 175, 55, 0.02)',
+    backgroundColor: 'rgba(212, 175, 55, 0.05)',
     bottom: W * 0.1,
     right: -W * 0.25,
   },
@@ -2434,7 +2446,7 @@ const choiceStyles = StyleSheet.create({
     width: W * 0.5,
     height: W * 0.5,
     borderRadius: W * 0.25,
-    backgroundColor: 'rgba(255, 255, 255, 0.01)',
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
     bottom: -W * 0.1,
     left: W * 0.1,
   },
@@ -2460,21 +2472,26 @@ const choiceStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(0,0,0,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#0A0A0A',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+    color: '#6B7280',
     marginTop: 6,
     lineHeight: 20,
   },
@@ -2509,33 +2526,33 @@ const choiceStyles = StyleSheet.create({
   // Card
   card: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
     overflow: 'hidden',
   },
   cardSelectedPractice: {
     borderColor: '#59C749',
-    backgroundColor: 'rgba(89, 199, 73, 0.03)',
+    backgroundColor: 'rgba(89, 199, 73, 0.04)',
     shadowColor: '#59C749',
     shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 12,
+    elevation: 6,
   },
   cardSelectedTournament: {
     borderColor: '#D4AF37',
-    backgroundColor: 'rgba(212, 175, 55, 0.03)',
+    backgroundColor: 'rgba(212, 175, 55, 0.04)',
     shadowColor: '#D4AF37',
     shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 12,
+    elevation: 6,
   },
   // Badge row
   badgeRow: {
@@ -2593,7 +2610,7 @@ const choiceStyles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   // Card top row: icon + title/desc
   cardTopRow: {
@@ -2606,9 +2623,9 @@ const choiceStyles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#F5F3E8',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(0,0,0,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2626,13 +2643,13 @@ const choiceStyles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#0A0A0A',
     letterSpacing: -0.3,
     marginBottom: 4,
   },
   cardDesc: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
+    color: '#6B7280',
     lineHeight: 18,
   },
   // Feature chips
@@ -2648,17 +2665,17 @@ const choiceStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#F5F3E8',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   chipIcon: {
     fontSize: 12,
   },
   chipLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '700',
+    color: '#4B5563',
     letterSpacing: 0.1,
   },
   // Sticky bottom button
@@ -2669,9 +2686,9 @@ const choiceStyles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingTop: 16,
-    backgroundColor: 'rgba(10, 13, 10, 0.94)',
+    backgroundColor: 'rgba(245, 243, 232, 0.96)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: 'rgba(0,0,0,0.04)',
   },
   continueBtn: {
     height: 56,
