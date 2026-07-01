@@ -27,6 +27,7 @@ import { useAuth } from '../../src/hooks/useAuth';
 import { db, auth } from '../../src/services/firebase';
 import { useTour, TourHighlight } from '../../src/hooks/useTour';
 import { s, fs, sp, br, avatarSz, screen, isTablet as isTabletDevice, gridCardWidth } from '../../src/theme/responsive';
+import FloatingBottomNav from '../../src/components/FloatingBottomNav';
 
 const MODAL_WIDTH = isTabletDevice ? 420 : screen.width - sp.xxl * 2;
 
@@ -618,6 +619,7 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
         user={user}
         uid={uid}
       />
+      {!onBack && <FloatingBottomNav activeTab="profile" />}
     </View>
   );
 }

@@ -19,6 +19,7 @@ import ProfileScreen from '@/app/(tabs)/profile';
 import TournamentScreen from './TournamentScreen';
 import { useTour, TourHighlight } from '../hooks/useTour';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import FloatingBottomNav from '@/src/components/FloatingBottomNav';
 import {
   ActivityIndicator,
   Alert,
@@ -1574,95 +1575,7 @@ export default function HomeScreen() {
       {/* ═══════════════════════════════════════════
           FLOATING BOTTOM NAV (Redesigned)
       ═══════════════════════════════════════════ */}
-      <View style={styles.navOuter}>
-        <View style={styles.navBar}>
-          {/* Tab 1: Home */}
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('home')}
-            activeOpacity={0.75}
-          >
-            <Ionicons
-              name={activeTab === 'home' ? 'home' : 'home-outline'}
-              size={20}
-              color={activeTab === 'home' ? C.green : 'rgba(255,255,255,0.42)'}
-            />
-            <Text style={[styles.navLabel, activeTab === 'home' && styles.navLabelActive]}>Home</Text>
-            {activeTab === 'home' && <View style={styles.activeDot} />}
-          </TouchableOpacity>
-
-          {/* Tab 2: Matches */}
-          <TourHighlight id="matches-tab" style={{ flex: 1 }}>
-            <TouchableOpacity
-              style={[styles.navItem, { width: '100%' }]}
-              onPress={() => setActiveTab('matches')}
-              activeOpacity={0.75}
-            >
-              <MaterialCommunityIcons
-                name={activeTab === 'matches' ? 'scoreboard' : 'scoreboard-outline'}
-                size={20}
-                color={activeTab === 'matches' ? C.green : 'rgba(255,255,255,0.42)'}
-              />
-              <Text style={[styles.navLabel, activeTab === 'matches' && styles.navLabelActive]}>Matches</Text>
-              {activeTab === 'matches' && <View style={styles.activeDot} />}
-            </TouchableOpacity>
-          </TourHighlight>
-
-          {/* Tab 3: Center FAB Placeholder */}
-          <View style={styles.navCenter} />
-
-          {/* Tab 4: Tournament */}
-          <TourHighlight id="tournament-tab" style={{ flex: 1 }}>
-            <TouchableOpacity
-              style={[styles.navItem, { width: '100%' }]}
-              onPress={() => setActiveTab('tournament')}
-              activeOpacity={0.75}
-            >
-              <MaterialCommunityIcons
-                name={activeTab === 'tournament' ? 'trophy' : 'trophy-outline'}
-                size={20}
-                color={activeTab === 'tournament' ? C.green : 'rgba(255,255,255,0.42)'}
-              />
-              <Text style={[styles.navLabel, activeTab === 'tournament' && styles.navLabelActive]}>Tournament</Text>
-              {activeTab === 'tournament' && <View style={styles.activeDot} />}
-            </TouchableOpacity>
-          </TourHighlight>
-
-          {/* Tab 5: Profile */}
-          <TourHighlight id="profile-tab" style={{ flex: 1 }}>
-            <TouchableOpacity
-              style={[styles.navItem, { width: '100%' }]}
-              onPress={() => setActiveTab('profile')}
-              activeOpacity={0.75}
-            >
-              <MaterialCommunityIcons
-                name={activeTab === 'profile' ? 'account' : 'account-outline'}
-                size={20}
-                color={activeTab === 'profile' ? C.green : 'rgba(255,255,255,0.42)'}
-              />
-              <Text style={[styles.navLabel, activeTab === 'profile' && styles.navLabelActive]}>Profile</Text>
-              {activeTab === 'profile' && <View style={styles.activeDot} />}
-            </TouchableOpacity>
-          </TourHighlight>
-        </View>
-
-        {/* Floating Action Button - Positioned absolutely outside navBar to prevent clipping */}
-        <View style={styles.absoluteFabWrapper} pointerEvents="box-none">
-          <TourHighlight id="create-match">
-            <TouchableOpacity
-              style={styles.navCenterBtn}
-              onPress={() => router.push('/create-matches')}
-              activeOpacity={0.85}
-            >
-              <Image
-                source={require('@/assets/images/cricket-ball.png')}
-                style={styles.cricketBallImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </TourHighlight>
-        </View>
-      </View>
+      <FloatingBottomNav activeTab={activeTab} onTabPress={setActiveTab} />
     </View>
   );
 }
