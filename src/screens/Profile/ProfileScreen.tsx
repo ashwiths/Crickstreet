@@ -20,8 +20,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useAuth } from '../../hooks/useAuth';
 import { db, auth } from '../../services/firebase';
@@ -464,6 +465,90 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
     return () => unsubscribe();
   }, [user?.uid]);
 
+  const performClearCache = async () => {
+    if (!user?.uid) return;
+    try {
+      // 1. Clear local AsyncStorage draft cache
+      await AsyncStorage.removeItem('@crickstreet:match_draft');
+      
+      // 2. Fetch and delete all user matches from Firestore
+      const matchesRef = collection(db, 'users', user.uid, 'matches');
+      const matchesSnap = await getDocs(matchesRef);
+      const deleteMatchesPromises = matchesSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deleteMatchesPromises);
+
+      // 3. Fetch and delete all user teams from Firestore
+      const teamsRef = collection(db, 'users', user.uid, 'teams');
+      const teamsSnap = await getDocs(teamsRef);
+      const deleteTeamsPromises = teamsSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deleteTeamsPromises);
+
+      // 4. Fetch and delete all user grounds from Firestore
+      const groundsRef = collection(db, 'users', user.uid, 'grounds');
+      const groundsSnap = await getDocs(groundsRef);
+      const deleteGroundsPromises = groundsSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deleteGroundsPromises);
+
+      // 5. Fetch and delete all user players from Firestore
+      const playersRef = collection(db, 'users', user.uid, 'players');
+      const playersSnap = await getDocs(playersRef);
+      const deletePlayersPromises = playersSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePlayersPromises);
+
+      // 6. Reset stats in user profile document if any
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { stats: null }, { merge: true });
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert("All cache and database data has been successfully cleared.");
+      } else {
+        Alert.alert("Success", "All cache and database data has been successfully cleared.");
+      }
+    } catch (error) {
+      console.error("Error clearing cache:", error);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert("Failed to clear some data. Please check your connection and try again.");
+      } else {
+        Alert.alert("Error", "Failed to clear some data. Please check your connection and try again.");
+      }
+    }
+  };
+
+  const handleClearCache = () => {
+    console.log("Clear Cache clicked. User UID:", user?.uid);
+    if (!user?.uid) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert("Cannot clear cache: No authenticated user found.");
+      } else {
+        Alert.alert("Error", "Cannot clear cache: No authenticated user found.");
+      }
+      return;
+    }
+
+    const title = "Warning";
+    const message = "If you click this, your app data will be deleted and all the past matches will be deleted.";
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmDelete = window.confirm(`${title}\n\n${message}`);
+      if (confirmDelete) {
+        performClearCache();
+      }
+    } else {
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "OK",
+            style: "destructive",
+            onPress: performClearCache
+          }
+        ]
+      );
+    }
+  };
+
   const handleShareProfile = async () => {
     try {
       await Share.share({
@@ -587,6 +672,17 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
             <MenuItem icon="info" label="Help & Support" onPress={() => router.push('/support')} />
           </View>
 
+          {/* ── Clear Cache ── */}
+          <View style={styles.clearCacheContainer}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleClearCache}>
+              <View style={[styles.menuIconContainer, { backgroundColor: '#FFF9E6' }]}>
+                <Feather name="trash-2" size={20} color="#FF9F0A" />
+              </View>
+              <Text style={[styles.menuLabel, { color: '#FF9F0A' }]}>Clear Cache</Text>
+              <Feather name="chevron-right" size={20} color="#FF9F0A" style={styles.menuChevron} />
+            </TouchableOpacity>
+          </View>
+
           {/* ── Logout ── */}
           <View style={styles.logoutContainer}>
             <TouchableOpacity style={styles.menuItem} onPress={logout}>
@@ -699,6 +795,12 @@ const styles = StyleSheet.create({
   // Logout
   logoutContainer: {
     backgroundColor: '#FFF', borderRadius: br.xxl, paddingVertical: sp.sm,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
+  },
+  clearCacheContainer: {
+    backgroundColor: '#FFF', borderRadius: br.xxl, paddingVertical: sp.sm,
+    marginBottom: sp.lg,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
   },

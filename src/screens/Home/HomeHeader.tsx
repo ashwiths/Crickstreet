@@ -39,6 +39,7 @@ export default function HomeHeader({
         <View style={styles.headerGreetingCol}>
           <Text style={styles.headerGreetingLabel}>{getGreeting()},</Text>
           <Text style={styles.headerNameText} numberOfLines={1}>{displayName}</Text>
+          <Text style={styles.headerSubtitleText}>Score matches, register teams, and check stats 🏏</Text>
         </View>
         
         <TouchableOpacity 
@@ -109,6 +110,12 @@ const styles = StyleSheet.create({
     fontSize: fs.lg,
     fontWeight: '800',
     color: '#1A1A1A',
+  },
+  headerSubtitleText: {
+    fontSize: fs.xs - 1,
+    color: '#8A8A8A',
+    fontWeight: '500',
+    marginTop: 2,
   },
   headerNotificationBtn: {
     width: avatarSz.md,

@@ -72,11 +72,11 @@ export default function FloatingBottomNav({
             activeOpacity={0.75}
           >
             <MaterialCommunityIcons
-              name={activeTab === 'matches' ? 'scoreboard' : 'scoreboard-outline'}
+              name="chart-bar"
               size={20}
               color={activeTab === 'matches' ? C.green : 'rgba(255,255,255,0.42)'}
             />
-            <Text style={[styles.navLabel, activeTab === 'matches' && styles.navLabelActive]}>Matches</Text>
+            <Text style={[styles.navLabel, activeTab === 'matches' && styles.navLabelActive]}>Stats</Text>
             {activeTab === 'matches' && <View style={styles.activeDot} />}
           </TouchableOpacity>
         </TourHighlight>
@@ -92,11 +92,11 @@ export default function FloatingBottomNav({
             activeOpacity={0.75}
           >
             <MaterialCommunityIcons
-              name={activeTab === 'tournament' ? 'trophy' : 'trophy-outline'}
+              name="history"
               size={20}
               color={activeTab === 'tournament' ? C.green : 'rgba(255,255,255,0.42)'}
             />
-            <Text style={[styles.navLabel, activeTab === 'tournament' && styles.navLabelActive]}>Tournament</Text>
+            <Text style={[styles.navLabel, activeTab === 'tournament' && styles.navLabelActive]}>History</Text>
             {activeTab === 'tournament' && <View style={styles.activeDot} />}
           </TouchableOpacity>
         </TourHighlight>

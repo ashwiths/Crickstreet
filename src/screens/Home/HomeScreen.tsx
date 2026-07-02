@@ -5,8 +5,11 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -330,10 +333,128 @@ export default function HomeScreen() {
               setActiveTab={setActiveTab}
               getGreeting={getGreeting}
             />
-            <ActiveMatchCard />
+
+            {/* Welcome Banner */}
+            <View style={styles.welcomeBanner}>
+              <Text style={styles.welcomeTitle}>Welcome to Crickstreet! 👋</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Your local cricket companion. Score games, track squads, and ask our custom AI for tips & rules! ⚡
+              </Text>
+            </View>
+            
+            {unfinishedMatch ? (
+              <View style={styles.activeMatchStatusSection}>
+                <View style={styles.activeMatchStatusCard}>
+                  <View style={styles.activeMatchHeader}>
+                    <View style={styles.liveBadge}>
+                      <View style={styles.liveBadgeDot} />
+                      <Text style={styles.liveBadgeText}>ACTIVE</Text>
+                    </View>
+                    <Text style={styles.formatText}>🏏 {unfinishedMatch.format || 'Overs'}</Text>
+                  </View>
+
+                  <Text style={styles.activeMatchTitleText}>Match has been created</Text>
+                  <Text style={styles.activeMatchSubtitleText}>View details & keep score</Text>
+
+                  <View style={styles.activeMatchTeamsContainer}>
+                    <View style={styles.activeMatchTeamRow}>
+                      <Text style={styles.activeMatchTeamName} numberOfLines={1}>
+                        {unfinishedMatch.myTeamName || 'Storm XI'}
+                      </Text>
+                      <Text style={styles.activeMatchTeamScore}>
+                        {unfinishedMatch.myScore || '0/0'}
+                      </Text>
+                    </View>
+                    <View style={styles.activeMatchVsDivider}>
+                      <View style={styles.vsLine} />
+                      <Text style={styles.vsText}>VS</Text>
+                      <View style={styles.vsLine} />
+                    </View>
+                    <View style={styles.activeMatchTeamRow}>
+                      <Text style={styles.activeMatchTeamName} numberOfLines={1}>
+                        {unfinishedMatch.oppTeamName || 'Opponent'}
+                      </Text>
+                      <Text style={styles.activeMatchTeamScore}>
+                        {unfinishedMatch.oppScore || '0/0'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.getStartBtn}
+                    onPress={() => router.push({
+                      pathname: '/scorecard',
+                      params: {
+                        matchId: unfinishedMatch.id,
+                        myTeamName: unfinishedMatch.myTeamName,
+                        oppTeamName: unfinishedMatch.oppTeamName
+                      }
+                    })}
+                  >
+                    <Text style={styles.getStartBtnText}>Get Start</Text>
+                    <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.anotherMatchHeaderContainer}>
+                  <Text style={styles.anotherMatchSectionTitle}>Create new or another match</Text>
+                </View>
+                
+                <ActiveMatchCard />
+              </View>
+            ) : (
+              <ActiveMatchCard />
+            )}
+
+            {/* Always display the Features Overview Card */}
+            <View style={styles.featuresCard}>
+              <Text style={styles.featuresTitle}>What's in Crickstreet? 🏏</Text>
+              
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: '#F0F4EC' }]}>
+                  <Feather name="users" size={16} color="#2D5016" />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={styles.featureName}>Squad Management</Text>
+                  <Text style={styles.featureDesc}>Create teams, add local players, and share QR player cards.</Text>
+                </View>
+              </View>
+
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: '#FFF9E6' }]}>
+                  <Feather name="map-pin" size={16} color="#E3A85B" />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={styles.featureName}>Pitch & Ground Locator</Text>
+                  <Text style={styles.featureDesc}>Pin and save your local cricket pitches to pre-load map coordinates.</Text>
+                </View>
+              </View>
+
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: '#FFF0F0' }]}>
+                  <Feather name="bar-chart-2" size={16} color="#FF4D4D" />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={styles.featureName}>Advanced Statistics</Text>
+                  <Text style={styles.featureDesc}>Track individual player runs, bowling metrics, and run rates.</Text>
+                </View>
+              </View>
+
+              <View style={styles.featureItem}>
+                <View style={[styles.featureIconContainer, { backgroundColor: '#E5F2D9' }]}>
+                  <Feather name="message-square" size={16} color="#59C749" />
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={styles.featureName}>AI Cricket Assistant</Text>
+                  <Text style={styles.featureDesc}>Ask our AI chat bot for strategic suggestions and match rules.</Text>
+                </View>
+              </View>
+            </View>
           </ScrollView>
         )
       )}
+
 
       {activeTab === 'matches' && (
         <MatchesScreen
@@ -380,6 +501,227 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeMatchStatusSection: {
+    gap: sp.xs,
+  },
+  activeMatchStatusCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: br.xxl,
+    padding: sp.lg,
+    marginHorizontal: sp.lg,
+    shadowColor: 'rgba(0,0,0,0.06)',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E8E4D4',
+  },
+  activeMatchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: sp.md,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    borderWidth: 0.5,
+    borderColor: '#FF4D4D',
+    paddingHorizontal: sp.sm,
+    paddingVertical: sp.xs,
+    borderRadius: br.sm,
+  },
+  liveBadgeDot: {
+    width: s(6),
+    height: s(6),
+    borderRadius: s(3),
+    backgroundColor: '#FF4D4D',
+    marginRight: 6,
+  },
+  liveBadgeText: {
+    fontSize: fs.xxs,
+    fontWeight: '800',
+    color: '#FF4D4D',
+    letterSpacing: 0.5,
+  },
+  formatText: {
+    fontSize: fs.sm,
+    color: '#8A8A8A',
+    fontWeight: '700',
+  },
+  activeMatchTitleText: {
+    fontSize: fs.md2,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginTop: sp.xs,
+    marginBottom: sp.xs,
+  },
+  activeMatchSubtitleText: {
+    fontSize: fs.sm,
+    color: '#8A8A8A',
+    textAlign: 'center',
+    marginBottom: sp.lg,
+    lineHeight: fs.sm * 1.3,
+  },
+  activeMatchTeamsContainer: {
+    backgroundColor: '#F9F9F8',
+    borderRadius: br.lg,
+    padding: sp.md,
+    marginBottom: sp.xl,
+    borderWidth: 0.5,
+    borderColor: '#ECECE7',
+  },
+  activeMatchTeamRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  activeMatchTeamName: {
+    fontSize: fs.md,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    flex: 1,
+    marginRight: 10,
+  },
+  activeMatchTeamScore: {
+    fontSize: fs.md2,
+    fontWeight: '800',
+    color: '#2D5016',
+  },
+  activeMatchVsDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  vsLine: {
+    flex: 1,
+    height: 0.5,
+    backgroundColor: '#E0E0DB',
+  },
+  vsText: {
+    fontSize: fs.xs,
+    fontWeight: '800',
+    color: '#A8CD55',
+    marginHorizontal: 10,
+  },
+  getStartBtn: {
+    backgroundColor: '#59C749',
+    paddingVertical: 14,
+    borderRadius: br.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  getStartBtnText: {
+    fontSize: fs.md,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  anotherMatchHeaderContainer: {
+    marginTop: sp.md,
+    marginBottom: sp.xs,
+  },
+  anotherMatchSectionTitle: {
+    fontSize: fs.md,
+    fontWeight: '800',
+    color: '#8A8A8A',
+    paddingHorizontal: sp.lg,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  featuresCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: br.xxl,
+    padding: sp.lg,
+    marginHorizontal: sp.lg,
+    marginTop: sp.md,
+    borderWidth: 1,
+    borderColor: '#E8E4D4',
+    shadowColor: 'rgba(0,0,0,0.03)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  featuresTitle: {
+    fontSize: fs.md,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: sp.md,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.md,
+    marginVertical: 8,
+  },
+  featureIconContainer: {
+    width: s(36),
+    height: s(36),
+    borderRadius: br.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureTextContainer: {
+    flex: 1,
+  },
+  featureName: {
+    fontSize: fs.sm,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  featureDesc: {
+    fontSize: fs.xs,
+    color: '#8A8A8A',
+    lineHeight: fs.xs * 1.3,
+    marginTop: 2,
+  },
+  welcomeBanner: {
+    paddingHorizontal: sp.lg,
+    marginTop: sp.md,
+    marginBottom: sp.sm,
+  },
+  welcomeTitle: {
+    fontSize: fs.xl,
+    fontWeight: '900',
+    color: '#1A1A1A',
+    marginBottom: sp.xs,
+  },
+  welcomeSubtitle: {
+    fontSize: fs.sm,
+    color: '#6B7280',
+    lineHeight: fs.sm * 1.4,
+  },
+  floatingAiBtn: {
+    position: 'absolute',
+    bottom: 95,
+    right: sp.lg,
+    width: s(56),
+    height: s(56),
+    borderRadius: s(28),
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+    zIndex: 999,
+  },
+  floatingAiGradient: {
+    flex: 1,
+    borderRadius: s(28),
     alignItems: 'center',
     justifyContent: 'center',
   },
