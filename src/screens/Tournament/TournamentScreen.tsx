@@ -11,9 +11,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { s, fs, sp, br, iconSz, avatarSz, gridCardWidth } from '../theme/responsive';
-
-
+import { s, fs, sp, br, avatarSz, gridCardWidth } from '../../theme/responsive';
 
 interface TournamentScreenProps {
   onBack?: () => void;
@@ -29,7 +27,7 @@ export default function TournamentScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'all' | 'tournament' | 'practice' | 'won' | 'lost' | 'newest' | 'oldest'>('all');
-  // Map real matches if available
+
   const displayMatches = matches.length > 0 ? matches.map((m: any, index: number) => {
     let result = 'Draw';
     if (m.result) {
@@ -37,7 +35,6 @@ export default function TournamentScreen({
     } else if (m.winner) {
       result = m.winner === 'teamA' ? 'Won' : 'Lost';
     } else if (m.status === 'completed') {
-      // Basic fallback logic
       const scoreA = parseInt(m.myScore?.split('/')[0] || m.teamAScore || '0');
       const scoreB = parseInt(m.oppScore?.split('/')[0] || m.teamBScore || '0');
       if (scoreA > scoreB) result = 'Won';
@@ -80,10 +77,7 @@ export default function TournamentScreen({
     return true;
   });
 
-  // Sort if needed
-  if (filter === 'newest') {
-    // Already matches order by desc typically, but can sort
-  } else if (filter === 'oldest') {
+  if (filter === 'oldest') {
     filteredMatches.reverse();
   }
 
@@ -99,7 +93,6 @@ export default function TournamentScreen({
     return { bg: '#F5F5F5', text: '#8A8A8A' };
   };
 
-  // --- Real dynamic data calculations ---
   const totalMatches = displayMatches.length;
   const wins = displayMatches.filter((m) => m.result === 'Won').length;
   const losses = displayMatches.filter((m) => m.result === 'Lost').length;
@@ -133,7 +126,6 @@ export default function TournamentScreen({
     { emoji: '🥇', title: 'MVP Award', color: '#E3A85B', bg: '#FFF9E6', unlocked: wins >= 3 },
   ];
 
-  // Current Season calculations
   let highestScoreStr = 'N/A';
   let lowestScoreStr = 'N/A';
   let highestVal = 0;
@@ -170,7 +162,6 @@ export default function TournamentScreen({
     { label: 'Lowest', value: lowestScoreStr, hi: false },
   ];
 
-  // Group matches by month dynamically for graph
   const last6Months: Array<{ label: string; wins: number; losses: number }> = [];
   const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentDate = new Date();
@@ -206,7 +197,6 @@ export default function TournamentScreen({
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient */}
       <LinearGradient
         colors={['#E5F2D9', '#F9E5C8', '#F3F4F1']}
         locations={[0, 0.4, 0.8]}
@@ -216,7 +206,6 @@ export default function TournamentScreen({
       />
 
       <View style={styles.safeArea}>
-        {/* Header */}
         <Animated.View
           entering={FadeInDown.duration(400)}
           style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 8 : 16 }]}
@@ -255,8 +244,6 @@ export default function TournamentScreen({
               </Animated.View>
             ))}
           </Animated.View>
-
-
 
           {/* Section: Current Season */}
           <Animated.View entering={FadeInDown.delay(450).duration(400)}>
@@ -560,34 +547,6 @@ const styles = StyleSheet.create({
     color: '#8A8A8A',
     fontWeight: '500',
   },
-  filterScrollContainer: {
-    marginBottom: sp.lg,
-  },
-  filterChipsRow: {
-    gap: sp.sm,
-    paddingVertical: sp.xs,
-  },
-  filterChip: {
-    paddingHorizontal: sp.lg,
-    paddingVertical: sp.sm,
-    borderRadius: br.full,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  filterChipActive: {
-    backgroundColor: '#F0F4EC',
-    borderColor: '#A8CD55',
-  },
-  filterChipText: {
-    fontSize: fs.md,
-    fontWeight: '600',
-    color: '#8A8A8A',
-  },
-  filterChipTextActive: {
-    color: '#2D5016',
-    fontWeight: '700',
-  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -675,12 +634,6 @@ const styles = StyleSheet.create({
   vsScoreCol: {
     alignItems: 'center',
     paddingHorizontal: sp.sm,
-  },
-  vsText: {
-    fontSize: fs.base,
-    fontWeight: '800',
-    color: '#CCCCCC',
-    marginBottom: sp.px2,
   },
   vsSmall: {
     fontSize: fs.xs,
