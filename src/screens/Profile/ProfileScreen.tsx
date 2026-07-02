@@ -1,11 +1,14 @@
-  import { Feather } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { updateProfile } from 'firebase/auth';
+import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -18,17 +21,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { doc, onSnapshot, setDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAuth } from '../../hooks/useAuth';
-import { db, auth } from '../../services/firebase';
-import { useTour, TourHighlight } from '../../hooks/useTour';
-import { s, fs, sp, br, avatarSz, screen, isTablet as isTabletDevice } from '../../theme/responsive';
 import FloatingBottomNav from '../../components/FloatingBottomNav';
+import { useAuth } from '../../hooks/useAuth';
+import { TourHighlight, useTour } from '../../hooks/useTour';
+import { auth, db } from '../../services/firebase';
+import { avatarSz, br, fs, isTablet as isTabletDevice, s, screen, sp } from '../../theme/responsive';
 
 const MODAL_WIDTH = isTabletDevice ? 420 : screen.width - sp.xxl * 2;
 
@@ -82,16 +82,16 @@ function QRModal({
         message: `Check out my Crickstreet player profile! 🏏\n${qrValue}`,
         title: `${displayName}'s Cricket Profile`,
       });
-    } catch (_) {}
+    } catch (_) { }
   };
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.modalBackdrop}>
-        <TouchableOpacity 
-          style={StyleSheet.absoluteFillObject} 
-          activeOpacity={1} 
-          onPress={onClose} 
+        <TouchableOpacity
+          style={StyleSheet.absoluteFillObject}
+          activeOpacity={1}
+          onPress={onClose}
         />
         <Animated.View
           style={[styles.modalSheet, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}
@@ -275,10 +275,10 @@ function EditProfileModal({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalBackdrop}
       >
-        <TouchableOpacity 
-          style={StyleSheet.absoluteFillObject} 
-          activeOpacity={1} 
-          onPress={onClose} 
+        <TouchableOpacity
+          style={StyleSheet.absoluteFillObject}
+          activeOpacity={1}
+          onPress={onClose}
         />
         <View style={[styles.editProfileSheet, { maxHeight: '85%' }]} onStartShouldSetResponder={() => true}>
           {/* Modal Header */}
@@ -425,7 +425,7 @@ function EditProfileModal({
                 )}
               </LinearGradient>
             </TouchableOpacity>
-            
+
             <View style={{ height: 24 }} />
           </ScrollView>
         </View>
@@ -441,7 +441,7 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
   const router = useRouter();
   const { startTour } = useTour();
   const insets = useSafeAreaInsets();
-  
+
   const [qrVisible, setQrVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
@@ -470,7 +470,7 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
     try {
       // 1. Clear local AsyncStorage draft cache
       await AsyncStorage.removeItem('@crickstreet:match_draft');
-      
+
       // 2. Fetch and delete all user matches from Firestore
       const matchesRef = collection(db, 'users', user.uid, 'matches');
       const matchesSnap = await getDocs(matchesRef);
@@ -555,7 +555,7 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
         message: `Check out my Crickstreet player profile! 🏏\nhttps://crickstreet-890e7.web.app/player?id=${uid}`,
         title: `${displayName}'s Cricket Profile`,
       });
-    } catch (_) {}
+    } catch (_) { }
   };
 
   return (
@@ -580,8 +580,8 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]} 
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* ── Profile Card ── */}
@@ -663,6 +663,8 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
             <View style={styles.divider} />
             <MenuItem icon="map-pin" label="My Ground" onPress={() => router.push('/my-grounds')} />
             <View style={styles.divider} />
+            <MenuItem icon="smartphone" label="Step Counter" onPress={() => router.push('/step-counter')} />
+            <View style={styles.divider} />
             <TourHighlight id="notification-menu">
               <MenuItem icon="heart" label="Notification" onPress={() => router.push('/notification-settings' as any)} />
             </TourHighlight>
@@ -693,7 +695,7 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
               <Feather name="chevron-right" size={20} color="#FF4D4D" style={styles.menuChevron} />
             </TouchableOpacity>
           </View>
-              <View style={styles.bottomSpacer} />
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       </View>
       {/* ── QR Modal ── */}
