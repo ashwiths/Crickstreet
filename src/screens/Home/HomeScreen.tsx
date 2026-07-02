@@ -51,6 +51,8 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'matches' | 'tournament' | 'profile'>('home');
   const [draftAvailable, setDraftAvailable] = useState<boolean>(false);
   const [draftData, setDraftData] = useState<any>(null);
+  
+  const [tossChoice, setTossChoice] = useState<'bat' | 'bowl' | null>(null);
 
   const { user } = useAuth();
   const [matches, setMatches] = useState<any[]>([]);
@@ -301,17 +303,43 @@ export default function HomeScreen() {
 
   const unfinishedMatch = liveMatches[0] || null;
 
+  const isTossSelected = tossChoice !== null;
+
   const handleGetStarted = () => {
-    if (!unfinishedMatch) return;
+    if (!unfinishedMatch || !tossChoice) return;
+    
+    const myPlayers = unfinishedMatch.myPlayers || [];
+    const oppPlayers = unfinishedMatch.oppPlayers || [];
+
+    const initRoles = (players: string[]) => {
+      const r: Record<string, string> = {};
+      players.forEach((p) => { r[p] = 'Batter'; });
+      return r;
+    };
+    const myRoles = initRoles(myPlayers);
+    const oppRoles = initRoles(oppPlayers);
+
+    const battingFirst = tossChoice === 'bat' ? 'my' : 'opp';
+    const striker = battingFirst === 'my' ? (myPlayers[0] || '') : (oppPlayers[0] || '');
+    const nonStriker = battingFirst === 'my' ? (myPlayers[1] || '') : (oppPlayers[1] || '');
+    const openingBowler = battingFirst === 'my' ? (oppPlayers[0] || '') : (myPlayers[0] || '');
+
     router.push({
-      pathname: '/player-roles',
+      pathname: '/match-warning',
       params: {
-        matchId: unfinishedMatch.id,
         myTeamName: unfinishedMatch.myTeamName,
         oppTeamName: unfinishedMatch.oppTeamName,
-        myPlayers: JSON.stringify(unfinishedMatch.myPlayers || []),
-        oppPlayers: JSON.stringify(unfinishedMatch.oppPlayers || []),
+        myPlayers: JSON.stringify(myPlayers),
+        oppPlayers: JSON.stringify(oppPlayers),
+        myRoles: JSON.stringify(myRoles),
+        oppRoles: JSON.stringify(oppRoles),
+        battingFirst,
+        striker,
+        nonStriker,
+        openingBowler,
+        matchId: unfinishedMatch.id,
         format: unfinishedMatch.format || 'T20',
+        customOvers: String(unfinishedMatch.customOvers || '20'),
       }
     } as any);
   };
@@ -389,31 +417,56 @@ export default function HomeScreen() {
                     <Text style={styles.viewDetailsLinkTxt}>View Details</Text>
                   </TouchableOpacity>
  
-                  <View style={styles.activeMatchTeamsContainer}>
-                    <View style={styles.activeMatchTeamRow}>
-                      <Text style={styles.activeMatchTeamName} numberOfLines={1}>
-                        {unfinishedMatch.myTeamName || 'Storm XI'}
+
+                  {/* Choose to bat or bowl Selector */}
+                  <Text style={styles.tossSectionLabel}>Choose to?</Text>
+                  <View style={styles.tossButtonsRow}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={[
+                        styles.tossOptionBtn,
+                        tossChoice === 'bat' && styles.tossOptionBtnActive,
+                      ]}
+                      onPress={() => setTossChoice('bat')}
+                    >
+                      <Text style={[
+                        styles.tossOptionBtnTxt,
+                        tossChoice === 'bat' && styles.tossOptionBtnTxtActive
+                      ]}>
+                        🏏 Bat
                       </Text>
-                    </View>
-                    <View style={styles.activeMatchVsDivider}>
-                      <View style={styles.vsLine} />
-                      <Text style={styles.vsText}>VS</Text>
-                      <View style={styles.vsLine} />
-                    </View>
-                    <View style={styles.activeMatchTeamRow}>
-                      <Text style={styles.activeMatchTeamName} numberOfLines={1}>
-                        {unfinishedMatch.oppTeamName || 'Opponent'}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={[
+                        styles.tossOptionBtn,
+                        tossChoice === 'bowl' && styles.tossOptionBtnActive,
+                      ]}
+                      onPress={() => setTossChoice('bowl')}
+                    >
+                      <Text style={[
+                        styles.tossOptionBtnTxt,
+                        tossChoice === 'bowl' && styles.tossOptionBtnTxtActive
+                      ]}>
+                        ⚾ Bowl
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   </View>
 
                   <TouchableOpacity
-                    activeOpacity={0.85}
-                    style={styles.getStartBtn}
+                    activeOpacity={isTossSelected ? 0.85 : 1.0}
+                    disabled={!isTossSelected}
+                    style={[
+                      styles.getStartBtn,
+                      !isTossSelected && styles.getStartBtnDisabled
+                    ]}
                     onPress={handleGetStarted}
                   >
-                    <Text style={styles.getStartBtnText}>Get Start</Text>
-                    <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                    <Text style={[
+                      styles.getStartBtnText,
+                      !isTossSelected && styles.getStartBtnTextDisabled
+                    ]}>Get Start</Text>
+                    <Feather name="arrow-right" size={16} color={isTossSelected ? "#FFFFFF" : "rgba(0,0,0,0.25)"} style={{ marginLeft: 6 }} />
                   </TouchableOpacity>
                 </View>
 
@@ -592,10 +645,11 @@ const styles = StyleSheet.create({
   activeMatchTeamsContainer: {
     backgroundColor: '#F9F9F8',
     borderRadius: br.lg,
-    padding: sp.md,
-    marginBottom: sp.xl,
-    borderWidth: 0.5,
-    borderColor: '#ECECE7',
+    paddingVertical: sp.md,
+    paddingHorizontal: sp.lg,
+    marginBottom: sp.md,
+    borderWidth: 1,
+    borderColor: '#E8E4D4',
   },
   activeMatchTeamRow: {
     flexDirection: 'row',
@@ -665,36 +719,78 @@ const styles = StyleSheet.create({
     fontSize: fs.sm,
     fontWeight: '700',
   },
+  horizontalTeamsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.lg,
+    paddingVertical: sp.xs,
+  },
+  horizontalTeamName: {
+    fontSize: fs.md,
+    fontWeight: '900',
+    color: '#111827',
+    maxWidth: '42%',
+    textAlign: 'center',
+  },
+  horizontalVsText: {
+    fontSize: fs.sm,
+    fontWeight: '800',
+    color: '#59C749',
+    textTransform: 'lowercase',
+  },
+  vsBadge: {
+    width: s(30),
+    height: s(30),
+    borderRadius: s(15),
+    backgroundColor: 'rgba(89,199,73,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(89,199,73,0.2)',
+  },
+  vsBadgeText: {
+    fontSize: fs.xs - 1,
+    fontWeight: '900',
+    color: '#59C749',
+    textTransform: 'lowercase',
+  },
   tossSectionLabel: {
     fontSize: fs.xs,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#8A8A8A',
-    letterSpacing: 0.8,
+    letterSpacing: 1.0,
     textTransform: 'uppercase',
-    marginBottom: 6,
-    marginTop: 12,
+    marginBottom: 8,
+    marginTop: 18,
+    paddingHorizontal: 4,
   },
   tossButtonsRow: {
     flexDirection: 'row',
-    gap: sp.sm,
-    marginBottom: 4,
+    gap: sp.md,
+    marginBottom: 16,
   },
   tossOptionBtn: {
     flex: 1,
-    height: s(36),
-    borderRadius: br.md,
+    height: s(44),
+    borderRadius: br.lg,
     borderWidth: 1,
     borderColor: '#E8E4D4',
-    backgroundColor: '#F9F8F3',
+    backgroundColor: '#F9F9F8',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: 'rgba(0,0,0,0.02)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   tossOptionBtnActive: {
     backgroundColor: '#59C749',
     borderColor: '#59C749',
   },
   tossOptionBtnTxt: {
-    fontSize: fs.xs,
+    fontSize: fs.sm,
     fontWeight: '700',
     color: '#4B5563',
   },

@@ -58,8 +58,9 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create-matches" options={{ headerShown: false }} />
           <Stack.Screen name="scorecard" options={{ headerShown: false }} />
-          <Stack.Screen name="player-roles" options={{ headerShown: false }} />
           <Stack.Screen name="live-scoring" options={{ headerShown: false }} />
+          <Stack.Screen name="match-warning" options={{ headerShown: false }} />
+          <Stack.Screen name="rules-conditions" options={{ headerShown: false }} />
           <Stack.Screen name="my-teams" options={{ headerShown: false }} />
           <Stack.Screen name="team-details/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="my-players" options={{ headerShown: false }} />
