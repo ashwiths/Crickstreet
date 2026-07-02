@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+  import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';

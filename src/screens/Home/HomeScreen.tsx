@@ -20,10 +20,6 @@ import { s, vs, ms, fs, sp, br, avatarSz } from '../../theme/responsive';
 // Modular Screen Component Imports
 import HomeHeader from './HomeHeader';
 import ActiveMatchCard from './ActiveMatchCard';
-import ContinueScoreCard from './ContinueScoreCard';
-import QuickActions from './QuickActions';
-import StatisticsCard from './StatisticsCard';
-import EmptyMatchCard from './EmptyMatchCard';
 import MatchesScreen from '../Matches/MatchesScreen';
 import TournamentScreen from '../Tournament/TournamentScreen';
 import ProfileScreen from '../Profile/ProfileScreen';
@@ -326,42 +322,16 @@ export default function HomeScreen() {
             <ActivityIndicator size="large" color="#59C749" />
           </View>
         ) : (
-          matches.length === 0 ? (
-            <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-              <HomeHeader
-                user={user}
-                insets={insets}
-                pulseStyle={{ opacity: 1 }}
-                setActiveTab={setActiveTab}
-                getGreeting={getGreeting}
-              />
-              <EmptyMatchCard />
-              <ActiveMatchCard />
-              <QuickActions />
-            </ScrollView>
-          ) : (
-            <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} bounces>
-              <HomeHeader
-                user={user}
-                insets={insets}
-                pulseStyle={{ opacity: 1 }}
-                setActiveTab={setActiveTab}
-                getGreeting={getGreeting}
-              />
-              <ActiveMatchCard />
-              <ContinueScoreCard unfinishedMatch={unfinishedMatch} />
-              <QuickActions />
-              <StatisticsCard
-                totalMatchesCount={totalMatchesCount}
-                totalRunsCount={totalRunsCount}
-                totalWicketsCount={totalWicketsCount}
-                winRatePct={winRatePct}
-                dashboardAchievements={dashboardAchievements}
-                recentActivities={recentActivities}
-                tipOfTheDay={tipOfTheDay}
-              />
-            </ScrollView>
-          )
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <HomeHeader
+              user={user}
+              insets={insets}
+              pulseStyle={{ opacity: 1 }}
+              setActiveTab={setActiveTab}
+              getGreeting={getGreeting}
+            />
+            <ActiveMatchCard />
+          </ScrollView>
         )
       )}
 

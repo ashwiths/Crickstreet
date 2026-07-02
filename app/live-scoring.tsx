@@ -226,7 +226,7 @@ export default function LiveScoringScreen() {
 
   // Celebration
   const [celeb, setCeleb] = useState<null | '4' | '6' | 'W' | '50' | '100'>(null);
-  const celebRef = useRef<ReturnType<typeof setTimeout>>();
+  const celebRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Tab
   const [activeTab, setActiveTab] = useState(0);
