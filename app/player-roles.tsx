@@ -47,6 +47,7 @@ export default function PlayerRolesScreen() {
     matchId?: string;
     format?: string;
     customOvers?: string;
+    battingFirst?: string;
   }>();
 
   const myTeamName = params.myTeamName || 'My Team';
@@ -66,10 +67,11 @@ export default function PlayerRolesScreen() {
 
   const [myRoles, setMyRoles] = useState<Record<string, PlayerRole>>(initRoles(myPlayers));
   const [oppRoles, setOppRoles] = useState<Record<string, PlayerRole>>(initRoles(oppPlayers));
-  const [battingFirst, setBattingFirst] = useState<'my' | 'opp'>('my');
-  const [striker, setStriker] = useState<string>(myPlayers[0] || '');
-  const [nonStriker, setNonStriker] = useState<string>(myPlayers[1] || '');
-  const [openingBowler, setOpeningBowler] = useState<string>(oppPlayers[0] || '');
+  const initialBattingFirst = params.battingFirst === 'opp' ? 'opp' : 'my';
+  const [battingFirst, setBattingFirst] = useState<'my' | 'opp'>(initialBattingFirst);
+  const [striker, setStriker] = useState<string>(initialBattingFirst === 'my' ? (myPlayers[0] || '') : (oppPlayers[0] || ''));
+  const [nonStriker, setNonStriker] = useState<string>(initialBattingFirst === 'my' ? (myPlayers[1] || '') : (oppPlayers[1] || ''));
+  const [openingBowler, setOpeningBowler] = useState<string>(initialBattingFirst === 'my' ? (oppPlayers[0] || '') : (myPlayers[0] || ''));
 
   const battingPlayers = battingFirst === 'my' ? myPlayers : oppPlayers;
   const fieldingPlayers = battingFirst === 'my' ? oppPlayers : myPlayers;

@@ -301,6 +301,21 @@ export default function HomeScreen() {
 
   const unfinishedMatch = liveMatches[0] || null;
 
+  const handleGetStarted = () => {
+    if (!unfinishedMatch) return;
+    router.push({
+      pathname: '/player-roles',
+      params: {
+        matchId: unfinishedMatch.id,
+        myTeamName: unfinishedMatch.myTeamName,
+        oppTeamName: unfinishedMatch.oppTeamName,
+        myPlayers: JSON.stringify(unfinishedMatch.myPlayers || []),
+        oppPlayers: JSON.stringify(unfinishedMatch.oppPlayers || []),
+        format: unfinishedMatch.format || 'T20',
+      }
+    } as any);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar 
@@ -356,13 +371,28 @@ export default function HomeScreen() {
                   <Text style={styles.activeMatchTitleText}>Match has been created</Text>
                   <Text style={styles.activeMatchSubtitleText}>View details & keep score</Text>
 
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      const matchingTeam = teams.find((t: any) => t.teamName === unfinishedMatch.myTeamName);
+                      if (matchingTeam) {
+                        router.push(`/team-details/${matchingTeam.id}` as any);
+                      } else {
+                        Alert.alert('No Squad Linked', 'This team is not in your registered squads list. Go to My Teams to create it?', [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Go to Teams', onPress: () => router.push('/my-teams' as any) }
+                        ]);
+                      }
+                    }}
+                    style={{ marginTop: 2, marginBottom: 8, alignSelf: 'center' }}
+                  >
+                    <Text style={styles.viewDetailsLinkTxt}>View Details</Text>
+                  </TouchableOpacity>
+ 
                   <View style={styles.activeMatchTeamsContainer}>
                     <View style={styles.activeMatchTeamRow}>
                       <Text style={styles.activeMatchTeamName} numberOfLines={1}>
                         {unfinishedMatch.myTeamName || 'Storm XI'}
-                      </Text>
-                      <Text style={styles.activeMatchTeamScore}>
-                        {unfinishedMatch.myScore || '0/0'}
                       </Text>
                     </View>
                     <View style={styles.activeMatchVsDivider}>
@@ -374,23 +404,13 @@ export default function HomeScreen() {
                       <Text style={styles.activeMatchTeamName} numberOfLines={1}>
                         {unfinishedMatch.oppTeamName || 'Opponent'}
                       </Text>
-                      <Text style={styles.activeMatchTeamScore}>
-                        {unfinishedMatch.oppScore || '0/0'}
-                      </Text>
                     </View>
                   </View>
 
                   <TouchableOpacity
                     activeOpacity={0.85}
                     style={styles.getStartBtn}
-                    onPress={() => router.push({
-                      pathname: '/scorecard',
-                      params: {
-                        matchId: unfinishedMatch.id,
-                        myTeamName: unfinishedMatch.myTeamName,
-                        oppTeamName: unfinishedMatch.oppTeamName
-                      }
-                    })}
+                    onPress={handleGetStarted}
                   >
                     <Text style={styles.getStartBtnText}>Get Start</Text>
                     <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
@@ -625,10 +645,62 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  getStartBtnDisabled: {
+    backgroundColor: 'rgba(89,199,73,0.15)',
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   getStartBtnText: {
     fontSize: fs.md,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  getStartBtnTextDisabled: {
+    color: 'rgba(0,0,0,0.25)',
+  },
+  viewDetailsLinkTxt: {
+    textDecorationLine: 'underline',
+    color: '#59C749',
+    fontSize: fs.sm,
+    fontWeight: '700',
+  },
+  tossSectionLabel: {
+    fontSize: fs.xs,
+    fontWeight: '800',
+    color: '#8A8A8A',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  tossButtonsRow: {
+    flexDirection: 'row',
+    gap: sp.sm,
+    marginBottom: 4,
+  },
+  tossOptionBtn: {
+    flex: 1,
+    height: s(36),
+    borderRadius: br.md,
+    borderWidth: 1,
+    borderColor: '#E8E4D4',
+    backgroundColor: '#F9F8F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tossOptionBtnActive: {
+    backgroundColor: '#59C749',
+    borderColor: '#59C749',
+  },
+  tossOptionBtnTxt: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  tossOptionBtnTxtActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   anotherMatchHeaderContainer: {
     marginTop: sp.md,

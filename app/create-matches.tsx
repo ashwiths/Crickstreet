@@ -173,6 +173,33 @@ export default function CreateMatchesScreen() {
   }, [user]);
 
   // ─── STEP 1: TEAMS STATE ───────────────────────────────────────────────────
+  const [dbTeams, setDbTeams] = useState<any[]>([]);
+  const [myTeamId, setMyTeamId] = useState('');
+  const [oppTeamId, setOppTeamId] = useState('');
+
+  // Load saved squads from Firestore
+  useEffect(() => {
+    if (!user) return;
+    const colRef = collection(db, 'users', user.uid, 'teams');
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      const fetched: any[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        fetched.push({
+          id: docSnap.id,
+          teamName: data.teamName || 'Unnamed Team',
+          captainId: data.captainId || '',
+          viceCaptainId: data.viceCaptainId || '',
+          players: data.players || [],
+        });
+      });
+      setDbTeams(fetched);
+    }, (error) => {
+      console.error('Error listening to saved teams:', error);
+    });
+    return unsubscribe;
+  }, [user]);
+
   const [myTeamName, setMyTeamName] = useState('');
   const [myCaptain, setMyCaptain] = useState('');
   const [myViceCaptain, setMyViceCaptain] = useState('');
@@ -635,6 +662,8 @@ export default function CreateMatchesScreen() {
           statusText: 'Match started',
           myPlayers: myPlayers,
           oppPlayers: oppPlayers,
+          myTeamId: myTeamId || null,
+          oppTeamId: oppTeamId || null,
         });
         matchId = docRef.id;
       } catch (err) {
@@ -644,18 +673,7 @@ export default function CreateMatchesScreen() {
 
     const proceedToScorecard = () => {
       AsyncStorage.removeItem('@crickstreet:match_draft').catch(console.error);
-      router.replace({
-        pathname: '/player-roles',
-        params: {
-          myTeamName,
-          oppTeamName,
-          myPlayers: JSON.stringify(myPlayers),
-          oppPlayers: JSON.stringify(oppPlayers),
-          matchId: matchId,
-          format,
-          customOvers: String(customOvers),
-        },
-      });
+      router.replace('/');
     };
 
     if (Platform.OS === 'web') {
@@ -791,6 +809,58 @@ export default function CreateMatchesScreen() {
         <View style={styles.glassCard}>
           <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-check-outline" size={18} color={C.green} /> MY TEAM</Text>
           
+          {dbTeams.length > 0 && (
+            <View style={{ marginBottom: sp.md, marginTop: sp.xs }}>
+              <Text style={styles.inputLabel}>QUICK LOAD SQUAD</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: sp.sm, paddingVertical: 2 }}
+              >
+                {dbTeams.map((team) => {
+                  const isSelected = myTeamName === team.teamName;
+                  return (
+                    <TouchableOpacity
+                      key={team.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setMyTeamName(team.teamName);
+                        setMyTeamId(team.id);
+                        
+                        const cap = team.players.find((p: any) => p.id === team.captainId);
+                        setMyCaptain(cap ? cap.name : '');
+                        
+                        const vc = team.players.find((p: any) => p.id === team.viceCaptainId);
+                        setMyViceCaptain(vc ? vc.name : '');
+                        
+                        const pNames = team.players.map((p: any) => p.name || 'Unnamed Player');
+                        setMyPlayers(pNames);
+                        
+                        setShowMyXI(true);
+                      }}
+                      style={[
+                        styles.quickTeamChip,
+                        isSelected && styles.quickTeamChipActive
+                      ]}
+                    >
+                      <MaterialCommunityIcons 
+                        name="shield" 
+                        size={14} 
+                        color={isSelected ? '#0A0D0A' : C.green} 
+                      />
+                      <Text style={[
+                        styles.quickTeamChipTxt,
+                        isSelected && styles.quickTeamChipTxtActive
+                      ]}>
+                        {team.teamName} ({team.players.length})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
           <Text style={styles.inputLabel}>TEAM NAME</Text>
           <TextInput
             style={styles.textInput}
@@ -901,6 +971,58 @@ export default function CreateMatchesScreen() {
           <View style={[styles.glassCard, { marginTop: 16 }]}>
             <Text style={styles.cardHeaderTitle}><MaterialCommunityIcons name="shield-outline" size={18} color={C.green} /> OPPONENT TEAM</Text>
             
+            {dbTeams.length > 0 && (
+              <View style={{ marginBottom: sp.md, marginTop: sp.xs }}>
+                <Text style={styles.inputLabel}>QUICK LOAD SQUAD</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: sp.sm, paddingVertical: 2 }}
+                >
+                  {dbTeams.map((team) => {
+                    const isSelected = oppTeamName === team.teamName;
+                    return (
+                      <TouchableOpacity
+                        key={team.id}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setOppTeamName(team.teamName);
+                          setOppTeamId(team.id);
+                          
+                          const cap = team.players.find((p: any) => p.id === team.captainId);
+                          setOppCaptain(cap ? cap.name : '');
+                          
+                          const vc = team.players.find((p: any) => p.id === team.viceCaptainId);
+                          setOppViceCaptain(vc ? vc.name : '');
+                          
+                          const pNames = team.players.map((p: any) => p.name || 'Unnamed Player');
+                          setOppPlayers(pNames);
+                          
+                          setShowOppXI(true);
+                        }}
+                        style={[
+                          styles.quickTeamChip,
+                          isSelected && styles.quickTeamChipActive
+                        ]}
+                      >
+                        <MaterialCommunityIcons 
+                          name="shield" 
+                          size={14} 
+                          color={isSelected ? '#0A0D0A' : C.green} 
+                        />
+                        <Text style={[
+                          styles.quickTeamChipTxt,
+                          isSelected && styles.quickTeamChipTxtActive
+                        ]}>
+                          {team.teamName} ({team.players.length})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
             <Text style={styles.inputLabel}>TEAM NAME</Text>
             <TextInput
               style={styles.textInput}
@@ -1343,11 +1465,7 @@ export default function CreateMatchesScreen() {
           
           <View style={{ gap: 12, marginTop: 8 }}>
             <TouchableOpacity style={styles.startScoringBtn} onPress={handleStartScoring}>
-              <Text style={styles.startScoringBtnTxt}>Start Scoring Live</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.saveDraftBtn} onPress={handleSaveDraft}>
-              <Text style={styles.saveDraftBtnTxt}>Save Draft</Text>
+              <Text style={styles.startScoringBtnTxt}>Create</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
@@ -1637,6 +1755,29 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#0A0D0A',
+  },
+  quickTeamChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.xs,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.xs,
+    borderRadius: br.full,
+    borderWidth: 1,
+    borderColor: 'rgba(89,199,73,0.3)',
+    backgroundColor: 'rgba(89,199,73,0.05)',
+  },
+  quickTeamChipActive: {
+    backgroundColor: '#59C749',
+    borderColor: '#59C749',
+  },
+  quickTeamChipTxt: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: '#59C749',
+  },
+  quickTeamChipTxtActive: {
+    color: '#0A0D0A',
   },
   hero: {
     backgroundColor: C.hero,

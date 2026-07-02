@@ -16,6 +16,7 @@ import {
   Animated,
   FlatList,
   Modal,
+  Platform,
   Share,
   StyleSheet,
   Text,
@@ -212,60 +213,93 @@ export default function TeamDetailsScreen() {
 
   // Add / Swap Player Confirmation
   const selectPlayer = (chosen: Player) => {
-    // Check if player already exists in squad (to prevent duplicates)
-    if (players.some((p, idx) => p.id === chosen.id && idx !== activeSlotIndex)) {
-      Alert.alert('Roster Error', `${chosen.name} is already selected in this team.`);
-      return;
-    }
-
-    recordChange(() => {
-      if (activeSlotIndex !== null) {
-        // Swap/Replace
-        const oldPlayer = players[activeSlotIndex];
-        const next = [...players];
-        next[activeSlotIndex] = chosen;
-        setPlayers(next);
-
-        // Adjust Captaincy shifts
-        if (oldPlayer.id === captainId) {
-          setCaptainId(chosen.id);
+    try {
+      // Check if player already exists in squad (to prevent duplicates)
+      if (players.some((p, idx) => p.id === chosen.id && idx !== activeSlotIndex)) {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert(`Roster Error: ${chosen.name} is already selected in this team.`);
+        } else {
+          Alert.alert('Roster Error', `${chosen.name} is already selected in this team.`);
         }
-        if (oldPlayer.id === viceCaptainId) {
-          setViceCaptainId(chosen.id);
-        }
-      } else {
-        // Add new
-        if (players.length >= 11) {
-          Alert.alert('Squad Limit', 'You cannot exceed the maximum 11 players roster limit.');
-          return;
-        }
-        setPlayers([...players, chosen]);
+        return;
       }
 
-      setModalVisible(false);
-    });
+      recordChange(() => {
+        if (activeSlotIndex !== null) {
+          // Swap/Replace
+          const oldPlayer = players[activeSlotIndex];
+          if (!oldPlayer) {
+            throw new Error(`No player found at slot index ${activeSlotIndex}`);
+          }
+          const next = [...players];
+          next[activeSlotIndex] = chosen;
+          setPlayers(next);
+
+          // Adjust Captaincy shifts
+          if (oldPlayer.id === captainId) {
+            setCaptainId(chosen.id);
+          }
+          if (oldPlayer.id === viceCaptainId) {
+            setViceCaptainId(chosen.id);
+          }
+        } else {
+          // Add new
+          if (players.length >= 11) {
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+              window.alert('Squad Limit: You cannot exceed the maximum 11 players roster limit.');
+            } else {
+              Alert.alert('Squad Limit', 'You cannot exceed the maximum 11 players roster limit.');
+            }
+            return;
+          }
+          setPlayers([...players, chosen]);
+        }
+
+        setModalVisible(false);
+      });
+    } catch (err: any) {
+      console.error('Error selecting player:', err);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`Selection Error: ${err?.message || 'Failed to select player.'}`);
+      } else {
+        Alert.alert('Selection Error', err?.message || 'Failed to select player.');
+      }
+    }
   };
 
   // Create Custom player form submit
   const handleCreateCustomPlayer = () => {
-    if (!customName.trim()) {
-      Alert.alert('Form Error', 'Please enter a player name.');
-      return;
+    try {
+      if (!customName.trim()) {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert('Form Error: Please enter a player name.');
+        } else {
+          Alert.alert('Form Error', 'Please enter a player name.');
+        }
+        return;
+      }
+
+      const creditsVal = parseFloat(customCredits) || 9.0;
+      const initialUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(customName.trim())}&background=0D1F3C&color=A8CD55&size=100&bold=true`;
+      const generatedId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+
+      selectPlayer({
+        id: generatedId,
+        name: customName.trim(),
+        role: customRole,
+        credits: creditsVal,
+        playerImage: initialUrl,
+      });
+
+      setCustomName('');
+    } catch (err: any) {
+      console.error('Error creating custom player:', err);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`Creation Error: ${err?.message || 'Failed to create player.'}`);
+      } else {
+        Alert.alert('Creation Error', err?.message || 'Failed to create player.');
+      }
     }
-
-    const creditsVal = parseFloat(customCredits) || 9.0;
-    const initialUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(customName.trim())}&background=0D1F3C&color=A8CD55&size=100&bold=true`;
-    const generatedId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-
-    selectPlayer({
-      id: generatedId,
-      name: customName.trim(),
-      role: customRole,
-      credits: creditsVal,
-      playerImage: initialUrl,
-    });
-
-    setCustomName('');
   };
 
   // Save changes to Firestore
@@ -316,59 +350,98 @@ export default function TeamDetailsScreen() {
   };
 
   // Duplicate team
+  // Duplicate team
   const handleDuplicateTeam = async () => {
-    Alert.alert(
-      'Duplicate Team 👥',
-      'Do you want to clone this team roster into a new card?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Duplicate',
-          onPress: async () => {
-            try {
-              const colRef = collection(db, 'users', uid, 'teams');
-              await addDoc(colRef, {
-                teamName: `${teamName} (Copy)`,
-                captainId,
-                viceCaptainId,
-                players,
-                createdAt: new Date().toISOString(),
-              });
-              Alert.alert('Success', 'Team duplicated successfully.');
-              router.back();
-            } catch (err) {
-              console.error('Error duplicating team:', err);
-              Alert.alert('Database Error', 'Could not duplicate team.');
-            }
-          },
-        },
-      ]
-    );
+    const confirmDuplicate = async () => {
+      setSaving(true);
+      try {
+        const colRef = collection(db, 'users', uid, 'teams');
+        const docRef = await addDoc(colRef, {
+          teamName: `${teamName} (Copy)`,
+          captainId,
+          viceCaptainId,
+          players,
+          createdAt: new Date().toISOString(),
+        });
+        
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert('Success: Team duplicated successfully.');
+          router.replace(`/team-details/${docRef.id}` as any);
+        } else {
+          Alert.alert('Success', 'Team duplicated successfully.', [
+            { text: 'OK', onPress: () => router.replace(`/team-details/${docRef.id}` as any) }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error duplicating team:', err);
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert('Database Error: Could not duplicate team.');
+        } else {
+          Alert.alert('Database Error', 'Could not duplicate team.');
+        }
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm('Do you want to clone this team roster into a new card?')) {
+        confirmDuplicate();
+      }
+    } else {
+      Alert.alert(
+        'Duplicate Team 👥',
+        'Do you want to clone this team roster into a new card?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Duplicate', onPress: confirmDuplicate },
+        ]
+      );
+    }
   };
 
   // Delete team
   const handleDeleteTeam = () => {
-    Alert.alert(
-      'Delete Team 🚨',
-      'Are you sure you want to delete this team entirely?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const docRef = doc(db, 'users', uid, 'teams', id);
-              await deleteDoc(docRef);
-              router.back();
-            } catch (err) {
-              console.error('Error deleting team:', err);
-              Alert.alert('Database Error', 'Could not delete team.');
-            }
-          },
-        },
-      ]
-    );
+    const confirmDelete = async () => {
+      try {
+        setSaving(true);
+        const docRef = doc(db, 'users', uid, 'teams', id as string);
+        await deleteDoc(docRef);
+        setSaving(false);
+        
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert('Success: Team squad deleted successfully.');
+          router.back();
+        } else {
+          Alert.alert('Deleted', 'Team squad deleted successfully.', [
+            { text: 'OK', onPress: () => router.back() }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error deleting team:', err);
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert('Database Error: Could not delete team.');
+        } else {
+          Alert.alert('Database Error', 'Could not delete team.');
+        }
+        setSaving(false);
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm(`Are you sure you want to delete ${teamName}? This action cannot be undone.`)) {
+        confirmDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Team 🚨',
+        `Are you sure you want to delete ${teamName}? This action cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: confirmDelete }
+        ]
+      );
+    }
   };
 
   // Share team roster text
@@ -384,8 +457,18 @@ export default function TeamDetailsScreen() {
       const capName = players.find((p) => p.id === captainId)?.name || 'Not set';
       const vcName = players.find((p) => p.id === viceCaptainId)?.name || 'Not set';
 
-      const message = `🏏 Crickstreet Team: ${teamName}\n👑 Captain: ${capName}\n🛡️ Vice Captain: ${vcName}\n\nSelected Players:\n${rosterLines.join('\n')}`;
-      await Share.share({ message });
+      const message = `Crickstreet Team: ${teamName}\nCaptain: ${capName}\nVice Captain: ${vcName}\n\nSelected Players:\n${rosterLines.join('\n')}`;
+      
+      if (Platform.OS === 'web') {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(message);
+          window.alert('Roster text copied to clipboard! 📋');
+        } else {
+          window.alert(message);
+        }
+      } else {
+        await Share.share({ message });
+      }
     } catch (err) {
       console.error('Error sharing roster:', err);
     }
@@ -694,6 +777,7 @@ export default function TeamDetailsScreen() {
 
               {/* Form Scroll list */}
               <FlatList
+                style={{ flex: 1 }}
                 data={filteredPresets}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.modalList}

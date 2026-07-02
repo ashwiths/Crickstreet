@@ -6,6 +6,7 @@ import {
   deleteDoc,
   doc,
   addDoc,
+  setDoc,
   onSnapshot,
   query,
   orderBy,
@@ -284,17 +285,21 @@ export default function TeamScreen() {
 
     try {
       const colRef = collection(db, 'users', uid, 'teams');
-      const docRef = await addDoc(colRef, payload);
-      setModalVisible(false);
-      // Redirect to Details editor screen immediately
-      router.push({
-        pathname: '/team-details/[id]',
-        params: { id: docRef.id }
+      const docRef = doc(colRef); // Client-side generated ID!
+      const teamId = docRef.id;
+
+      // Save document asynchronously to prevent modal loading hangs
+      setDoc(docRef, payload).catch(err => {
+        console.error('Async save team failed:', err);
       });
+
+      setModalVisible(false);
+      setSaving(false);
+      // Redirect to Details editor screen immediately
+      router.push(`/team-details/${teamId}` as any);
     } catch (err) {
       console.error('Error saving team to Firestore:', err);
       Alert.alert('Database Error', 'Could not create team. Try again.');
-    } finally {
       setSaving(false);
     }
   };
@@ -320,7 +325,7 @@ export default function TeamScreen() {
               </View>
             )}
           </View>
-          <View style={{ width: 44 }} /> {/* Spacer */}
+          <View style={{ width: 44 }} />
         </View>
 
         {loading ? (

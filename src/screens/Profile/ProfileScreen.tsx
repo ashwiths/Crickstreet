@@ -663,7 +663,7 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
             <View style={styles.divider} />
             <MenuItem icon="map-pin" label="My Ground" onPress={() => router.push('/my-grounds')} />
             <View style={styles.divider} />
-            <MenuItem icon="smartphone" label="Step Counter" onPress={() => router.push('/step-counter')} />
+            <MenuItem icon="smartphone" label="Step Counter" onPress={() => router.push('/step-counter' as any)} />
             <View style={styles.divider} />
             <TourHighlight id="notification-menu">
               <MenuItem icon="heart" label="Notification" onPress={() => router.push('/notification-settings' as any)} />
