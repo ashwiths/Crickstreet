@@ -176,6 +176,7 @@ export default function CreateMatchesScreen() {
   const [dbTeams, setDbTeams] = useState<any[]>([]);
   const [myTeamId, setMyTeamId] = useState('');
   const [oppTeamId, setOppTeamId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load saved squads from Firestore
   useEffect(() => {
@@ -604,12 +605,17 @@ export default function CreateMatchesScreen() {
 
   // ─── ACTIONS ───────────────────────────────────────────────────────────────
   const handleStartScoring = async () => {
+    if (isSubmitting) return;
+
     // Validate Step 1
     if (!myTeamName.trim()) {
       Alert.alert('Missing Team Name', 'Please fill in your Team Name.');
       return;
     }
     const opponentDisplay = oppTeamName.trim() || 'Opponent Team';
+
+    setIsSubmitting(true);
+    try {
 
     // Firebase match storage data structure prefill
     const matchData = {
@@ -689,6 +695,11 @@ export default function CreateMatchesScreen() {
           }
         ]
       );
+    }
+    } catch (err) {
+      console.error('Error starting match scoring:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1464,8 +1475,14 @@ export default function CreateMatchesScreen() {
           <Text style={styles.cardHeaderTitle}><Feather name="check-square" size={16} color={C.green} /> ACTION BUTTONS</Text>
           
           <View style={{ gap: 12, marginTop: 8 }}>
-            <TouchableOpacity style={styles.startScoringBtn} onPress={handleStartScoring}>
-              <Text style={styles.startScoringBtnTxt}>Create</Text>
+            <TouchableOpacity 
+              disabled={isSubmitting}
+              style={[styles.startScoringBtn, isSubmitting && { opacity: 0.6 }]} 
+              onPress={handleStartScoring}
+            >
+              <Text style={styles.startScoringBtnTxt}>
+                {isSubmitting ? 'Creating...' : 'Create'}
+              </Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>

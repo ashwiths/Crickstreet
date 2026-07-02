@@ -13,12 +13,13 @@ import { Feather } from '@expo/vector-icons';
 import { s, fs, sp, br } from '../src/theme/responsive';
 
 const C = {
-  bg: '#0A0D0A',
+  bg: '#F3F4F1',
   green: '#59C749',
   white: '#FFFFFF',
-  gray: '#9CA3AF',
-  card: 'rgba(255,255,255,0.04)',
-  border: 'rgba(255,255,255,0.08)',
+  textDark: '#1A1A1A',
+  textGray: '#6B7280',
+  border: '#E8E4D4',
+  btnGray: '#F9F8F3',
 };
 
 export default function RulesConditionsScreen() {
@@ -64,7 +65,7 @@ export default function RulesConditionsScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0D0A" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -73,7 +74,7 @@ export default function RulesConditionsScreen() {
           style={styles.backButton} 
           onPress={() => router.back()}
         >
-          <Feather name="arrow-left" size={20} color={C.white} />
+          <Feather name="arrow-left" size={20} color={C.textDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Rules & Conditions</Text>
         <View style={{ width: 40 }} />
@@ -117,6 +118,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: sp.md,
+    backgroundColor: C.white,
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
@@ -126,12 +128,14 @@ const styles = StyleSheet.create({
     borderRadius: s(20),
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: C.card,
+    backgroundColor: C.btnGray,
+    borderWidth: 1,
+    borderColor: C.border,
   },
   headerTitle: {
     fontSize: fs.md2,
     fontWeight: '900',
-    color: C.white,
+    color: C.textDark,
   },
   scrollView: {
     flex: 1,
@@ -141,7 +145,7 @@ const styles = StyleSheet.create({
   },
   introText: {
     fontSize: fs.sm,
-    color: C.gray,
+    color: C.textGray,
     lineHeight: fs.sm * 1.4,
     marginBottom: sp.lg,
   },
@@ -150,12 +154,17 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: C.card,
+    backgroundColor: C.white,
     borderRadius: br.lg,
-    borderWidth: 1,
-    borderColor: C.border,
+    borderWidth: 1.5,
+    borderColor: '#CCD4C5',
     padding: sp.md,
     gap: sp.md,
+    shadowColor: 'rgba(0,0,0,0.02)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   badge: {
     width: s(24),
@@ -179,12 +188,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: fs.sm,
     fontWeight: '800',
-    color: C.white,
+    color: C.textDark,
     marginBottom: 6,
   },
   cardDesc: {
     fontSize: fs.xs,
-    color: C.gray,
+    color: C.textGray,
     lineHeight: fs.xs * 1.4,
   },
 });

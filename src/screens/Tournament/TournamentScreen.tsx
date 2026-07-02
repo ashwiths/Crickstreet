@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +13,9 @@ import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s, fs, sp, br, avatarSz } from '../../theme/responsive';
+import { useAuth } from '../../hooks/useAuth';
+import { db } from '../../services/firebase';
+import { deleteDoc, doc } from 'firebase/firestore';
 
 interface HistoryScreenProps {
   onBack?: () => void;
@@ -27,6 +31,16 @@ export default function TournamentScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'all' | 'tournament' | 'practice' | 'won' | 'lost'>('all');
+  const { user } = useAuth();
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'matches', matchId));
+    } catch (err) {
+      console.error('Error deleting match:', err);
+    }
+  };
 
   const displayMatches = useMemo(() => {
     return matches.map((m: any, index: number) => {
@@ -167,10 +181,30 @@ export default function TournamentScreen({
                         <Text style={styles.matchTournament}>{m.tournamentName}</Text>
                         <Text style={styles.matchDate}>{m.date} • {m.ground}</Text>
                       </View>
-                      <View style={[styles.matchTypeBadge, { backgroundColor: badge.bg }]}>
-                        <Text style={[styles.matchTypeTxt, { color: badge.text }]}>
-                          {m.matchType}
-                        </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            Alert.alert(
+                              'Delete Match 🗑️',
+                              'Are you sure you want to permanently delete this match scorecard and its stats history?',
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Delete', style: 'destructive', onPress: () => handleDeleteMatch(m.id) }
+                              ]
+                            );
+                          }}
+                          style={styles.trashBtn}
+                        >
+                          <Feather name="trash-2" size={15} color="#EF4444" />
+                        </TouchableOpacity>
+
+                        <View style={[styles.matchTypeBadge, { backgroundColor: badge.bg }]}>
+                          <Text style={[styles.matchTypeTxt, { color: badge.text }]}>
+                            {m.matchType}
+                          </Text>
+                        </View>
                       </View>
                     </View>
 
@@ -329,6 +363,13 @@ const styles = StyleSheet.create({
   matchTypeTxt: {
     fontSize: fs.sm,
     fontWeight: '800',
+  },
+  trashBtn: {
+    padding: 6,
+    borderRadius: br.sm,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 0.5,
+    borderColor: '#FEE2E2',
   },
   vsRow: {
     flexDirection: 'row',
