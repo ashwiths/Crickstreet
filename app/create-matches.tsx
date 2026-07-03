@@ -338,9 +338,7 @@ export default function CreateMatchesScreen() {
     setOppCaptain('Opp Captain');
     setOppViceCaptain('Opp Vice Captain');
     setOppPlayers([
-      'Opp Player 1', 'Opp Player 2', 'Opp Player 3', 'Opp Player 4', 'Opp Player 5',
-      'Opp Player 6', 'Opp Player 7', 'Opp Player 8', 'Opp Player 9', 'Opp Player 10',
-      'Opp Player 11'
+      'Opp Player 1'
     ]);
     setOppSubs([]);
     setMatchType('practice');

@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import FloatingBottomNav from '@/src/components/FloatingBottomNav';
+import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,23 +15,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../services/firebase';
-import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import FloatingBottomNav from '@/src/components/FloatingBottomNav';
-import { s, vs, ms, fs, sp, br, avatarSz } from '../../theme/responsive';
+import { br, fs, s, sp } from '../../theme/responsive';
 
 // Modular Screen Component Imports
-import HomeHeader from './HomeHeader';
-import ActiveMatchCard from './ActiveMatchCard';
 import MatchesScreen from '../Matches/MatchesScreen';
-import TournamentScreen from '../Tournament/TournamentScreen';
 import ProfileScreen from '../Profile/ProfileScreen';
+import TournamentScreen from '../Tournament/TournamentScreen';
+import ActiveMatchCard from './ActiveMatchCard';
+import HomeHeader from './HomeHeader';
 
 // ─── Greeting helper ─────────────────────────────────────────────────────────
 function getGreeting() {
@@ -51,7 +51,7 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'home' | 'matches' | 'tournament' | 'profile'>('home');
   const [draftAvailable, setDraftAvailable] = useState<boolean>(false);
   const [draftData, setDraftData] = useState<any>(null);
-  
+
   const [tossChoice, setTossChoice] = useState<'bat' | 'bowl' | null>(null);
 
   const { user } = useAuth();
@@ -307,9 +307,25 @@ export default function HomeScreen() {
 
   const handleGetStarted = () => {
     if (!unfinishedMatch || !tossChoice) return;
-    
-    const myPlayers = unfinishedMatch.myPlayers || [];
-    const oppPlayers = unfinishedMatch.oppPlayers || [];
+
+    const battingFirst = tossChoice === 'bat' ? 'my' : 'opp';
+
+    // Resolve live team rosters to populate players if the match was created before team setups
+    const myTeamDoc = teams.find((t: any) => t.id === unfinishedMatch.myTeamId || t.teamName === unfinishedMatch.myTeamName);
+    const oppTeamDoc = teams.find((t: any) => t.id === unfinishedMatch.oppTeamId || t.teamName === unfinishedMatch.oppTeamName);
+
+    const myPlayers = (myTeamDoc?.players && myTeamDoc.players.length > 0)
+      ? myTeamDoc.players.map((p: any) => p.name || 'Unnamed Player')
+      : (unfinishedMatch.myPlayers || []);
+
+    let oppPlayers = (oppTeamDoc?.players && oppTeamDoc.players.length > 0)
+      ? oppTeamDoc.players.map((p: any) => p.name || 'Unnamed Player')
+      : (unfinishedMatch.oppPlayers || []);
+
+    // Dynamically set opponent squad size for practice match based on toss choice
+    if (unfinishedMatch.oppTeamName === 'Practice Opponent') {
+      oppPlayers = battingFirst === 'opp' ? ['Opp Player 1', 'Opp Player 2'] : ['Opp Player 1'];
+    }
 
     const initRoles = (players: string[]) => {
       const r: Record<string, string> = {};
@@ -318,8 +334,6 @@ export default function HomeScreen() {
     };
     const myRoles = initRoles(myPlayers);
     const oppRoles = initRoles(oppPlayers);
-
-    const battingFirst = tossChoice === 'bat' ? 'my' : 'opp';
     const striker = battingFirst === 'my' ? (myPlayers[0] || '') : (oppPlayers[0] || '');
     const nonStriker = battingFirst === 'my' ? (myPlayers[1] || '') : (oppPlayers[1] || '');
     const openingBowler = battingFirst === 'my' ? (oppPlayers[0] || '') : (myPlayers[0] || '');
@@ -346,9 +360,9 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar 
-        barStyle={activeTab === 'home' ? 'dark-content' : 'light-content'} 
-        backgroundColor={activeTab === 'home' ? 'transparent' : '#0A0D0A'} 
+      <StatusBar
+        barStyle={activeTab === 'home' ? 'dark-content' : 'light-content'}
+        backgroundColor={activeTab === 'home' ? 'transparent' : '#0A0D0A'}
         translucent={activeTab === 'home'}
       />
 
@@ -384,7 +398,7 @@ export default function HomeScreen() {
                 Your local cricket companion. Score games, track squads, and ask our custom AI for tips & rules! ⚡
               </Text>
             </View>
-            
+
             {unfinishedMatch ? (
               <View style={styles.activeMatchStatusSection}>
                 <View style={styles.activeMatchStatusCard}>
@@ -416,7 +430,7 @@ export default function HomeScreen() {
                   >
                     <Text style={styles.viewDetailsLinkTxt}>View Details</Text>
                   </TouchableOpacity>
- 
+
 
                   {/* Choose to bat or bowl Selector */}
                   <Text style={styles.tossSectionLabel}>Choose to?</Text>
@@ -473,7 +487,7 @@ export default function HomeScreen() {
                 <View style={styles.anotherMatchHeaderContainer}>
                   <Text style={styles.anotherMatchSectionTitle}>Create new or another match</Text>
                 </View>
-                
+
                 <ActiveMatchCard />
               </View>
             ) : (
@@ -482,8 +496,8 @@ export default function HomeScreen() {
 
             {/* Always display the Features Overview Card */}
             <View style={styles.featuresCard}>
-              <Text style={styles.featuresTitle}>What's in Crickstreet? 🏏</Text>
-              
+              <Text style={styles.featuresTitle}>What&apos;s in Crickstreet? 🏏</Text>
+
               <View style={styles.featureItem}>
                 <View style={[styles.featureIconContainer, { backgroundColor: '#F0F4EC' }]}>
                   <Feather name="users" size={16} color="#2D5016" />

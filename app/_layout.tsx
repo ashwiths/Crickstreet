@@ -3,8 +3,8 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
 
@@ -60,6 +60,7 @@ function RootLayoutNav() {
           <Stack.Screen name="scorecard" options={{ headerShown: false }} />
           <Stack.Screen name="live-scoring" options={{ headerShown: false }} />
           <Stack.Screen name="match-warning" options={{ headerShown: false }} />
+          <Stack.Screen name="match-setup" options={{ headerShown: false }} />
           <Stack.Screen name="rules-conditions" options={{ headerShown: false }} />
           <Stack.Screen name="my-teams" options={{ headerShown: false }} />
           <Stack.Screen name="team-details/[id]" options={{ headerShown: false }} />

@@ -44,7 +44,7 @@ export default function MatchWarningScreen() {
 
   const handleProceed = () => {
     router.replace({
-      pathname: '/live-scoring',
+      pathname: '/match-setup',
       params: {
         myTeamName: params.myTeamName || '',
         oppTeamName: params.oppTeamName || '',
@@ -107,7 +107,7 @@ export default function MatchWarningScreen() {
                   style={styles.underlineText}
                   onPress={() => router.push('/rules-conditions')}
                 >
-                  Rules & Conditions
+                  Rules &amp; Conditions
                 </Text>
                 .
               </Text>

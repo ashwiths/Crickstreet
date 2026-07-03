@@ -315,16 +315,14 @@ export default function TeamDetailsScreen() {
     }
 
     if (players.length > 0) {
-      // Validate Captain and Vice Captain exist in the players list
-      const hasCap = players.some((p) => p.id === captainId);
-      const hasVc = players.some((p) => p.id === viceCaptainId);
-
-      if (!hasCap) {
-        Alert.alert('Roster Validation', 'Please designate exactly 1 Captain (C) before saving.');
+      // If a Captain is set, verify they are in the players list
+      if (captainId && !players.some((p) => p.id === captainId)) {
+        Alert.alert('Roster Validation', 'Designated Captain is not in the player roster.');
         return;
       }
-      if (!hasVc) {
-        Alert.alert('Roster Validation', 'Please designate exactly 1 Vice Captain (VC) before saving.');
+      // If a Vice Captain is set, verify they are in the players list
+      if (viceCaptainId && !players.some((p) => p.id === viceCaptainId)) {
+        Alert.alert('Roster Validation', 'Designated Vice Captain is not in the player roster.');
         return;
       }
     }
