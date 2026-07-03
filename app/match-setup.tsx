@@ -26,6 +26,9 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { s, ms, fs, sp, br } from '../src/theme/responsive';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../src/services/firebase';
+import { useAuth } from '../src/hooks/useAuth';
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
 const C = {
@@ -58,9 +61,15 @@ export default function MatchSetupScreen() {
     myRoles?: string;
     oppRoles?: string;
     battingFirst?: string;
+    striker?: string;
+    nonStriker?: string;
+    openingBowler?: string;
     format?: string;
     customOvers?: string;
   }>();
+
+  const { user } = useAuth();
+  const uid = user?.uid || '';
 
   // ── Parse params ──────────────────────────────────────────────────────────
   const battingFirst = params.battingFirst || 'my';
@@ -80,17 +89,39 @@ export default function MatchSetupScreen() {
   const battingPlayers = battingFirst === 'my' ? myPlayers : oppPlayers;
   const bowlingPlayers = battingFirst === 'my' ? oppPlayers : myPlayers;
 
+  // Initialize step based on what has already been selected (for resuming)
+  const initialStep = useMemo(() => {
+    const hasOpeners = !!params.striker && (!!params.nonStriker || battingFirst === 'opp');
+    const hasBowler = !!params.openingBowler;
+
+    if (hasOpeners && hasBowler) return 'countdown';
+    if (hasOpeners) return 'bowler';
+    return 'openers';
+  }, [params.striker, params.nonStriker, params.openingBowler, battingFirst]);
+
   // ── Step state ────────────────────────────────────────────────────────────
-  const [step, setStep] = useState<Step>('openers');
-  const [striker, setStriker] = useState<string | null>(null);
-  const [nonStriker, setNonStriker] = useState<string | null>(null);
-  const [selectedBowler, setSelectedBowler] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>(initialStep);
+  const [striker, setStriker] = useState<string | null>(params.striker || null);
+  const [nonStriker, setNonStriker] = useState<string | null>(params.nonStriker || null);
+  const [selectedBowler, setSelectedBowler] = useState<string | null>(params.openingBowler || null);
 
   // ── Countdown state ───────────────────────────────────────────────────────
   const [countdownValue, setCountdownValue] = useState(3);
   const [countdownDone, setCountdownDone] = useState(false);
   const countdownScale = useSharedValue(0);
   const countdownOpacity = useSharedValue(0);
+
+  // Ring pulse animations
+  const ring1Scale = useSharedValue(1);
+  const ring1Opacity = useSharedValue(0);
+  const ring2Scale = useSharedValue(1);
+  const ring2Opacity = useSharedValue(0);
+  const ring3Scale = useSharedValue(1);
+  const ring3Opacity = useSharedValue(0);
+
+  // Glow burst
+  const glowScale = useSharedValue(0.8);
+  const glowOpacity = useSharedValue(0.15);
 
   // Auto-select opponent players for steps where the opposing team is active
   useEffect(() => {
@@ -146,14 +177,31 @@ export default function MatchSetupScreen() {
       ? selectedBowler !== null
       : false;
 
+  const updateMatchInDb = useCallback(async (updates: Record<string, any>) => {
+    if (!uid || !params.matchId) return;
+    try {
+      const docRef = doc(db, 'users', uid, 'matches', params.matchId);
+      await updateDoc(docRef, updates);
+    } catch (err) {
+      console.error('Error updating match in setup step:', err);
+    }
+  }, [uid, params.matchId]);
+
   // ── Step navigation ───────────────────────────────────────────────────────
   const handleNext = useCallback(() => {
-    if (step === 'openers' && striker && nonStriker) {
+    if (step === 'openers' && striker && (nonStriker || battingFirst === 'opp')) {
+      updateMatchInDb({
+        striker,
+        nonStriker: nonStriker || '',
+      });
       setStep('bowler');
     } else if (step === 'bowler' && selectedBowler) {
+      updateMatchInDb({
+        openingBowler: selectedBowler,
+      });
       setStep('countdown');
     }
-  }, [step, striker, nonStriker, selectedBowler]);
+  }, [step, striker, nonStriker, selectedBowler, battingFirst, updateMatchInDb]);
 
   const handleBack = useCallback(() => {
     if (step === 'bowler') {
@@ -164,22 +212,54 @@ export default function MatchSetupScreen() {
   }, [step, router]);
 
   // ── Countdown animation ───────────────────────────────────────────────────
+  const pulseRings = useCallback(() => {
+    'worklet';
+    // Ring 1 — fast inner pulse
+    ring1Scale.value = 1;
+    ring1Opacity.value = 0.6;
+    ring1Scale.value = withTiming(2.2, { duration: 800, easing: Easing.out(Easing.cubic) });
+    ring1Opacity.value = withTiming(0, { duration: 800 });
+
+    // Ring 2 — medium pulse
+    ring2Scale.value = 1;
+    ring2Opacity.value = 0.4;
+    ring2Scale.value = withDelay(100, withTiming(2.6, { duration: 900, easing: Easing.out(Easing.cubic) }));
+    ring2Opacity.value = withDelay(100, withTiming(0, { duration: 900 }));
+
+    // Ring 3 — wide outer pulse
+    ring3Scale.value = 1;
+    ring3Opacity.value = 0.25;
+    ring3Scale.value = withDelay(200, withTiming(3.0, { duration: 1000, easing: Easing.out(Easing.cubic) }));
+    ring3Opacity.value = withDelay(200, withTiming(0, { duration: 1000 }));
+  }, [ring1Scale, ring1Opacity, ring2Scale, ring2Opacity, ring3Scale, ring3Opacity]);
+
   const animateCountdownNumber = useCallback((num: number) => {
     'worklet';
-    countdownScale.value = 0.3;
+    // Number: scale up from tiny, spring in, then gently fade
+    countdownScale.value = 0.15;
     countdownOpacity.value = 0;
-    countdownScale.value = withSpring(1, { damping: 8, stiffness: 120 });
+    countdownScale.value = withSpring(1, { damping: 10, stiffness: 150, mass: 0.8 });
     countdownOpacity.value = withSequence(
-      withTiming(1, { duration: 200 }),
-      withDelay(500, withTiming(0, { duration: 300 })),
+      withTiming(1, { duration: 150, easing: Easing.out(Easing.cubic) }),
+      withDelay(550, withTiming(0, { duration: 250, easing: Easing.in(Easing.cubic) })),
     );
-  }, [countdownScale, countdownOpacity]);
+
+    // Glow burst on each number
+    glowScale.value = 0.8;
+    glowOpacity.value = 0.4;
+    glowScale.value = withTiming(1.6, { duration: 700, easing: Easing.out(Easing.cubic) });
+    glowOpacity.value = withTiming(0.08, { duration: 700 });
+
+    // Pulse rings
+    pulseRings();
+  }, [countdownScale, countdownOpacity, glowScale, glowOpacity, pulseRings]);
 
   useEffect(() => {
     if (step !== 'countdown') return;
 
     let current = 3;
     setCountdownValue(current);
+    setCountdownDone(false);
 
     // Animate the first number immediately
     animateCountdownNumber(current);
@@ -191,11 +271,18 @@ export default function MatchSetupScreen() {
         animateCountdownNumber(current);
       } else if (current === 0) {
         runOnJS(setCountdownValue)(0);
-        // Final "Go" animation
-        countdownScale.value = 0.3;
+        // Final "LET'S GO" animation — bigger burst
+        countdownScale.value = 0.1;
         countdownOpacity.value = 0;
-        countdownScale.value = withSpring(1.2, { damping: 6, stiffness: 100 });
-        countdownOpacity.value = withTiming(1, { duration: 300 });
+        countdownScale.value = withSpring(1.15, { damping: 7, stiffness: 90, mass: 0.6 });
+        countdownOpacity.value = withTiming(1, { duration: 250 });
+
+        glowScale.value = 0.5;
+        glowOpacity.value = 0.6;
+        glowScale.value = withTiming(2.5, { duration: 1200, easing: Easing.out(Easing.cubic) });
+        glowOpacity.value = withTiming(0.05, { duration: 1200 });
+
+        pulseRings();
       } else {
         clearInterval(interval);
         runOnJS(setCountdownDone)(true);
@@ -203,23 +290,40 @@ export default function MatchSetupScreen() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [step, animateCountdownNumber, countdownScale, countdownOpacity]);
+  }, [step, animateCountdownNumber, countdownScale, countdownOpacity, glowScale, glowOpacity, pulseRings]);
 
   // ── Navigate after countdown ──────────────────────────────────────────────
   useEffect(() => {
     if (!countdownDone) return;
     const timeout = setTimeout(() => {
-      // Navigate to the live scoring page (placeholder — goes home for now)
       router.replace({
         pathname: '/(tabs)',
       });
-    }, 800);
+    }, 1200);
     return () => clearTimeout(timeout);
   }, [countdownDone, router]);
 
+  // ── Animated styles ───────────────────────────────────────────────────────
   const countdownAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: countdownScale.value }],
     opacity: countdownOpacity.value,
+  }));
+
+  const ring1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring1Scale.value }],
+    opacity: ring1Opacity.value,
+  }));
+  const ring2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring2Scale.value }],
+    opacity: ring2Opacity.value,
+  }));
+  const ring3Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring3Scale.value }],
+    opacity: ring3Opacity.value,
+  }));
+  const glowStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: glowScale.value }],
+    opacity: glowOpacity.value,
   }));
 
   // ── Step indicator ────────────────────────────────────────────────────────
@@ -228,56 +332,87 @@ export default function MatchSetupScreen() {
   // ── Render ────────────────────────────────────────────────────────────────
   if (step === 'countdown') {
     return (
-      <View style={styles.countdownRoot}>
-        <StatusBar barStyle="light-content" backgroundColor={C.countdownBg} translucent={true} />
+      <View style={cdStyles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#060E08" translucent={true} />
         <LinearGradient
-          colors={['#0A1A0D', '#132B16', '#0A1A0D']}
-          locations={[0, 0.5, 1]}
+          colors={['#060E08', '#0D1F12', '#0A1710', '#060E08']}
+          locations={[0, 0.35, 0.7, 1]}
           style={StyleSheet.absoluteFill}
         />
 
-        {/* Subtle radial glow */}
-        <View style={styles.countdownGlow} />
-
-        <SafeAreaView style={styles.countdownSafe}>
-          {/* Match Info */}
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.countdownMatchInfo}>
-            <Text style={styles.countdownTeams}>
-              {params.myTeamName || 'My Team'} vs {params.oppTeamName || 'Opponent'}
-            </Text>
-            <Text style={styles.countdownFormat}>{params.format || 'T20'} Match</Text>
+        <SafeAreaView style={cdStyles.safe}>
+          {/* ── Top: Match Info Pill ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(100)} style={cdStyles.topSection}>
+            <View style={cdStyles.matchPill}>
+              <View style={cdStyles.liveDot} />
+              <Text style={cdStyles.matchPillText}>
+                {params.myTeamName || 'My Team'}  vs  {params.oppTeamName || 'Opponent'}
+              </Text>
+            </View>
+            <Text style={cdStyles.formatLabel}>{params.format || 'T20'} Match</Text>
           </Animated.View>
 
-          {/* Countdown Number */}
-          <View style={styles.countdownCenter}>
-            <Animated.View style={[styles.countdownCircle, countdownAnimStyle]}>
-              <Text style={styles.countdownNumber}>
-                {countdownValue > 0 ? countdownValue : ''}
-              </Text>
-            </Animated.View>
-            {countdownValue === 0 && (
-              <Animated.View style={countdownAnimStyle}>
-                <Text style={styles.countdownGo}>LET&apos;S GO! 🏏</Text>
-              </Animated.View>
-            )}
-          </View>
+          {/* ── Center: Countdown Rings + Number ── */}
+          <View style={cdStyles.centerSection}>
+            {/* Pulsing ring layers */}
+            <Animated.View style={[cdStyles.pulseRing, cdStyles.pulseRingBase, ring1Style]} />
+            <Animated.View style={[cdStyles.pulseRing, cdStyles.pulseRingBase, ring2Style]} />
+            <Animated.View style={[cdStyles.pulseRing, cdStyles.pulseRingBase, ring3Style]} />
 
-          {/* Bottom Info */}
-          <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.countdownBottom}>
-            <View style={styles.countdownPlayerRow}>
-              <View style={styles.countdownPlayerCol}>
-                <Text style={styles.countdownPlayerLabel}>🏏 Striker</Text>
-                <Text style={styles.countdownPlayerName} numberOfLines={1}>{striker}</Text>
-              </View>
-              <View style={styles.countdownDivider} />
-              <View style={styles.countdownPlayerCol}>
-                <Text style={styles.countdownPlayerLabel}>🏏 Non-Striker</Text>
-                <Text style={styles.countdownPlayerName} numberOfLines={1}>{nonStriker}</Text>
+            {/* Background glow burst */}
+            <Animated.View style={[cdStyles.glowBurst, glowStyle]} />
+
+            {/* Static outer ring */}
+            <View style={cdStyles.staticRingOuter}>
+              <View style={cdStyles.staticRingInner}>
+                {/* Number or GO text */}
+                {countdownValue > 0 ? (
+                  <Animated.View style={countdownAnimStyle}>
+                    <Text style={cdStyles.numberText}>{countdownValue}</Text>
+                  </Animated.View>
+                ) : (
+                  <Animated.View style={countdownAnimStyle}>
+                    <Text style={cdStyles.goEmoji}>🏏</Text>
+                    <Text style={cdStyles.goText}>LET&apos;S GO!</Text>
+                  </Animated.View>
+                )}
               </View>
             </View>
-            <View style={styles.countdownBowlerRow}>
-              <Text style={styles.countdownPlayerLabel}>⚾ Bowler</Text>
-              <Text style={styles.countdownPlayerName} numberOfLines={1}>{selectedBowler}</Text>
+
+            {/* Subtitle below countdown */}
+            <Animated.View entering={FadeInDown.duration(400).delay(300)}>
+              <Text style={cdStyles.readyText}>
+                {countdownValue > 0 ? 'Get Ready...' : 'Live Scoring Starts Now!'}
+              </Text>
+            </Animated.View>
+          </View>
+
+          {/* ── Bottom: Player Info Cards ── */}
+          <Animated.View entering={FadeInDown.delay(200).duration(500)} style={cdStyles.bottomSection}>
+            {/* Batsmen row */}
+            <View style={cdStyles.playersRow}>
+              <View style={cdStyles.playerCard}>
+                <View style={cdStyles.playerRoleBadge}>
+                  <Text style={cdStyles.playerRoleIcon}>🏏</Text>
+                  <Text style={cdStyles.playerRoleText}>Striker</Text>
+                </View>
+                <Text style={cdStyles.playerNameText} numberOfLines={1}>{striker || '—'}</Text>
+              </View>
+              <View style={cdStyles.playerCard}>
+                <View style={cdStyles.playerRoleBadge}>
+                  <Text style={cdStyles.playerRoleIcon}>🏏</Text>
+                  <Text style={cdStyles.playerRoleText}>Non-Striker</Text>
+                </View>
+                <Text style={cdStyles.playerNameText} numberOfLines={1}>{nonStriker || '—'}</Text>
+              </View>
+            </View>
+            {/* Bowler row */}
+            <View style={cdStyles.bowlerCard}>
+              <View style={cdStyles.playerRoleBadge}>
+                <Text style={cdStyles.playerRoleIcon}>⚾</Text>
+                <Text style={cdStyles.playerRoleText}>Opening Bowler</Text>
+              </View>
+              <Text style={cdStyles.playerNameText} numberOfLines={1}>{selectedBowler || '—'}</Text>
             </View>
           </Animated.View>
         </SafeAreaView>
@@ -847,111 +982,7 @@ const styles = StyleSheet.create({
     color: 'rgba(0,0,0,0.25)',
   },
 
-  // ── Countdown Screen ────────────────────────────────────────────────────
-  countdownRoot: {
-    flex: 1,
-    backgroundColor: C.countdownBg,
-  },
-  countdownGlow: {
-    position: 'absolute',
-    top: '30%',
-    left: '20%',
-    width: '60%',
-    height: '30%',
-    borderRadius: 9999,
-    backgroundColor: 'rgba(89,199,73,0.08)',
-  },
-  countdownSafe: {
-    flex: 1,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: sp.xxl,
-  },
-  countdownMatchInfo: {
-    alignItems: 'center',
-    paddingTop: sp.xl,
-  },
-  countdownTeams: {
-    fontSize: fs.md2,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-  },
-  countdownFormat: {
-    fontSize: fs.sm,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
-    marginTop: sp.xs,
-  },
-  countdownCenter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countdownCircle: {
-    width: s(140),
-    height: s(140),
-    borderRadius: s(70),
-    borderWidth: 3,
-    borderColor: 'rgba(89,199,73,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(89,199,73,0.08)',
-  },
-  countdownNumber: {
-    fontSize: ms(72),
-    fontWeight: '900',
-    color: C.green,
-    textAlign: 'center',
-  },
-  countdownGo: {
-    fontSize: fs.h1,
-    fontWeight: '900',
-    color: C.green,
-    textAlign: 'center',
-  },
-  countdownBottom: {
-    width: '100%',
-    paddingHorizontal: sp.xl,
-    gap: sp.md,
-  },
-  countdownPlayerRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: br.lg,
-    paddingVertical: sp.md,
-    paddingHorizontal: sp.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  countdownPlayerCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  countdownPlayerLabel: {
-    fontSize: fs.xxs,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.45)',
-    marginBottom: sp.px2,
-  },
-  countdownPlayerName: {
-    fontSize: fs.md,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.9)',
-  },
-  countdownDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginHorizontal: sp.md,
-  },
-  countdownBowlerRow: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: br.lg,
-    paddingVertical: sp.md,
-    paddingHorizontal: sp.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
+  // ── Countdown Screen (old — replaced by cdStyles) ───────────────────────
   emptyPlayersWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -969,5 +1000,197 @@ const styles = StyleSheet.create({
     fontSize: fs.xs,
     color: C.textGray,
     textAlign: 'center',
+  },
+});
+
+// ─── Countdown-specific Styles ──────────────────────────────────────────────
+const RING_SIZE = s(160);
+
+const cdStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#060E08',
+  },
+  safe: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: sp.xl,
+    paddingBottom: sp.lg,
+  },
+
+  // ── Top Section ──
+  topSection: {
+    alignItems: 'center',
+    paddingTop: sp.md,
+  },
+  matchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(89,199,73,0.12)',
+    borderRadius: br.full,
+    paddingVertical: sp.sm2,
+    paddingHorizontal: sp.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(89,199,73,0.2)',
+  },
+  liveDot: {
+    width: s(8),
+    height: s(8),
+    borderRadius: s(4),
+    backgroundColor: '#59C749',
+    marginRight: sp.sm,
+  },
+  matchPillText: {
+    fontSize: fs.sm,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 0.5,
+  },
+  formatLabel: {
+    fontSize: fs.xxs,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.35)',
+    marginTop: sp.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+
+  // ── Center Section ──
+  centerSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: s(320),
+  },
+
+  // Pulsing ring shared style
+  pulseRing: {
+    position: 'absolute',
+  },
+  pulseRingBase: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    borderRadius: RING_SIZE / 2,
+    borderWidth: 2,
+    borderColor: 'rgba(89,199,73,0.5)',
+  },
+
+  // Glow burst behind the number
+  glowBurst: {
+    position: 'absolute',
+    width: RING_SIZE * 1.4,
+    height: RING_SIZE * 1.4,
+    borderRadius: (RING_SIZE * 1.4) / 2,
+    backgroundColor: 'rgba(89,199,73,0.15)',
+  },
+
+  // Static outer ring (always visible)
+  staticRingOuter: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    borderRadius: RING_SIZE / 2,
+    borderWidth: 2.5,
+    borderColor: 'rgba(89,199,73,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(89,199,73,0.04)',
+  },
+  staticRingInner: {
+    width: RING_SIZE - s(20),
+    height: RING_SIZE - s(20),
+    borderRadius: (RING_SIZE - s(20)) / 2,
+    borderWidth: 1.5,
+    borderColor: 'rgba(89,199,73,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Number text
+  numberText: {
+    fontSize: ms(80),
+    fontWeight: '900',
+    color: '#59C749',
+    textAlign: 'center',
+    textShadowColor: 'rgba(89,199,73,0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+
+  // GO text
+  goEmoji: {
+    fontSize: ms(36),
+    textAlign: 'center',
+    marginBottom: sp.xs,
+  },
+  goText: {
+    fontSize: ms(28),
+    fontWeight: '900',
+    color: '#59C749',
+    textAlign: 'center',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(89,199,73,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 25,
+  },
+
+  // "Get Ready..." subtitle
+  readyText: {
+    fontSize: fs.sm,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: sp.xl,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+
+  // ── Bottom Section ──
+  bottomSection: {
+    width: '100%',
+    paddingHorizontal: sp.lg,
+    gap: sp.sm,
+  },
+  playersRow: {
+    flexDirection: 'row',
+    gap: sp.sm,
+  },
+  playerCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: br.lg,
+    paddingVertical: sp.md,
+    paddingHorizontal: sp.md,
+    borderWidth: 1,
+    borderColor: 'rgba(89,199,73,0.12)',
+    alignItems: 'center',
+  },
+  bowlerCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: br.lg,
+    paddingVertical: sp.md,
+    paddingHorizontal: sp.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(89,199,73,0.12)',
+    alignItems: 'center',
+  },
+  playerRoleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: sp.xs,
+  },
+  playerRoleIcon: {
+    fontSize: fs.xxs,
+    marginRight: sp.px2,
+  },
+  playerRoleText: {
+    fontSize: fs.xxs,
+    fontWeight: '700',
+    color: 'rgba(89,199,73,0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  playerNameText: {
+    fontSize: fs.md,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.9)',
   },
 });

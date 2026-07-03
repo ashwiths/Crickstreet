@@ -3,11 +3,12 @@ import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query, updateDoc, deleteDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -305,8 +306,8 @@ export default function HomeScreen() {
 
   const isTossSelected = tossChoice !== null;
 
-  const handleGetStarted = () => {
-    if (!unfinishedMatch || !tossChoice) return;
+  const handleGetStarted = async () => {
+    if (!unfinishedMatch || !tossChoice || !user) return;
 
     const battingFirst = tossChoice === 'bat' ? 'my' : 'opp';
 
@@ -334,9 +335,24 @@ export default function HomeScreen() {
     };
     const myRoles = initRoles(myPlayers);
     const oppRoles = initRoles(oppPlayers);
-    const striker = battingFirst === 'my' ? (myPlayers[0] || '') : (oppPlayers[0] || '');
-    const nonStriker = battingFirst === 'my' ? (myPlayers[1] || '') : (oppPlayers[1] || '');
-    const openingBowler = battingFirst === 'my' ? (oppPlayers[0] || '') : (myPlayers[0] || '');
+
+    // Auto-populate initial choices for opponents if applicable
+    const autoStriker = battingFirst === 'opp' ? (oppPlayers[0] || '') : '';
+    const autoNonStriker = battingFirst === 'opp' ? (oppPlayers[1] || '') : '';
+    const autoBowler = battingFirst === 'my' ? (oppPlayers[0] || '') : '';
+
+    // Update match document in database
+    try {
+      const docRef = doc(db, 'users', user.uid, 'matches', unfinishedMatch.id);
+      await updateDoc(docRef, {
+        battingFirst,
+        striker: autoStriker,
+        nonStriker: autoNonStriker,
+        openingBowler: autoBowler,
+      });
+    } catch (err) {
+      console.error('Error updating match setup in database:', err);
+    }
 
     router.push({
       pathname: '/match-warning',
@@ -348,14 +364,137 @@ export default function HomeScreen() {
         myRoles: JSON.stringify(myRoles),
         oppRoles: JSON.stringify(oppRoles),
         battingFirst,
-        striker,
-        nonStriker,
-        openingBowler,
+        striker: autoStriker,
+        nonStriker: autoNonStriker,
+        openingBowler: autoBowler,
         matchId: unfinishedMatch.id,
         format: unfinishedMatch.format || 'T20',
         customOvers: String(unfinishedMatch.customOvers || '20'),
       }
     } as any);
+  };
+
+  const handleResumeMatch = () => {
+    if (!unfinishedMatch) return;
+
+    // Resolve live team rosters to populate players if the match was created before team setups
+    const myTeamDoc = teams.find((t: any) => t.id === unfinishedMatch.myTeamId || t.teamName === unfinishedMatch.myTeamName);
+    const oppTeamDoc = teams.find((t: any) => t.id === unfinishedMatch.oppTeamId || t.teamName === unfinishedMatch.oppTeamName);
+
+    const myPlayers = (myTeamDoc?.players && myTeamDoc.players.length > 0)
+      ? myTeamDoc.players.map((p: any) => p.name || 'Unnamed Player')
+      : (unfinishedMatch.myPlayers || []);
+
+    const battingFirst = unfinishedMatch.battingFirst || 'my';
+
+    let oppPlayers = (oppTeamDoc?.players && oppTeamDoc.players.length > 0)
+      ? oppTeamDoc.players.map((p: any) => p.name || 'Unnamed Player')
+      : (unfinishedMatch.oppPlayers || []);
+
+    // Dynamically set opponent squad size for practice match based on toss choice
+    if (unfinishedMatch.oppTeamName === 'Practice Opponent') {
+      oppPlayers = battingFirst === 'opp' ? ['Opp Player 1', 'Opp Player 2'] : ['Opp Player 1'];
+    }
+
+    router.push({
+      pathname: '/match-setup',
+      params: {
+        myTeamName: unfinishedMatch.myTeamName,
+        oppTeamName: unfinishedMatch.oppTeamName,
+        myPlayers: JSON.stringify(myPlayers),
+        oppPlayers: JSON.stringify(oppPlayers),
+        battingFirst: battingFirst,
+        striker: unfinishedMatch.striker || '',
+        nonStriker: unfinishedMatch.nonStriker || '',
+        openingBowler: unfinishedMatch.openingBowler || '',
+        matchId: unfinishedMatch.id,
+        format: unfinishedMatch.format || 'T20',
+        customOvers: String(unfinishedMatch.customOvers || '20'),
+      }
+    } as any);
+  };
+
+  const handleCancelMatch = () => {
+    if (!unfinishedMatch || !user) return;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmCancel = async () => {
+        const saveToHistory = window.confirm(
+          "Cancel Match ⚠️\n\nWould you like to save this match to your History? (Click OK to save & archive, Cancel to delete without saving)"
+        );
+        if (saveToHistory) {
+          try {
+            const docRef = doc(db, 'users', user.uid, 'matches', unfinishedMatch.id);
+            await updateDoc(docRef, {
+              status: 'completed',
+              statusText: 'Match ended'
+            });
+            window.alert('Match successfully saved to history. 🏏');
+          } catch (err) {
+            console.error('Error saving and ending match:', err);
+            window.alert('Failed to save match.');
+          }
+        } else {
+          const deleteMatch = window.confirm(
+            "Delete Match 🚨\n\nAre you sure you want to delete this match permanently? This will delete all progress and cannot be undone."
+          );
+          if (deleteMatch) {
+            try {
+              const docRef = doc(db, 'users', user.uid, 'matches', unfinishedMatch.id);
+              await deleteDoc(docRef);
+              window.alert('Match successfully deleted. 🏏');
+            } catch (err) {
+              console.error('Error deleting match:', err);
+              window.alert('Failed to delete match.');
+            }
+          }
+        }
+      };
+
+      confirmCancel();
+      return;
+    }
+
+    Alert.alert(
+      'Cancel Match ⚠️',
+      'Choose how you want to cancel the current active match:',
+      [
+        {
+          text: 'Save in History & End',
+          onPress: async () => {
+            try {
+              const docRef = doc(db, 'users', user.uid, 'matches', unfinishedMatch.id);
+              await updateDoc(docRef, {
+                status: 'completed',
+                statusText: 'Match ended'
+              });
+              Alert.alert('Success 🏏', 'Match successfully saved to history.');
+            } catch (err) {
+              console.error('Error saving and ending match:', err);
+              Alert.alert('Error', 'Failed to save match.');
+            }
+          }
+        },
+        {
+          text: "Cancel & Don't Save",
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const docRef = doc(db, 'users', user.uid, 'matches', unfinishedMatch.id);
+              await deleteDoc(docRef);
+              Alert.alert('Success 🏏', 'Match successfully cancelled and deleted.');
+            } catch (err) {
+              console.error('Error deleting match:', err);
+              Alert.alert('Error', 'Failed to delete match.');
+            }
+          }
+        },
+        {
+          text: 'Go Back',
+          style: 'cancel'
+        }
+      ]
+    );
   };
 
   return (
@@ -432,56 +571,89 @@ export default function HomeScreen() {
                   </TouchableOpacity>
 
 
-                  {/* Choose to bat or bowl Selector */}
-                  <Text style={styles.tossSectionLabel}>Choose to?</Text>
-                  <View style={styles.tossButtonsRow}>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={[
-                        styles.tossOptionBtn,
-                        tossChoice === 'bat' && styles.tossOptionBtnActive,
-                      ]}
-                      onPress={() => setTossChoice('bat')}
-                    >
-                      <Text style={[
-                        styles.tossOptionBtnTxt,
-                        tossChoice === 'bat' && styles.tossOptionBtnTxtActive
-                      ]}>
-                        🏏 Bat
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={[
-                        styles.tossOptionBtn,
-                        tossChoice === 'bowl' && styles.tossOptionBtnActive,
-                      ]}
-                      onPress={() => setTossChoice('bowl')}
-                    >
-                      <Text style={[
-                        styles.tossOptionBtnTxt,
-                        tossChoice === 'bowl' && styles.tossOptionBtnTxtActive
-                      ]}>
-                        ⚾ Bowl
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  {unfinishedMatch.battingFirst ? (
+                    <>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        style={styles.getStartBtn}
+                        onPress={handleResumeMatch}
+                      >
+                        <Text style={styles.getStartBtnText}>Resume Match</Text>
+                        <Feather name="play" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    activeOpacity={isTossSelected ? 0.85 : 1.0}
-                    disabled={!isTossSelected}
-                    style={[
-                      styles.getStartBtn,
-                      !isTossSelected && styles.getStartBtnDisabled
-                    ]}
-                    onPress={handleGetStarted}
-                  >
-                    <Text style={[
-                      styles.getStartBtnText,
-                      !isTossSelected && styles.getStartBtnTextDisabled
-                    ]}>Get Start</Text>
-                    <Feather name="arrow-right" size={16} color={isTossSelected ? "#FFFFFF" : "rgba(0,0,0,0.25)"} style={{ marginLeft: 6 }} />
-                  </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        style={[styles.getStartBtn, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#FF6B6B', marginTop: 10 }]}
+                        onPress={handleCancelMatch}
+                      >
+                        <Text style={[styles.getStartBtnText, { color: '#FF6B6B' }]}>Cancel Match</Text>
+                        <Feather name="trash-2" size={14} color="#FF6B6B" style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      {/* Choose to bat or bowl Selector */}
+                      <Text style={styles.tossSectionLabel}>Choose to?</Text>
+                      <View style={styles.tossButtonsRow}>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          style={[
+                            styles.tossOptionBtn,
+                            tossChoice === 'bat' && styles.tossOptionBtnActive,
+                          ]}
+                          onPress={() => setTossChoice('bat')}
+                        >
+                          <Text style={[
+                            styles.tossOptionBtnTxt,
+                            tossChoice === 'bat' && styles.tossOptionBtnTxtActive
+                          ]}>
+                            🏏 Bat
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          style={[
+                            styles.tossOptionBtn,
+                            tossChoice === 'bowl' && styles.tossOptionBtnActive,
+                          ]}
+                          onPress={() => setTossChoice('bowl')}
+                        >
+                          <Text style={[
+                            styles.tossOptionBtnTxt,
+                            tossChoice === 'bowl' && styles.tossOptionBtnTxtActive
+                          ]}>
+                            ⚾ Bowl
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        activeOpacity={isTossSelected ? 0.85 : 1.0}
+                        disabled={!isTossSelected}
+                        style={[
+                          styles.getStartBtn,
+                          !isTossSelected && styles.getStartBtnDisabled
+                        ]}
+                        onPress={handleGetStarted}
+                      >
+                        <Text style={[
+                          styles.getStartBtnText,
+                          !isTossSelected && styles.getStartBtnTextDisabled
+                        ]}>Get Start</Text>
+                        <Feather name="arrow-right" size={16} color={isTossSelected ? "#FFFFFF" : "rgba(0,0,0,0.25)"} style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        style={[styles.getStartBtn, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#FF6B6B', marginTop: 10 }]}
+                        onPress={handleCancelMatch}
+                      >
+                        <Text style={[styles.getStartBtnText, { color: '#FF6B6B' }]}>Cancel Match</Text>
+                        <Feather name="trash-2" size={14} color="#FF6B6B" style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
 
                 <View style={styles.anotherMatchHeaderContainer}>
