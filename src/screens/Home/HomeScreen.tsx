@@ -548,28 +548,31 @@ export default function HomeScreen() {
                     </View>
                     <Text style={styles.formatText}>🏏 {unfinishedMatch.format || 'Overs'}</Text>
                   </View>
+                  <View style={styles.activeMatchTeamsContainer}>
+                    <View style={styles.activeMatchTeamRow}>
+                      <Text style={styles.activeMatchTeamName} numberOfLines={1}>
+                        {unfinishedMatch.myTeamName || 'My Team'}
+                      </Text>
+                      <Text style={styles.activeMatchTeamScore}>
+                        {unfinishedMatch.myScore || '0/0'}
+                      </Text>
+                    </View>
 
-                  <Text style={styles.activeMatchTitleText}>Match has been created</Text>
-                  <Text style={styles.activeMatchSubtitleText}>View details & keep score</Text>
+                    <View style={styles.activeMatchVsDivider}>
+                      <View style={styles.vsLine} />
+                      <Text style={styles.vsText}>VS</Text>
+                      <View style={styles.vsLine} />
+                    </View>
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      const matchingTeam = teams.find((t: any) => t.teamName === unfinishedMatch.myTeamName);
-                      if (matchingTeam) {
-                        router.push(`/team-details/${matchingTeam.id}` as any);
-                      } else {
-                        Alert.alert('No Squad Linked', 'This team is not in your registered squads list. Go to My Teams to create it?', [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Go to Teams', onPress: () => router.push('/my-teams' as any) }
-                        ]);
-                      }
-                    }}
-                    style={{ marginTop: 2, marginBottom: 8, alignSelf: 'center' }}
-                  >
-                    <Text style={styles.viewDetailsLinkTxt}>View Details</Text>
-                  </TouchableOpacity>
-
+                    <View style={styles.activeMatchTeamRow}>
+                      <Text style={styles.activeMatchTeamName} numberOfLines={1}>
+                        {unfinishedMatch.oppTeamName || 'Opp Team'}
+                      </Text>
+                      <Text style={styles.activeMatchTeamScore}>
+                        {unfinishedMatch.oppScore || '0/0'}
+                      </Text>
+                    </View>
+                  </View>
 
                   {unfinishedMatch.battingFirst ? (
                     <>
@@ -655,12 +658,6 @@ export default function HomeScreen() {
                     </>
                   )}
                 </View>
-
-                <View style={styles.anotherMatchHeaderContainer}>
-                  <Text style={styles.anotherMatchSectionTitle}>Create new or another match</Text>
-                </View>
-
-                <ActiveMatchCard />
               </View>
             ) : (
               <ActiveMatchCard />

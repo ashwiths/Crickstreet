@@ -297,7 +297,20 @@ export default function MatchSetupScreen() {
     if (!countdownDone) return;
     const timeout = setTimeout(() => {
       router.replace({
-        pathname: '/(tabs)',
+        pathname: '/scorecard',
+        params: {
+          matchId: params.matchId || '',
+          myTeamName: params.myTeamName || '',
+          oppTeamName: params.oppTeamName || '',
+          myPlayers: params.myPlayers || '[]',
+          oppPlayers: params.oppPlayers || '[]',
+          battingFirst: params.battingFirst || 'my',
+          striker: striker || '',
+          nonStriker: nonStriker || '',
+          openingBowler: selectedBowler || '',
+          format: params.format || 'T20',
+          customOvers: params.customOvers || '20',
+        }
       });
     }, 1200);
     return () => clearTimeout(timeout);
