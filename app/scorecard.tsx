@@ -19,6 +19,8 @@ import { db } from '../src/services/firebase';
 import { useAuth } from '../src/hooks/useAuth';
 import { triggerLocalNotification } from '../src/services/notifications';
 import { s, fs, sp, br, avatarSz } from '../src/theme/responsive';
+import MyTeamWinAnimation from '../src/components/MyTeamWinAnimation';
+import OpponentWinAnimation from '../src/components/OpponentWinAnimation';
 
 const C = {
   bg: '#F3F4F1',
@@ -148,6 +150,14 @@ export default function ScorecardScreen() {
 
   // Modal selectors
   const [showNewBatterModal, setShowNewBatterModal] = useState(false);
+  const [winAnimationWinner, setWinAnimationWinner] = useState<'my' | 'opp' | null>(null);
+  const [completedMatchScores, setCompletedMatchScores] = useState<{
+    myScore: number;
+    oppScore: number;
+    myWickets: number;
+    oppWickets: number;
+    resultText: string;
+  } | null>(null);
   const [showNewBowlerModal, setShowNewBowlerModal] = useState(false);
   const [loadingDb, setLoadingDb] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -346,8 +356,8 @@ export default function ScorecardScreen() {
       oppScoreWickets: prev.oppWickets,
       oppScoreBalls: prev.oppBalls,
       oppExtras: prev.oppExtras,
-      myScore: `${prev.myScore}/${prev.oppWickets}`,
-      oppScore: `${prev.oppScore}/${prev.myWickets}`,
+      myScore: `${prev.myScore}/${prev.myWickets}`,
+      oppScore: `${prev.oppScore}/${prev.oppWickets}`,
       myRoster: prev.myRoster,
       oppRoster: prev.oppRoster,
       strikerName: prev.strikerName,
@@ -381,7 +391,7 @@ export default function ScorecardScreen() {
 
   // Check Over ending
   const checkOverCompletion = (updatedBalls: number, currentStrike: 'striker' | 'nonStriker') => {
-    if (updatedBalls > 0 && updatedBalls % 6 === 0) {
+    if (updatedBalls > 0 && updatedBalls % 6 === 0 && updatedBalls < maxOvers * 6) {
       const rotated = rotateStrike(currentStrike);
       setIsOnStrike(rotated);
       
@@ -391,6 +401,87 @@ export default function ScorecardScreen() {
       return { overCompleted: true, nextStrike: rotated };
     }
     return { overCompleted: false, nextStrike: currentStrike };
+  };
+
+  // Check Innings or Match Ending Conditions
+  const checkInningsOrMatchEnd = (
+    nextScore: number,
+    nextBalls: number,
+    nextWickets: number,
+    customDismissedList?: string[]
+  ) => {
+    const isMyBatting = battingTeam === 'my';
+    const currentDismissed = customDismissedList || dismissedPlayers;
+    
+    if (currentInnings === 'First Innings') {
+      const remainingCount = battingPlayers.filter(
+        p => p !== strikerName && p !== nonStrikerName && !currentDismissed.includes(p)
+      ).length;
+      
+      const isAllOut = nextWickets >= 10 || remainingCount === 0;
+      const isOversFinished = nextBalls >= maxOvers * 6;
+      
+      if (isAllOut || isOversFinished) {
+        const reason = isAllOut ? 'All out!' : 'Overs completed!';
+        Alert.alert('Innings Completed 🏁', `${reason} Moving to innings break.`, [
+          { text: 'OK', onPress: handleInningsBreak }
+        ]);
+        return true;
+      }
+    } else {
+      // Second Innings
+      const firstInningsScore = isMyBatting ? oppScore : myScore;
+      const target = firstInningsScore + 1;
+      
+      if (nextScore >= target) {
+        const chasingTeamName = isMyBatting ? myTeamName : oppTeamName;
+        const wicketsWonBy = 10 - nextWickets;
+        const winReason = `${chasingTeamName} won by ${wicketsWonBy} wicket${wicketsWonBy !== 1 ? 's' : ''}`;
+        
+        setCompletedMatchScores({
+          myScore: isMyBatting ? nextScore : myScore,
+          oppScore: !isMyBatting ? nextScore : oppScore,
+          myWickets: isMyBatting ? nextWickets : myWickets,
+          oppWickets: !isMyBatting ? nextWickets : oppWickets,
+          resultText: winReason,
+        });
+        setWinAnimationWinner(isMyBatting ? 'my' : 'opp');
+        return true;
+      }
+      
+      const remainingCount = battingPlayers.filter(
+        p => p !== strikerName && p !== nonStrikerName && !currentDismissed.includes(p)
+      ).length;
+      
+      const isAllOut = nextWickets >= 10 || remainingCount === 0;
+      const isOversFinished = nextBalls >= maxOvers * 6;
+      
+      if (isAllOut || isOversFinished) {
+        const chasingTeamName = isMyBatting ? myTeamName : oppTeamName;
+        const defendingTeamName = isMyBatting ? oppTeamName : myTeamName;
+        
+        let resultMessage = '';
+        if (nextScore === target - 1) {
+          resultMessage = 'Match Tied!';
+        } else {
+          const runMargin = firstInningsScore - nextScore;
+          resultMessage = `${defendingTeamName} won by ${runMargin} run${runMargin !== 1 ? 's' : ''}`;
+        }
+        
+        const finalWinnerKey = nextScore === target - 1 ? 'opp' : (isMyBatting ? 'opp' : 'my');
+
+        setCompletedMatchScores({
+          myScore: isMyBatting ? nextScore : myScore,
+          oppScore: !isMyBatting ? nextScore : oppScore,
+          myWickets: isMyBatting ? nextWickets : myWickets,
+          oppWickets: !isMyBatting ? nextWickets : oppWickets,
+          resultText: resultMessage,
+        });
+        setWinAnimationWinner(finalWinnerKey === 'my' ? 'my' : 'opp');
+        return true;
+      }
+    }
+    return false;
   };
 
   // Record Runs Conceded/Scored
@@ -453,7 +544,7 @@ export default function ScorecardScreen() {
         syncMatchStateToDb({
           myScoreRuns: nextMyScore,
           myScoreBalls: nextBalls,
-          myScore: `${nextMyScore}/${oppWickets}`,
+          myScore: `${nextMyScore}/${myWickets}`,
           myRoster: nextRoster,
           oppRoster: oppRoster,
           batterHistories: nextBatterHistories,
@@ -464,6 +555,8 @@ export default function ScorecardScreen() {
         });
         return nextBalls;
       });
+
+      checkInningsOrMatchEnd(nextMyScore, myBalls + 1, myWickets);
     } else {
       setOppRoster(nextRoster);
       setOppScore(nextOppScore);
@@ -474,7 +567,7 @@ export default function ScorecardScreen() {
         syncMatchStateToDb({
           oppScoreRuns: nextOppScore,
           oppScoreBalls: nextBalls,
-          oppScore: `${nextOppScore}/${myWickets}`,
+          oppScore: `${nextOppScore}/${oppWickets}`,
           oppRoster: nextRoster,
           myRoster: myRoster,
           batterHistories: nextBatterHistories,
@@ -485,6 +578,8 @@ export default function ScorecardScreen() {
         });
         return nextBalls;
       });
+
+      checkInningsOrMatchEnd(nextOppScore, oppBalls + 1, oppWickets);
     }
   };
 
@@ -557,6 +652,10 @@ export default function ScorecardScreen() {
         bowlerStats: nextBowlerStats,
         historySnapshotStack: nextHistory,
       });
+
+      if (currentInnings === 'Second Innings') {
+        checkInningsOrMatchEnd(nextMyScore, myBalls, myWickets);
+      }
     } else {
       setOppScore(nextOppScore);
       setOppExtras(nextOppExtras);
@@ -573,6 +672,10 @@ export default function ScorecardScreen() {
         bowlerStats: nextBowlerStats,
         historySnapshotStack: nextHistory,
       });
+
+      if (currentInnings === 'Second Innings') {
+        checkInningsOrMatchEnd(nextOppScore, oppBalls, oppWickets);
+      }
     }
   };
 
@@ -640,7 +743,7 @@ export default function ScorecardScreen() {
         syncMatchStateToDb({
           myScoreWickets: nextMyWickets,
           myScoreBalls: nextBalls,
-          oppScore: `${oppScore}/${nextMyWickets}`,
+          myScore: `${myScore}/${nextMyWickets}`,
           myRoster: localMyRoster,
           oppRoster: localOppRoster,
           batterHistories: nextBatterHistories,
@@ -652,6 +755,11 @@ export default function ScorecardScreen() {
         });
         return nextBalls;
       });
+
+      const isFinished = checkInningsOrMatchEnd(myScore, myBalls + 1, nextMyWickets, nextDismissed);
+      if (!isFinished) {
+        setShowNewBatterModal(true);
+      }
     } else {
       localOppRoster = oppRoster.map(p => {
         if (p.name === activeBatter) {
@@ -677,7 +785,7 @@ export default function ScorecardScreen() {
         syncMatchStateToDb({
           oppScoreWickets: nextOppWickets,
           oppScoreBalls: nextBalls,
-          myScore: `${myScore}/${nextOppWickets}`,
+          oppScore: `${oppScore}/${nextOppWickets}`,
           oppRoster: localOppRoster,
           myRoster: localMyRoster,
           batterHistories: nextBatterHistories,
@@ -689,17 +797,11 @@ export default function ScorecardScreen() {
         });
         return nextBalls;
       });
-    }
 
-    const remainingCount = battingPlayers.filter(p => p !== strikerName && p !== nonStrikerName && !nextDismissed.includes(p)).length;
-    const finalWickets = isMyBatting ? nextMyWickets : nextOppWickets;
-
-    if (remainingCount === 0 || finalWickets >= 10) {
-      Alert.alert('Innings Completed 🏁', 'All out! Moving to innings break.', [
-        { text: 'OK', onPress: handleInningsBreak }
-      ]);
-    } else {
-      setShowNewBatterModal(true);
+      const isFinished = checkInningsOrMatchEnd(oppScore, oppBalls + 1, nextOppWickets, nextDismissed);
+      if (!isFinished) {
+        setShowNewBatterModal(true);
+      }
     }
   };
 
@@ -758,18 +860,40 @@ export default function ScorecardScreen() {
   };
 
   // Complete and Save Match (Database Submit)
-  const handleCompleteMatchDirectly = async () => {
+  const handleCompleteMatchDirectly = async (
+    overrideMyScore?: number,
+    overrideOppScore?: number,
+    overrideMyWickets?: number,
+    overrideOppWickets?: number
+  ) => {
     setSaving(true);
     try {
       const batch = writeBatch(db);
       const querySnapshot = await getDocs(collection(db, 'users'));
 
       const allStats = [...myRoster, ...oppRoster];
-      const myTeamRuns = myScore;
-      const oppTeamRuns = oppScore;
+      const myTeamRuns = overrideMyScore !== undefined ? overrideMyScore : myScore;
+      const oppTeamRuns = overrideOppScore !== undefined ? overrideOppScore : oppScore;
+      const myTeamWickets = overrideMyWickets !== undefined ? overrideMyWickets : myWickets;
+      const oppTeamWickets = overrideOppWickets !== undefined ? overrideOppWickets : oppWickets;
       
       const winner = myTeamRuns > oppTeamRuns ? 'my' : (oppTeamRuns > myTeamRuns ? 'opp' : 'tie');
       const winningTeamName = winner === 'my' ? myTeamName : (winner === 'opp' ? oppTeamName : 'Tie');
+
+      const firstBattingTeam = params.battingFirst === 'opp' ? 'opp' : 'my';
+      const chasingTeam = firstBattingTeam === 'my' ? 'opp' : 'my';
+
+      let resultString = 'Match Tied';
+      if (winner !== 'tie') {
+        if (winner === chasingTeam) {
+          const wicketsLost = chasingTeam === 'my' ? myTeamWickets : oppTeamWickets;
+          const wicketsWonBy = 10 - wicketsLost;
+          resultString = `${winningTeamName} won by ${wicketsWonBy} wicket${wicketsWonBy !== 1 ? 's' : ''}`;
+        } else {
+          const runMargin = Math.abs(myTeamRuns - oppTeamRuns);
+          resultString = `${winningTeamName} won by ${runMargin} run${runMargin !== 1 ? 's' : ''}`;
+        }
+      }
 
       let matchUpdatesCount = 0;
 
@@ -829,11 +953,10 @@ export default function ScorecardScreen() {
 
       if (uid && matchId) {
         const matchRef = doc(db, 'users', uid, 'matches', matchId);
-        const resultString = winner === 'tie' ? 'Match Tied' : `${winningTeamName} won by ${Math.abs(myTeamRuns - oppTeamRuns)} runs`;
         batch.update(matchRef, {
           status: 'completed',
-          myScore: `${myScore}/${oppWickets}`,
-          oppScore: `${oppScore}/${myWickets}`,
+          myScore: `${myTeamRuns}/${myTeamWickets}`,
+          oppScore: `${oppTeamRuns}/${oppTeamWickets}`,
           statusText: resultString,
           endedAt: new Date().toISOString(),
         });
@@ -991,6 +1114,12 @@ export default function ScorecardScreen() {
 
   const isUserBowling = battingTeam === 'opp';
 
+  // Target and chase details
+  const firstInningsScore = battingTeam === 'my' ? oppScore : myScore;
+  const target = firstInningsScore + 1;
+  const runsNeeded = target - currentBattingScore;
+  const ballsRemaining = Math.max(0, (maxOvers * 6) - currentBattingBalls);
+
   return (
     <View style={styles.root}>
       {/* Background Gradient */}
@@ -1043,6 +1172,18 @@ export default function ScorecardScreen() {
                 <Text style={styles.oversText}>{overDisplay}</Text>
               </View>
             </View>
+
+            {/* Target Display Row if Second Innings */}
+            {currentInnings === 'Second Innings' && (
+              <View style={styles.targetRow}>
+                <Text style={styles.targetText}>
+                  Target: {target}
+                </Text>
+                <Text style={styles.runsNeededText}>
+                  Need {runsNeeded} runs off {ballsRemaining} balls
+                </Text>
+              </View>
+            )}
 
             <View style={styles.scoreCardFooter}>
               <Text style={styles.footerStatText}>Extras: {currentBattingExtras}</Text>
@@ -1317,7 +1458,7 @@ export default function ScorecardScreen() {
           </View>
 
           {/* Complete Match Button */}
-          <TouchableOpacity activeOpacity={0.8} style={styles.completeBtn} onPress={handleCompleteMatchDirectly}>
+          <TouchableOpacity activeOpacity={0.8} style={styles.completeBtn} onPress={() => handleCompleteMatchDirectly()}>
             <Text style={styles.completeBtnTxt}>Complete & Save Match</Text>
           </TouchableOpacity>
 
@@ -1384,6 +1525,36 @@ export default function ScorecardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Win Animation Overlays */}
+      {winAnimationWinner === 'my' && completedMatchScores && (
+        <MyTeamWinAnimation
+          resultText={completedMatchScores.resultText}
+          onComplete={() => {
+            setWinAnimationWinner(null);
+            handleCompleteMatchDirectly(
+              completedMatchScores.myScore,
+              completedMatchScores.oppScore,
+              completedMatchScores.myWickets,
+              completedMatchScores.oppWickets
+            );
+          }}
+        />
+      )}
+      {winAnimationWinner === 'opp' && completedMatchScores && (
+        <OpponentWinAnimation
+          resultText={completedMatchScores.resultText}
+          onComplete={() => {
+            setWinAnimationWinner(null);
+            handleCompleteMatchDirectly(
+              completedMatchScores.myScore,
+              completedMatchScores.oppScore,
+              completedMatchScores.myWickets,
+              completedMatchScores.oppWickets
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -1523,6 +1694,26 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.15)',
     paddingTop: sp.sm,
     marginTop: sp.xs,
+  },
+  targetRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: -sp.xs,
+    marginBottom: sp.xs,
+    paddingVertical: sp.xs,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.15)',
+  },
+  targetText: {
+    fontSize: fs.sm,
+    fontWeight: '800',
+    color: '#F9E5C8',
+  },
+  runsNeededText: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: '#D1E7CD',
   },
   footerStatText: {
     fontSize: fs.xs,
