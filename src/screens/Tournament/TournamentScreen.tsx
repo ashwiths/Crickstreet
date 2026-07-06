@@ -48,7 +48,13 @@ export default function TournamentScreen({
       if (m.result) {
         result = m.result;
       } else if (m.winner) {
-        result = m.winner === 'teamA' ? 'Won' : 'Lost';
+        if (m.winner === 'my' || m.winner === 'teamA') {
+          result = 'Won';
+        } else if (m.winner === 'opp' || m.winner === 'teamB') {
+          result = 'Lost';
+        } else {
+          result = 'Draw';
+        }
       } else if (m.status === 'completed') {
         const scoreA = parseInt(m.myScore?.split('/')[0] || m.teamAScore || '0');
         const scoreB = parseInt(m.oppScore?.split('/')[0] || m.teamBScore || '0');
@@ -70,6 +76,7 @@ export default function TournamentScreen({
         overs: m.overs || m.format || '20 Ov',
         potm: m.potm || 'N/A',
         venue: m.venueName || m.venue || 'Local',
+        statusText: m.statusText || '',
       };
     });
   }, [matches]);
@@ -241,9 +248,11 @@ export default function TournamentScreen({
                     <View style={styles.cardDivider} />
 
                     <View style={styles.matchBottom}>
-                      <View style={styles.matchMeta}>
+                      <View style={[styles.matchMeta, { flex: 1, marginRight: 8 }]}>
                         <Feather name="award" size={12} color="#8A8A8A" />
-                        <Text style={styles.metaTxt}>POM: {m.potm}</Text>
+                        <Text style={styles.metaTxt} numberOfLines={1}>
+                          {m.statusText ? `${m.statusText} (POM: ${m.potm})` : `POM: ${m.potm}`}
+                        </Text>
                       </View>
                       <View style={styles.chevronBtn}>
                         <Feather name="chevron-right" size={14} color="#2D5016" />

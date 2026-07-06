@@ -38,6 +38,7 @@ export default function MatchesScreen({
     const wins = completedMatches.filter((m: any) => {
       if (m.result === 'Won') return true;
       if (m.winner === 'teamA') return true;
+      if (m.winner === 'my') return true;
       // Compare scores
       const scoreA = parseInt(m.myScore?.split('/')[0] || m.teamAScore || '0', 10);
       const scoreB = parseInt(m.oppScore?.split('/')[0] || m.teamBScore || '0', 10);
@@ -47,6 +48,7 @@ export default function MatchesScreen({
     const losses = completedMatches.filter((m: any) => {
       if (m.result === 'Lost') return true;
       if (m.winner === 'teamB') return true;
+      if (m.winner === 'opp') return true;
       // Compare scores
       const scoreA = parseInt(m.myScore?.split('/')[0] || m.teamAScore || '0', 10);
       const scoreB = parseInt(m.oppScore?.split('/')[0] || m.teamBScore || '0', 10);
