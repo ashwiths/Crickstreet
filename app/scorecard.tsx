@@ -208,7 +208,7 @@ export default function ScorecardScreen() {
         if (matchSnap.exists()) {
           const data = matchSnap.data();
           
-          if (data.status === 'live' || data.status === 'Live' || data.status === 'Innings Break') {
+          if (data.status === 'live' || data.status === 'Live' || data.status === 'Innings Break' || data.status === 'completed' || data.status === 'Completed') {
             if (data.myScoreRuns !== undefined) setMyScore(data.myScoreRuns);
             if (data.myScoreWickets !== undefined) setMyWickets(data.myScoreWickets);
             if (data.myScoreBalls !== undefined) setMyBalls(data.myScoreBalls);
@@ -230,6 +230,16 @@ export default function ScorecardScreen() {
             if (data.currentInnings !== undefined) setCurrentInnings(data.currentInnings);
             if (data.battingTeam !== undefined) setBattingTeam(data.battingTeam);
             if (data.matchStatus !== undefined) setMatchStatus(data.matchStatus);
+            if (data.matchStatus === 'Innings Break') {
+              router.replace({
+                pathname: '/innings-break-timer',
+                params: { matchId, uid }
+              });
+              return;
+            }
+            if (data.status === 'completed' || data.status === 'Completed') {
+              setMatchStatus('Completed');
+            }
             if (data.batterHistories !== undefined) setBatterHistories(data.batterHistories);
             if (data.bowlerHistories !== undefined) setBowlerHistories(data.bowlerHistories);
             if (data.bowlerStats !== undefined) setBowlerStats(data.bowlerStats);
@@ -390,11 +400,33 @@ export default function ScorecardScreen() {
   };
 
   // Check Over ending
-  const checkOverCompletion = (updatedBalls: number, currentStrike: 'striker' | 'nonStriker') => {
-    if (updatedBalls > 0 && updatedBalls % 6 === 0 && updatedBalls < maxOvers * 6) {
-      const rotated = rotateStrike(currentStrike);
+  const checkOverCompletion = (
+    updatedBalls: number,
+    currentStrike: 'striker' | 'nonStriker',
+    wickets: number,
+    score: number,
+    customDismissedList?: string[]
+  ) => {
+    const rotated = rotateStrike(currentStrike);
+
+    // Calculate if the innings is ending
+    const isFirstInnings = currentInnings === 'First Innings';
+    const firstInningsScore = battingTeam === 'my' ? oppScore : myScore;
+    const target = firstInningsScore + 1;
+
+    const currentDismissed = customDismissedList || dismissedPlayers;
+    const remainingCount = battingPlayers.filter(
+      p => p !== strikerName && p !== nonStrikerName && !currentDismissed.includes(p)
+    ).length;
+
+    const isAllOut = wickets >= 10 || remainingCount === 0;
+    const isOversFinished = updatedBalls >= maxOvers * 6;
+    const isTargetChased = !isFirstInnings && score >= target;
+    
+    const isEnding = isAllOut || isOversFinished || isTargetChased;
+
+    if (updatedBalls > 0 && updatedBalls % 6 === 0 && !isEnding) {
       setIsOnStrike(rotated);
-      
       Alert.alert('Over Completed 🏏', 'Please select the next bowler.', [
         { text: 'OK', onPress: () => setShowNewBowlerModal(true) }
       ]);
@@ -422,10 +454,36 @@ export default function ScorecardScreen() {
       const isOversFinished = nextBalls >= maxOvers * 6;
       
       if (isAllOut || isOversFinished) {
-        const reason = isAllOut ? 'All out!' : 'Overs completed!';
-        Alert.alert('Innings Completed 🏁', `${reason} Moving to innings break.`, [
-          { text: 'OK', onPress: handleInningsBreak }
-        ]);
+        // Prepare parameters for Second Innings and redirect to timer screen
+        const nextHistory = saveToHistory();
+        const nextBattingTeam = battingTeam === 'my' ? 'opp' : 'my';
+        const nextBattingPlayers = nextBattingTeam === 'my' ? initialMyPlayers : initialOppPlayers;
+        
+        const nextStriker = nextBattingPlayers[0] || 'Batter 1';
+        const nextNonStriker = nextBattingPlayers[1] || 'Batter 2';
+        const nextBowlingPlayers = nextBattingTeam === 'my' ? initialOppPlayers : initialMyPlayers;
+        const nextBowler = nextBowlingPlayers[0] || 'Bowler';
+
+        if (uid && matchId) {
+          const matchRef = doc(db, 'users', uid, 'matches', matchId);
+          updateDoc(matchRef, {
+            currentInnings: 'Second Innings',
+            matchStatus: 'Innings Break',
+            status: 'live',
+            battingTeam: nextBattingTeam,
+            strikerName: nextStriker,
+            nonStrikerName: nextNonStriker,
+            currentBowlerName: nextBowler,
+            isOnStrike: 'striker',
+            dismissedPlayers: [],
+            historySnapshotStack: nextHistory,
+          }).then(() => {
+            router.replace({
+              pathname: '/innings-break-timer',
+              params: { matchId, uid }
+            });
+          });
+        }
         return true;
       }
     } else {
@@ -539,7 +597,7 @@ export default function ScorecardScreen() {
       setMyScore(nextMyScore);
       setMyBalls(prev => {
         const nextBalls = prev + 1;
-        const check = checkOverCompletion(nextBalls, nextStrike);
+        const check = checkOverCompletion(nextBalls, nextStrike, myWickets, nextMyScore);
         
         syncMatchStateToDb({
           myScoreRuns: nextMyScore,
@@ -562,7 +620,7 @@ export default function ScorecardScreen() {
       setOppScore(nextOppScore);
       setOppBalls(prev => {
         const nextBalls = prev + 1;
-        const check = checkOverCompletion(nextBalls, nextStrike);
+        const check = checkOverCompletion(nextBalls, nextStrike, oppWickets, nextOppScore);
 
         syncMatchStateToDb({
           oppScoreRuns: nextOppScore,
@@ -738,7 +796,7 @@ export default function ScorecardScreen() {
 
       setMyBalls(prev => {
         const nextBalls = prev + 1;
-        const check = checkOverCompletion(nextBalls, isOnStrike);
+        const check = checkOverCompletion(nextBalls, isOnStrike, nextMyWickets, myScore, nextDismissed);
         
         syncMatchStateToDb({
           myScoreWickets: nextMyWickets,
@@ -780,7 +838,7 @@ export default function ScorecardScreen() {
 
       setOppBalls(prev => {
         const nextBalls = prev + 1;
-        const check = checkOverCompletion(nextBalls, isOnStrike);
+        const check = checkOverCompletion(nextBalls, isOnStrike, nextOppWickets, oppScore, nextDismissed);
         
         syncMatchStateToDb({
           oppScoreWickets: nextOppWickets,
@@ -811,7 +869,7 @@ export default function ScorecardScreen() {
 
     if (currentInnings === 'First Innings') {
       setCurrentInnings('Second Innings');
-      setMatchStatus('Innings Break');
+      setMatchStatus('Live');
       
       const nextBattingTeam = battingTeam === 'my' ? 'opp' : 'my';
       setBattingTeam(nextBattingTeam);
@@ -835,7 +893,7 @@ export default function ScorecardScreen() {
 
       syncMatchStateToDb({
         currentInnings: 'Second Innings',
-        matchStatus: 'Innings Break',
+        matchStatus: 'Live',
         battingTeam: nextBattingTeam,
         strikerName: nextStriker,
         nonStrikerName: nextNonStriker,
@@ -844,16 +902,6 @@ export default function ScorecardScreen() {
         dismissedPlayers: [],
         historySnapshotStack: nextHistory,
       });
-
-      Alert.alert('Innings Break ⏸️', 'First innings completed! Ready to score the second innings.', [
-        { 
-          text: 'Start Second Innings', 
-          onPress: () => {
-            setMatchStatus('Live');
-            syncMatchStateToDb({ matchStatus: 'Live' });
-          } 
-        }
-      ]);
     } else {
       handleCompleteMatchDirectly();
     }
@@ -959,6 +1007,27 @@ export default function ScorecardScreen() {
           oppScore: `${oppTeamRuns}/${oppTeamWickets}`,
           statusText: resultString,
           endedAt: new Date().toISOString(),
+          // Complete details
+          myScoreRuns: myTeamRuns,
+          oppScoreRuns: oppTeamRuns,
+          myScoreWickets: myTeamWickets,
+          oppScoreWickets: oppTeamWickets,
+          myScoreBalls: myBalls,
+          oppScoreBalls: oppBalls,
+          myExtras,
+          oppExtras,
+          myRoster,
+          oppRoster,
+          batterHistories,
+          bowlerHistories,
+          bowlerStats,
+          currentInnings,
+          battingTeam,
+          strikerName,
+          nonStrikerName,
+          currentBowlerName,
+          dismissedPlayers,
+          matchStatus: 'Completed',
         });
       }
 
@@ -1104,6 +1173,28 @@ export default function ScorecardScreen() {
     return `${overs}.${balls} overs • ${stats.runs} runs conceded • ${stats.wickets} wickets`;
   };
 
+  // Dynamic Completed Match Result String
+  const matchResultText = useMemo(() => {
+    const myTeamRuns = myScore;
+    const oppTeamRuns = oppScore;
+    const winner = myTeamRuns > oppTeamRuns ? 'my' : (oppTeamRuns > myTeamRuns ? 'opp' : 'tie');
+    const winningTeamName = winner === 'my' ? myTeamName : (winner === 'opp' ? oppTeamName : 'Tie');
+
+    const firstBattingTeam = params.battingFirst === 'opp' ? 'opp' : 'my';
+    const chasingTeam = firstBattingTeam === 'my' ? 'opp' : 'my';
+
+    if (winner === 'tie') return 'Match Tied';
+    
+    if (winner === chasingTeam) {
+      const wicketsLost = chasingTeam === 'my' ? myWickets : oppWickets;
+      const wicketsWonBy = 10 - wicketsLost;
+      return `${winningTeamName} won by ${wicketsWonBy} wicket${wicketsWonBy !== 1 ? 's' : ''}`;
+    } else {
+      const runMargin = Math.abs(myTeamRuns - oppTeamRuns);
+      return `${winningTeamName} won by ${runMargin} run${runMargin !== 1 ? 's' : ''}`;
+    }
+  }, [myScore, oppScore, myWickets, oppWickets, myTeamName, oppTeamName, params.battingFirst]);
+
   if (loadingDb) {
     return (
       <View style={styles.loadingContainer}>
@@ -1148,10 +1239,16 @@ export default function ScorecardScreen() {
           {/* Scoreboard overview card */}
           <View style={styles.scoreOverviewCard}>
             <View style={styles.scoreCardHeader}>
-              <View style={styles.liveIndicatorBadge}>
-                <View style={styles.liveIndicatorDot} />
-                <Text style={styles.liveIndicatorText}>LIVE</Text>
-              </View>
+              {matchStatus === 'Completed' ? (
+                <View style={[styles.liveIndicatorBadge, { backgroundColor: '#F3F4F1', borderColor: C.textGray }]}>
+                  <Text style={[styles.liveIndicatorText, { color: C.textGray }]}>FINISHED</Text>
+                </View>
+              ) : (
+                <View style={styles.liveIndicatorBadge}>
+                  <View style={styles.liveIndicatorDot} />
+                  <Text style={styles.liveIndicatorText}>LIVE</Text>
+                </View>
+              )}
               <Text style={styles.inningsText}>
                 {currentInnings} • {matchFormat}
               </Text>
@@ -1191,6 +1288,14 @@ export default function ScorecardScreen() {
             </View>
           </View>
 
+          {/* Completed Match Banner */}
+          {matchStatus === 'Completed' && (
+            <View style={styles.completedBanner}>
+              <Text style={styles.completedBannerTitle}>🏆 Match Completed</Text>
+              <Text style={styles.completedBannerDesc}>{matchResultText}</Text>
+            </View>
+          )}
+
           {/* DYNAMIC LAYOUT BASED ON BATTING/BOWLING (Sketches integration) */}
           {isUserBowling ? (
             /* User Team is Bowling -> Bowler main card at top */
@@ -1199,9 +1304,9 @@ export default function ScorecardScreen() {
               <View style={styles.bowlerSection}>
                 <Text style={styles.sectionLabel}>BOWLER (MY TEAM)</Text>
                 <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setShowNewBowlerModal(true)}
-                  style={[styles.bowlerCard, styles.bowlerCardActive]}
+                  activeOpacity={matchStatus === 'Completed' ? 1.0 : 0.8}
+                  onPress={matchStatus === 'Completed' ? undefined : () => setShowNewBowlerModal(true)}
+                  style={[styles.bowlerCard, matchStatus !== 'Completed' && styles.bowlerCardActive]}
                 >
                   <View style={[styles.iconCircle, { backgroundColor: '#EAF7E6' }]}>
                     <Text style={{ fontSize: 18 }}>⚾</Text>
@@ -1216,7 +1321,9 @@ export default function ScorecardScreen() {
                     {/* ball history tracker circles under bowler name */}
                     {renderBowlerHistory(currentBowlerName)}
                   </View>
-                  <Feather name="refresh-cw" size={16} color={C.greenDark} />
+                  {matchStatus !== 'Completed' && (
+                    <Feather name="refresh-cw" size={16} color={C.greenDark} />
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -1225,11 +1332,11 @@ export default function ScorecardScreen() {
                 <Text style={styles.sectionLabel}>BATSMEN (OPP TEAM)</Text>
                 
                 <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => handleToggleStrike('striker')}
+                  activeOpacity={matchStatus === 'Completed' ? 1.0 : 0.9}
+                  onPress={matchStatus === 'Completed' ? undefined : () => handleToggleStrike('striker')}
                   style={[
                     styles.batterRowCard,
-                    isOnStrike === 'striker' && styles.batterRowCardActiveMini
+                    matchStatus !== 'Completed' && isOnStrike === 'striker' && styles.batterRowCardActiveMini
                   ]}
                 >
                   <View style={styles.batterDetails}>
@@ -1246,11 +1353,11 @@ export default function ScorecardScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => handleToggleStrike('nonStriker')}
+                  activeOpacity={matchStatus === 'Completed' ? 1.0 : 0.9}
+                  onPress={matchStatus === 'Completed' ? undefined : () => handleToggleStrike('nonStriker')}
                   style={[
                     styles.batterRowCard,
-                    isOnStrike === 'nonStriker' && styles.batterRowCardActiveMini
+                    matchStatus !== 'Completed' && isOnStrike === 'nonStriker' && styles.batterRowCardActiveMini
                   ]}
                 >
                   <View style={styles.batterDetails}>
@@ -1276,11 +1383,11 @@ export default function ScorecardScreen() {
                 
                 {/* Batter 1: Striker */}
                 <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => handleToggleStrike('striker')}
+                  activeOpacity={matchStatus === 'Completed' ? 1.0 : 0.9}
+                  onPress={matchStatus === 'Completed' ? undefined : () => handleToggleStrike('striker')}
                   style={[
                     styles.batterRowCard,
-                    isOnStrike === 'striker' && styles.batterRowCardActive
+                    matchStatus !== 'Completed' && isOnStrike === 'striker' && styles.batterRowCardActive
                   ]}
                 >
                   <View style={styles.batterDetails}>
@@ -1305,11 +1412,11 @@ export default function ScorecardScreen() {
 
                 {/* Batter 2: Non-Striker */}
                 <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => handleToggleStrike('nonStriker')}
+                  activeOpacity={matchStatus === 'Completed' ? 1.0 : 0.9}
+                  onPress={matchStatus === 'Completed' ? undefined : () => handleToggleStrike('nonStriker')}
                   style={[
                     styles.batterRowCard,
-                    isOnStrike === 'nonStriker' && styles.batterRowCardActive
+                    matchStatus !== 'Completed' && isOnStrike === 'nonStriker' && styles.batterRowCardActive
                   ]}
                 >
                   <View style={styles.batterDetails}>
@@ -1337,8 +1444,8 @@ export default function ScorecardScreen() {
               <View style={styles.bowlerSection}>
                 <Text style={styles.sectionLabel}>BOWLER (OPP TEAM)</Text>
                 <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setShowNewBowlerModal(true)}
+                  activeOpacity={matchStatus === 'Completed' ? 1.0 : 0.8}
+                  onPress={matchStatus === 'Completed' ? undefined : () => setShowNewBowlerModal(true)}
                   style={styles.bowlerCard}
                 >
                   <View style={[styles.iconCircle, { backgroundColor: '#FFF0F0' }]}>
@@ -1348,119 +1455,125 @@ export default function ScorecardScreen() {
                     <Text style={styles.bowlerName}>{currentBowlerName}</Text>
                     <Text style={styles.bowlerSubtitle}>Tap to switch bowler</Text>
                   </View>
-                  <Feather name="chevron-right" size={20} color={C.textGray} />
+                  {matchStatus !== 'Completed' && (
+                    <Feather name="chevron-right" size={20} color={C.textGray} />
+                  )}
                 </TouchableOpacity>
               </View>
             </>
           )}
 
-          {/* Scoring panel (Drawing circular buttons layout) */}
-          <View style={styles.scoringCard}>
-            <Text style={styles.scoringPanelLabel}>SCORING DIAL</Text>
-            
-            {isUserBowling ? (
-              /* Bowling Scoring Pad Dial (Second Drawing scoring buttons grid) */
-              <>
-                {/* Row 1: 0 (Dot), 1, 2, 3, 4 */}
-                <View style={[styles.scoringRow, { gap: sp.xs }]}>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(0)}>
-                    <Text style={styles.dialBtnTxtMini}>Dot</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(1)}>
-                    <Text style={styles.dialBtnTxtMini}>1</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(2)}>
-                    <Text style={styles.dialBtnTxtMini}>2</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(3)}>
-                    <Text style={styles.dialBtnTxtMini}>3</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini, styles.dialBtnBoundaryMini]} onPress={() => handleRecordRuns(4)}>
-                    <Text style={[styles.dialBtnTxtMini, styles.dialBtnTxtBoundary]}>4</Text>
-                  </TouchableOpacity>
-                </View>
+          {matchStatus !== 'Completed' && (
+            <>
+              {/* Scoring panel (Drawing circular buttons layout) */}
+              <View style={styles.scoringCard}>
+                <Text style={styles.scoringPanelLabel}>SCORING DIAL</Text>
+                
+                {isUserBowling ? (
+                  /* Bowling Scoring Pad Dial (Second Drawing scoring buttons grid) */
+                  <>
+                    {/* Row 1: 0 (Dot), 1, 2, 3, 4 */}
+                    <View style={[styles.scoringRow, { gap: sp.xs }]}>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(0)}>
+                        <Text style={styles.dialBtnTxtMini}>Dot</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(1)}>
+                        <Text style={styles.dialBtnTxtMini}>1</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(2)}>
+                        <Text style={styles.dialBtnTxtMini}>2</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(3)}>
+                        <Text style={styles.dialBtnTxtMini}>3</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini, styles.dialBtnBoundaryMini]} onPress={() => handleRecordRuns(4)}>
+                        <Text style={[styles.dialBtnTxtMini, styles.dialBtnTxtBoundary]}>4</Text>
+                      </TouchableOpacity>
+                    </View>
 
-                {/* Row 2: WKT, 6 */}
-                <View style={styles.scoringRow}>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
-                    <Text style={styles.dialBtnTxtWkt}>WKT</Text>
-                    <Text style={styles.dialBtnSubWkt}>wicket</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
-                    <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
-                    <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              /* Batting Scoring Pad Dial (First Drawing scoring buttons grid) */
-              <>
-                {/* Row 1: 0 (Dot), 1, 2, 3 */}
-                <View style={styles.scoringRow}>
-                  <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(0)}>
-                    <Text style={styles.dialBtnTxt}>0</Text>
-                    <Text style={styles.dialBtnSub}>dot</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(1)}>
-                    <Text style={styles.dialBtnTxt}>1</Text>
-                    <Text style={styles.dialBtnSub}>runs</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(2)}>
-                    <Text style={styles.dialBtnTxt}>2</Text>
-                    <Text style={styles.dialBtnSub}>runs</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(3)}>
-                    <Text style={styles.dialBtnTxt}>3</Text>
-                    <Text style={styles.dialBtnSub}>runs</Text>
-                  </TouchableOpacity>
-                </View>
+                    {/* Row 2: WKT, 6 */}
+                    <View style={styles.scoringRow}>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
+                        <Text style={styles.dialBtnTxtWkt}>WKT</Text>
+                        <Text style={styles.dialBtnSubWkt}>wicket</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
+                        <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
+                        <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  /* Batting Scoring Pad Dial (First Drawing scoring buttons grid) */
+                  <>
+                    {/* Row 1: 0 (Dot), 1, 2, 3 */}
+                    <View style={styles.scoringRow}>
+                      <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(0)}>
+                        <Text style={styles.dialBtnTxt}>0</Text>
+                        <Text style={styles.dialBtnSub}>dot</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(1)}>
+                        <Text style={styles.dialBtnTxt}>1</Text>
+                        <Text style={styles.dialBtnSub}>runs</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(2)}>
+                        <Text style={styles.dialBtnTxt}>2</Text>
+                        <Text style={styles.dialBtnSub}>runs</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(3)}>
+                        <Text style={styles.dialBtnTxt}>3</Text>
+                        <Text style={styles.dialBtnSub}>runs</Text>
+                      </TouchableOpacity>
+                    </View>
 
-                {/* Row 2: 4, 6, WKT */}
-                <View style={styles.scoringRow}>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(4)}>
-                    <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>4</Text>
-                    <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>boundary</Text>
+                    {/* Row 2: 4, 6, WKT */}
+                    <View style={styles.scoringRow}>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(4)}>
+                        <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>4</Text>
+                        <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>boundary</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
+                        <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
+                        <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
+                        <Text style={styles.dialBtnTxtWkt}>WKT</Text>
+                        <Text style={styles.dialBtnSubWkt}>wicket</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                {/* Row 3 Extras: No Ball, Wide */}
+                <View style={styles.extrasRow}>
+                  <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('noball')}>
+                    <Text style={styles.extraBtnTxt}>No Ball</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
-                    <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
-                    <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
-                    <Text style={styles.dialBtnTxtWkt}>WKT</Text>
-                    <Text style={styles.dialBtnSubWkt}>wicket</Text>
+                  <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('wide')}>
+                    <Text style={styles.extraBtnTxt}>Wide</Text>
                   </TouchableOpacity>
                 </View>
-              </>
-            )}
+              </View>
 
-            {/* Row 3 Extras: No Ball, Wide */}
-            <View style={styles.extrasRow}>
-              <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('noball')}>
-                <Text style={styles.extraBtnTxt}>No Ball</Text>
+              {/* Bottom Actions (Undo & Innings Break) */}
+              <View style={styles.bottomActionsRow}>
+                <TouchableOpacity activeOpacity={0.8} style={styles.undoBtn} onPress={handleUndo}>
+                  <MaterialCommunityIcons name="undo" size={18} color={C.red} />
+                  <Text style={styles.undoBtnTxt}>Undo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity activeOpacity={0.8} style={styles.breakBtn} onPress={handleInningsBreak}>
+                  <Text style={styles.breakBtnTxt}>Innings Break</Text>
+                  <Feather name="arrow-right" size={16} color={C.white} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Complete Match Button */}
+              <TouchableOpacity activeOpacity={0.8} style={styles.completeBtn} onPress={() => handleCompleteMatchDirectly()}>
+                <Text style={styles.completeBtnTxt}>Complete & Save Match</Text>
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('wide')}>
-                <Text style={styles.extraBtnTxt}>Wide</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Bottom Actions (Undo & Innings Break) */}
-          <View style={styles.bottomActionsRow}>
-            <TouchableOpacity activeOpacity={0.8} style={styles.undoBtn} onPress={handleUndo}>
-              <MaterialCommunityIcons name="undo" size={18} color={C.red} />
-              <Text style={styles.undoBtnTxt}>Undo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity activeOpacity={0.8} style={styles.breakBtn} onPress={handleInningsBreak}>
-              <Text style={styles.breakBtnTxt}>Innings Break</Text>
-              <Feather name="arrow-right" size={16} color={C.white} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Complete Match Button */}
-          <TouchableOpacity activeOpacity={0.8} style={styles.completeBtn} onPress={() => handleCompleteMatchDirectly()}>
-            <Text style={styles.completeBtnTxt}>Complete & Save Match</Text>
-          </TouchableOpacity>
+            </>
+          )}
 
         </ScrollView>
       </SafeAreaView>
@@ -1714,6 +1827,32 @@ const styles = StyleSheet.create({
     fontSize: fs.xs,
     fontWeight: '700',
     color: '#D1E7CD',
+  },
+  completedBanner: {
+    backgroundColor: '#EAF7E6',
+    borderColor: '#59C749',
+    borderWidth: 1,
+    borderRadius: br.xl,
+    padding: sp.md,
+    marginBottom: sp.md,
+    alignItems: 'center',
+    shadowColor: 'rgba(0,0,0,0.03)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  completedBannerTitle: {
+    fontSize: fs.md,
+    fontWeight: '800',
+    color: '#2D5016',
+    marginBottom: 4,
+  },
+  completedBannerDesc: {
+    fontSize: fs.xs,
+    fontWeight: '600',
+    color: C.textGray,
+    textAlign: 'center',
   },
   footerStatText: {
     fontSize: fs.xs,
