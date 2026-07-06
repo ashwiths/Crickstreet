@@ -21,6 +21,7 @@ import { triggerLocalNotification } from '../src/services/notifications';
 import { s, fs, sp, br, avatarSz } from '../src/theme/responsive';
 import MyTeamWinAnimation from '../src/components/MyTeamWinAnimation';
 import OpponentWinAnimation from '../src/components/OpponentWinAnimation';
+import { isPracticeMatch, getNextOpponentBatterName, getNextOpponentBowlerName } from '../src/utils/practiceMatchHelper';
 
 const C = {
   bg: '#F3F4F1',
@@ -162,6 +163,12 @@ export default function ScorecardScreen() {
   const [loadingDb, setLoadingDb] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Practice Match States
+  const [matchType, setMatchType] = useState<string>('');
+  const isPractice = useMemo(() => {
+    return isPracticeMatch(oppTeamName, matchType);
+  }, [oppTeamName, matchType]);
+
   // Notification settings
   const [notifPrefs, setNotifPrefs] = useState<any>({
     inningsBreakNotification: true,
@@ -230,6 +237,7 @@ export default function ScorecardScreen() {
             if (data.currentInnings !== undefined) setCurrentInnings(data.currentInnings);
             if (data.battingTeam !== undefined) setBattingTeam(data.battingTeam);
             if (data.matchStatus !== undefined) setMatchStatus(data.matchStatus);
+            if (data.matchType !== undefined) setMatchType(data.matchType);
             if (data.matchStatus === 'Innings Break') {
               router.replace({
                 pathname: '/innings-break-timer',
@@ -427,6 +435,13 @@ export default function ScorecardScreen() {
 
     if (updatedBalls > 0 && updatedBalls % 6 === 0 && !isEnding) {
       setIsOnStrike(rotated);
+      
+      const opponentIsBowling = battingTeam === 'my';
+      if (isPractice && opponentIsBowling) {
+        // Skip over-ended Alert for opponent bowlers!
+        return { overCompleted: true, nextStrike: rotated };
+      }
+
       Alert.alert('Over Completed 🏏', 'Please select the next bowler.', [
         { text: 'OK', onPress: () => setShowNewBowlerModal(true) }
       ]);
@@ -458,11 +473,17 @@ export default function ScorecardScreen() {
         const nextHistory = saveToHistory();
         const nextBattingTeam = battingTeam === 'my' ? 'opp' : 'my';
         const nextBattingPlayers = nextBattingTeam === 'my' ? initialMyPlayers : initialOppPlayers;
-        
-        const nextStriker = nextBattingPlayers[0] || 'Batter 1';
-        const nextNonStriker = nextBattingPlayers[1] || 'Batter 2';
         const nextBowlingPlayers = nextBattingTeam === 'my' ? initialOppPlayers : initialMyPlayers;
-        const nextBowler = nextBowlingPlayers[0] || 'Bowler';
+        
+        const nextStriker = (isPractice && nextBattingTeam === 'opp')
+          ? 'Opp 1'
+          : (nextBattingPlayers[0] || 'Batter 1');
+        const nextNonStriker = (isPractice && nextBattingTeam === 'opp')
+          ? 'Opp 2'
+          : (nextBattingPlayers[1] || 'Batter 2');
+        const nextBowler = (isPractice && nextBattingTeam === 'my')
+          ? 'Opp bowl 1'
+          : (nextBowlingPlayers[0] || 'Bowler');
 
         if (uid && matchId) {
           const matchRef = doc(db, 'users', uid, 'matches', matchId);
@@ -599,6 +620,10 @@ export default function ScorecardScreen() {
         const nextBalls = prev + 1;
         const check = checkOverCompletion(nextBalls, nextStrike, myWickets, nextMyScore);
         
+        const nextBowlerName = (check.overCompleted && isPractice)
+          ? getNextOpponentBowlerName(currentBowlerName)
+          : currentBowlerName;
+
         syncMatchStateToDb({
           myScoreRuns: nextMyScore,
           myScoreBalls: nextBalls,
@@ -609,8 +634,16 @@ export default function ScorecardScreen() {
           bowlerHistories: nextBowlerHistories,
           bowlerStats: nextBowlerStats,
           isOnStrike: check.nextStrike,
+          currentBowlerName: nextBowlerName,
           historySnapshotStack: nextHistory,
         });
+
+        if (check.overCompleted && isPractice) {
+          setTimeout(() => {
+            setCurrentBowlerName(nextBowlerName);
+          }, 0);
+        }
+
         return nextBalls;
       });
 
@@ -798,6 +831,10 @@ export default function ScorecardScreen() {
         const nextBalls = prev + 1;
         const check = checkOverCompletion(nextBalls, isOnStrike, nextMyWickets, myScore, nextDismissed);
         
+        const nextBowlerName = (check.overCompleted && isPractice)
+          ? getNextOpponentBowlerName(currentBowlerName)
+          : currentBowlerName;
+
         syncMatchStateToDb({
           myScoreWickets: nextMyWickets,
           myScoreBalls: nextBalls,
@@ -808,9 +845,17 @@ export default function ScorecardScreen() {
           bowlerHistories: nextBowlerHistories,
           bowlerStats: nextBowlerStats,
           isOnStrike: check.nextStrike,
+          currentBowlerName: nextBowlerName,
           dismissedPlayers: nextDismissed,
           historySnapshotStack: nextHistory,
         });
+
+        if (check.overCompleted && isPractice) {
+          setTimeout(() => {
+            setCurrentBowlerName(nextBowlerName);
+          }, 0);
+        }
+
         return nextBalls;
       });
 
@@ -836,10 +881,14 @@ export default function ScorecardScreen() {
       setOppRoster(localOppRoster);
       setMyRoster(localMyRoster);
 
+      const isFinished = checkInningsOrMatchEnd(oppScore, oppBalls + 1, nextOppWickets, nextDismissed);
+
       setOppBalls(prev => {
         const nextBalls = prev + 1;
         const check = checkOverCompletion(nextBalls, isOnStrike, nextOppWickets, oppScore, nextDismissed);
         
+        const nextBatterName = isPractice ? getNextOpponentBatterName(nextDismissed.length) : (isOnStrike === 'striker' ? strikerName : nonStrikerName);
+
         syncMatchStateToDb({
           oppScoreWickets: nextOppWickets,
           oppScoreBalls: nextBalls,
@@ -850,15 +899,31 @@ export default function ScorecardScreen() {
           bowlerHistories: nextBowlerHistories,
           bowlerStats: nextBowlerStats,
           isOnStrike: check.nextStrike,
+          strikerName: isOnStrike === 'striker' ? nextBatterName : strikerName,
+          nonStrikerName: isOnStrike === 'nonStriker' ? nextBatterName : nonStrikerName,
           dismissedPlayers: nextDismissed,
           historySnapshotStack: nextHistory,
         });
+
+        if (!isFinished && isPractice) {
+          setTimeout(() => {
+            if (isOnStrike === 'striker') {
+              setStrikerName(nextBatterName);
+            } else {
+              setNonStrikerName(nextBatterName);
+            }
+          }, 0);
+        }
+
         return nextBalls;
       });
 
-      const isFinished = checkInningsOrMatchEnd(oppScore, oppBalls + 1, nextOppWickets, nextDismissed);
       if (!isFinished) {
-        setShowNewBatterModal(true);
+        if (isPractice) {
+          // Bypassed opponent batter selection modal
+        } else {
+          setShowNewBatterModal(true);
+        }
       }
     }
   };

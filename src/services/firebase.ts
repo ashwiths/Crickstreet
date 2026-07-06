@@ -7,7 +7,7 @@ import {
   // @ts-ignore
   getReactNativePersistence,
 } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 
 // Firebase configuration placeholders
 // Note: Replace these credentials with your Firebase Project Configuration from the Firebase Console.
@@ -33,7 +33,16 @@ try {
   auth = getAuth(app);
 }
 
-// Initialize Firestore Database
-const db = getFirestore(app);
+
+
+// Safely initialize Firestore Database with long polling to prevent QUIC errors and handle hot-reload duplication
+let db: any;
+try {
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
+} catch (err) {
+  db = getFirestore(app);
+}
 
 export { app, auth, db };
