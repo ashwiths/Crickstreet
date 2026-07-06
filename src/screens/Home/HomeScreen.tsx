@@ -663,6 +663,65 @@ export default function HomeScreen() {
               <ActiveMatchCard />
             )}
 
+            {/* Last Match Score Card */}
+            {completedMatches.length > 0 && (
+              <View style={styles.lastMatchCard}>
+                <View style={styles.lastMatchHeader}>
+                  <View style={styles.lastMatchTitleWrap}>
+                    <Text style={styles.lastMatchLabel}>LAST MATCH SCORE</Text>
+                    <Text style={styles.lastMatchFormat}>🏏 {completedMatches[0].format || 'Overs'}</Text>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.lastMatchViewBtn}
+                    onPress={() => {
+                      setActiveTab('tournament');
+                      router.push({
+                        pathname: '/scorecard',
+                        params: {
+                          matchId: completedMatches[0].id,
+                          myTeamName: completedMatches[0].myTeamName,
+                          oppTeamName: completedMatches[0].oppTeamName,
+                        },
+                      });
+                    }}
+                  >
+                    <Text style={styles.lastMatchViewBtnText}>View Scorecard</Text>
+                    <Feather name="chevron-right" size={14} color="#59C749" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.lastMatchDivider} />
+
+                <View style={styles.lastMatchTeams}>
+                  <View style={styles.lastMatchTeamRow}>
+                    <Text style={styles.lastMatchTeamName} numberOfLines={1}>
+                      {completedMatches[0].myTeamName}
+                    </Text>
+                    <Text style={styles.lastMatchTeamScore}>
+                      {completedMatches[0].myScore}
+                    </Text>
+                  </View>
+                  <View style={styles.lastMatchTeamRow}>
+                    <Text style={styles.lastMatchTeamName} numberOfLines={1}>
+                      {completedMatches[0].oppTeamName}
+                    </Text>
+                    <Text style={styles.lastMatchTeamScore}>
+                      {completedMatches[0].oppScore}
+                    </Text>
+                  </View>
+                </View>
+
+                {completedMatches[0].statusText && (
+                  <View style={styles.lastMatchResultWrap}>
+                    <Text style={styles.lastMatchResultText}>
+                      🏆 {completedMatches[0].statusText}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Always display the Features Overview Card */}
             <View style={styles.featuresCard}>
               <Text style={styles.featuresTitle}>What&apos;s in Crickstreet? 🏏</Text>
@@ -1075,5 +1134,92 @@ const styles = StyleSheet.create({
     borderRadius: s(28),
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  lastMatchCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: br.xxl,
+    padding: sp.lg,
+    marginHorizontal: sp.lg,
+    marginTop: sp.md,
+    borderWidth: 1,
+    borderColor: '#E8E4D4',
+    shadowColor: 'rgba(0,0,0,0.03)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  lastMatchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: sp.sm,
+  },
+  lastMatchTitleWrap: {
+    flex: 1,
+  },
+  lastMatchLabel: {
+    fontSize: fs.xs,
+    fontWeight: '800',
+    color: '#8A8A8A',
+    letterSpacing: 0.5,
+  },
+  lastMatchFormat: {
+    fontSize: fs.sm,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  lastMatchViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAF7E6',
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.xs,
+    borderRadius: br.full,
+    gap: 4,
+  },
+  lastMatchViewBtnText: {
+    fontSize: fs.xs,
+    fontWeight: '800',
+    color: '#59C749',
+  },
+  lastMatchDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F1',
+    marginVertical: sp.sm,
+  },
+  lastMatchTeams: {
+    gap: sp.sm,
+  },
+  lastMatchTeamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lastMatchTeamName: {
+    fontSize: fs.md,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    flex: 1,
+    marginRight: sp.md,
+  },
+  lastMatchTeamScore: {
+    fontSize: fs.md,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  lastMatchResultWrap: {
+    backgroundColor: '#F0F4EC',
+    borderRadius: br.md,
+    paddingVertical: sp.xs,
+    paddingHorizontal: sp.sm,
+    marginTop: sp.md,
+    alignSelf: 'flex-start',
+  },
+  lastMatchResultText: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: '#2D5016',
   },
 });
