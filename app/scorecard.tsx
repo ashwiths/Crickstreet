@@ -137,19 +137,6 @@ export default function ScorecardScreen() {
   const [oppBalls, setOppBalls] = useState(0);
   const [oppExtras, setOppExtras] = useState(0);
 
-  const isScoringDisabled = useMemo(() => {
-    if (matchStatus === 'Completed') return true;
-    if (matchType !== 'online') return false;
-    
-    const loggedInUserUid = user?.uid || '';
-    if (battingTeam === 'my') {
-      // User 1's team is batting -> only owner (User 1) can score
-      return loggedInUserUid !== ownerUid;
-    } else {
-      // Opponent's team is batting -> only opponent (User 2) can score
-      return loggedInUserUid !== user2Uid;
-    }
-  }, [matchStatus, matchType, battingTeam, user, ownerUid, user2Uid]);
 
   // Player Stats rosters
   const [myRoster, setMyRoster] = useState<PlayerRowState[]>(
@@ -208,6 +195,20 @@ export default function ScorecardScreen() {
   const isPractice = useMemo(() => {
     return isPracticeMatch(oppTeamName, matchType);
   }, [oppTeamName, matchType]);
+
+  const isScoringDisabled = useMemo(() => {
+    if (matchStatus === 'Completed') return true;
+    if (matchType !== 'online') return false;
+    
+    const loggedInUserUid = user?.uid || '';
+    if (battingTeam === 'my') {
+      // User 1's team is batting -> only owner (User 1) can score
+      return loggedInUserUid !== ownerUid;
+    } else {
+      // Opponent's team is batting -> only opponent (User 2) can score
+      return loggedInUserUid !== user2Uid;
+    }
+  }, [matchStatus, matchType, battingTeam, user, ownerUid, user2Uid]);
 
   const isAutomatedPractice = useMemo(() => {
     return isPractice && (
