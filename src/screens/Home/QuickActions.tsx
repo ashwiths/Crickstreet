@@ -14,7 +14,8 @@ export default function QuickActions() {
           { label: 'Create Team', icon: '👥', color: '#F0F4EC', onPress: () => router.push('/my-teams') },
           { label: 'Add Ground', icon: '📍', color: '#FFF9E6', onPress: () => router.push('/my-grounds') },
           { label: 'Scan Player', icon: '📷', color: '#FFF0F0', onPress: () => router.push('/qr-scanner') },
-          { label: 'AI Chat', icon: '✨', color: '#E5F2D9', onPress: () => router.push('/ai-chat') }
+          { label: 'AI Chat', icon: '✨', color: '#E5F2D9', onPress: () => router.push('/ai-chat') },
+          { label: 'Tournaments', icon: '🏆', color: '#E8F5E9', onPress: () => router.push('/tournament-mode') }
         ].map((action) => (
           <TouchableOpacity
             key={action.label}
@@ -47,12 +48,15 @@ const styles = StyleSheet.create({
   },
   quickActionsGridContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: s(16),
   },
   quickActionCardCell: {
-    width: '23%',
+    width: s(72),
     alignItems: 'center',
     gap: sp.sm2,
+    marginBottom: sp.sm2,
   },
   quickActionIconBg: {
     width: s(54),

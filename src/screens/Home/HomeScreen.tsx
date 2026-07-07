@@ -1,7 +1,8 @@
 import FloatingBottomNav from '@/src/components/FloatingBottomNav';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import QuickActions from './QuickActions';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, deleteDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -324,7 +325,13 @@ export default function HomeScreen() {
       : (unfinishedMatch.oppPlayers || []);
 
     // Dynamically set opponent squad size for practice match based on toss choice
-    if (unfinishedMatch.oppTeamName === 'Practice Opponent') {
+    const isDefaultPracticeOpponent = 
+      !oppPlayers || 
+      oppPlayers.length === 0 || 
+      (oppPlayers.length === 1 && oppPlayers[0] === 'Opp Player 1') || 
+      (oppPlayers.length === 2 && oppPlayers[0] === 'Opp Player 1' && oppPlayers[1] === 'Opp Player 2');
+
+    if (unfinishedMatch.oppTeamName === 'Practice Opponent' && isDefaultPracticeOpponent) {
       oppPlayers = battingFirst === 'opp' ? ['Opp Player 1', 'Opp Player 2'] : ['Opp Player 1'];
     }
 
@@ -392,7 +399,13 @@ export default function HomeScreen() {
       : (unfinishedMatch.oppPlayers || []);
 
     // Dynamically set opponent squad size for practice match based on toss choice
-    if (unfinishedMatch.oppTeamName === 'Practice Opponent') {
+    const isDefaultPracticeOpponent2 = 
+      !oppPlayers || 
+      oppPlayers.length === 0 || 
+      (oppPlayers.length === 1 && oppPlayers[0] === 'Opp Player 1') || 
+      (oppPlayers.length === 2 && oppPlayers[0] === 'Opp Player 1' && oppPlayers[1] === 'Opp Player 2');
+
+    if (unfinishedMatch.oppTeamName === 'Practice Opponent' && isDefaultPracticeOpponent2) {
       oppPlayers = battingFirst === 'opp' ? ['Opp Player 1', 'Opp Player 2'] : ['Opp Player 1'];
     }
 
@@ -537,6 +550,44 @@ export default function HomeScreen() {
                 Your local cricket companion. Score games, track squads, and ask our custom AI for tips & rules! ⚡
               </Text>
             </View>
+
+            {/* Quick Actions Grid */}
+            <QuickActions />
+
+            {/* Tournament Mode Promotion Banner - Only shown when no active match is ongoing */}
+            {!unfinishedMatch && (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={styles.tournamentPromoCard}
+                onPress={() => router.push('/tournament-mode')}
+              >
+                <LinearGradient
+                  colors={['#1E3A1A', '#0D1A0A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.tournamentPromoGradient}
+                >
+                  <View style={styles.tournamentPromoContent}>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.newBadge}>
+                        <Text style={styles.newBadgeTxt}>NEW FEATURE</Text>
+                      </View>
+                      <Text style={styles.promoTitle}>Tournament Hub 🏆</Text>
+                      <Text style={styles.promoDesc}>
+                        Create custom leagues, schedule matches, and manage real-time live scoreboards!
+                      </Text>
+                    </View>
+                    <View style={styles.promoIconWrap}>
+                      <MaterialCommunityIcons name="trophy-outline" size={32} color="#59C749" />
+                    </View>
+                  </View>
+                  <View style={styles.promoFooter}>
+                    <Text style={styles.promoFooterTxt}>Enter Tournament Mode</Text>
+                    <Feather name="arrow-right" size={14} color="#59C749" />
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
 
             {unfinishedMatch ? (
               <View style={styles.activeMatchStatusSection}>
@@ -1221,5 +1272,71 @@ const styles = StyleSheet.create({
     fontSize: fs.xs,
     fontWeight: '700',
     color: '#2D5016',
+  },
+  tournamentPromoCard: {
+    marginHorizontal: sp.lg,
+    marginBottom: sp.lg,
+    borderRadius: br.xxl,
+    overflow: 'hidden',
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  tournamentPromoGradient: {
+    padding: sp.lg,
+  },
+  tournamentPromoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  newBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(89, 199, 73, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: br.sm,
+    marginBottom: sp.xs,
+  },
+  newBadgeTxt: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#59C749',
+    letterSpacing: 0.5,
+  },
+  promoTitle: {
+    fontSize: fs.md2,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  promoDesc: {
+    fontSize: fs.xs,
+    color: 'rgba(255, 255, 255, 0.72)',
+    marginTop: 4,
+    lineHeight: fs.xs * 1.3,
+  },
+  promoIconWrap: {
+    marginLeft: 12,
+    width: s(48),
+    height: s(48),
+    borderRadius: br.md3,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promoFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: sp.md,
+    paddingTop: sp.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  promoFooterTxt: {
+    fontSize: fs.sm,
+    fontWeight: '800',
+    color: '#59C749',
   },
 });

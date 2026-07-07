@@ -57,6 +57,7 @@ function RootLayoutNav() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create-matches" options={{ headerShown: false }} />
+          <Stack.Screen name="tournament-mode" options={{ headerShown: false }} />
           <Stack.Screen name="scorecard" options={{ headerShown: false }} />
           <Stack.Screen name="live-scoring" options={{ headerShown: false }} />
           <Stack.Screen name="match-warning" options={{ headerShown: false }} />

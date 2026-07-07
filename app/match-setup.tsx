@@ -172,7 +172,7 @@ export default function MatchSetupScreen() {
   }, []);
 
   const canGoNext = step === 'openers'
-    ? (striker !== null && (nonStriker !== null || battingFirst === 'opp'))
+    ? (striker !== null && (nonStriker !== null || battingPlayers.length < 2))
     : step === 'bowler'
       ? selectedBowler !== null
       : false;
@@ -509,9 +509,8 @@ export default function MatchSetupScreen() {
                 </View>
                 <Text style={styles.cardTitle}>Select Opening Batsmen</Text>
                 <Text style={styles.cardSubtitle}>
-                  {battingFirst === 'opp'
-                    ? `Opening batsmen from ${battingTeamName} are automatically selected.`
-                    : `Choose 2 players from ${battingTeamName} to open the innings.\nTap first for Striker, second for Non-Striker.`}
+                  Choose 2 players from {battingTeamName} to open the innings.{"\n"}
+                  Tap first for Striker, second for Non-Striker.
                 </Text>
 
                 {/* Selected summary */}
@@ -548,12 +547,11 @@ export default function MatchSetupScreen() {
                     return (
                       <TouchableOpacity
                         key={`${player}-${idx}`}
-                        activeOpacity={battingFirst === 'opp' ? 1.0 : 0.7}
-                        disabled={battingFirst === 'opp'}
+                        activeOpacity={0.7}
+                        disabled={false}
                         style={[
                           styles.playerRow,
                           isSelected && styles.playerRowSelected,
-                          battingFirst === 'opp' && { opacity: 0.8 }
                         ]}
                         onPress={() => handleSelectBatter(player)}
                       >
@@ -587,9 +585,7 @@ export default function MatchSetupScreen() {
                 </View>
                 <Text style={styles.cardTitle}>Select Opening Bowler</Text>
                 <Text style={styles.cardSubtitle}>
-                  {battingFirst === 'my'
-                    ? `Opening bowler from ${bowlingTeamName} is automatically selected.`
-                    : `Choose 1 player from ${bowlingTeamName} to bowl the first over.`}
+                  Choose 1 player from {bowlingTeamName} to bowl the first over.
                 </Text>
 
                 {/* Selected summary */}
@@ -616,12 +612,11 @@ export default function MatchSetupScreen() {
                     return (
                       <TouchableOpacity
                         key={`${player}-${idx}`}
-                        activeOpacity={battingFirst === 'my' ? 1.0 : 0.7}
-                        disabled={battingFirst === 'my'}
+                        activeOpacity={0.7}
+                        disabled={false}
                         style={[
                           styles.playerRow,
                           isSelected && styles.playerRowSelected,
-                          battingFirst === 'my' && { opacity: 0.8 }
                         ]}
                         onPress={() => handleSelectBowler(player)}
                       >

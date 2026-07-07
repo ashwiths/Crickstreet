@@ -2,6 +2,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { collection, doc, getDoc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import React, { useState, useEffect, useMemo } from 'react';
+import QRCode from 'react-native-qrcode-svg';
 import {
   Alert,
   ScrollView,
@@ -12,6 +13,8 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -88,15 +91,35 @@ export default function ScorecardScreen() {
   const matchFormat = params.format || 'T20';
   const maxOvers = parseInt(params.customOvers || '20', 10);
   
+  // Database player rosters backup
+  const [dbMyPlayers, setDbMyPlayers] = useState<string[]>([]);
+  const [dbOppPlayers, setDbOppPlayers] = useState<string[]>([]);
+
+  // Custom player input states
+  const [customBowlerInput, setCustomBowlerInput] = useState('');
+  const [customBatterInput, setCustomBatterInput] = useState('');
+
   const initialMyPlayers: string[] = useMemo(() => {
-    try { return params.myPlayers ? JSON.parse(params.myPlayers) : []; } catch { return []; }
-  }, [params.myPlayers]);
+    if (params.myPlayers) {
+      try { const parsed = JSON.parse(params.myPlayers); if (parsed.length > 0) return parsed; } catch {}
+    }
+    return dbMyPlayers;
+  }, [params.myPlayers, dbMyPlayers]);
+  
   const initialOppPlayers: string[] = useMemo(() => {
-    try { return params.oppPlayers ? JSON.parse(params.oppPlayers) : []; } catch { return []; }
-  }, [params.oppPlayers]);
+    if (params.oppPlayers) {
+      try { const parsed = JSON.parse(params.oppPlayers); if (parsed.length > 0) return parsed; } catch {}
+    }
+    return dbOppPlayers;
+  }, [params.oppPlayers, dbOppPlayers]);
 
   const { user } = useAuth();
   const uid = user?.uid || '';
+
+  // Online Match Mode States
+  const [ownerUid, setOwnerUid] = useState<string>('');
+  const [user2Uid, setUser2Uid] = useState<string | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // ── Innings States & Core Scores ──────────────────────────────────────────
   const [matchStatus, setMatchStatus] = useState<'Upcoming' | 'Live' | 'Innings Break' | 'Completed'>('Live');
@@ -113,6 +136,20 @@ export default function ScorecardScreen() {
   const [oppWickets, setOppWickets] = useState(0);
   const [oppBalls, setOppBalls] = useState(0);
   const [oppExtras, setOppExtras] = useState(0);
+
+  const isScoringDisabled = useMemo(() => {
+    if (matchStatus === 'Completed') return true;
+    if (matchType !== 'online') return false;
+    
+    const loggedInUserUid = user?.uid || '';
+    if (battingTeam === 'my') {
+      // User 1's team is batting -> only owner (User 1) can score
+      return loggedInUserUid !== ownerUid;
+    } else {
+      // Opponent's team is batting -> only opponent (User 2) can score
+      return loggedInUserUid !== user2Uid;
+    }
+  }, [matchStatus, matchType, battingTeam, user, ownerUid, user2Uid]);
 
   // Player Stats rosters
   const [myRoster, setMyRoster] = useState<PlayerRowState[]>(
@@ -171,6 +208,15 @@ export default function ScorecardScreen() {
   const isPractice = useMemo(() => {
     return isPracticeMatch(oppTeamName, matchType);
   }, [oppTeamName, matchType]);
+
+  const isAutomatedPractice = useMemo(() => {
+    return isPractice && (
+      oppTeamName === 'Practice Opponent' && 
+      (initialOppPlayers.length === 0 || 
+       (initialOppPlayers.length === 1 && initialOppPlayers[0] === 'Opp Player 1') || 
+       (initialOppPlayers.length === 2 && initialOppPlayers[0] === 'Opp Player 1' && initialOppPlayers[1] === 'Opp Player 2'))
+    );
+  }, [isPractice, oppTeamName, initialOppPlayers]);
 
   // Notification settings
   const [notifPrefs, setNotifPrefs] = useState<any>({
@@ -231,6 +277,8 @@ export default function ScorecardScreen() {
 
             if (data.myRoster !== undefined) setMyRoster(data.myRoster);
             if (data.oppRoster !== undefined) setOppRoster(data.oppRoster);
+            if (data.myPlayers !== undefined) setDbMyPlayers(data.myPlayers);
+            if (data.oppPlayers !== undefined) setDbOppPlayers(data.oppPlayers);
 
             if (data.strikerName !== undefined) setStrikerName(data.strikerName);
             if (data.nonStrikerName !== undefined) setNonStrikerName(data.nonStrikerName);
@@ -241,6 +289,8 @@ export default function ScorecardScreen() {
             if (data.battingTeam !== undefined) setBattingTeam(data.battingTeam);
             if (data.matchStatus !== undefined) setMatchStatus(data.matchStatus);
             if (data.matchType !== undefined) setMatchType(data.matchType);
+            if (data.ownerUid !== undefined) setOwnerUid(data.ownerUid);
+            if (data.user2Uid !== undefined) setUser2Uid(data.user2Uid);
             if (data.matchStatus === 'Innings Break') {
               router.replace({
                 pathname: '/innings-break-timer',
@@ -270,6 +320,33 @@ export default function ScorecardScreen() {
 
     loadMatchState();
   }, [uid, matchId]);
+
+  // Self-heal stale 1st innings stats at the start of 2nd innings
+  useEffect(() => {
+    const battingBalls = battingTeam === 'my' ? myBalls : oppBalls;
+    const hasStale = Object.keys(batterHistories).length > 0 ||
+                     Object.keys(bowlerHistories).length > 0 ||
+                     Object.keys(bowlerStats).length > 0 ||
+                     currentOverBalls.length > 0;
+                     
+    if (currentInnings === 'Second Innings' && battingBalls === 0 && hasStale) {
+      setBatterHistories({});
+      setBowlerHistories({});
+      setBowlerStats({});
+      setCurrentOverBalls([]);
+
+      if (uid && matchId) {
+        const matchRef = doc(db, 'users', uid, 'matches', matchId);
+        updateDoc(matchRef, {
+          batterHistories: {},
+          bowlerHistories: {},
+          bowlerStats: {},
+          currentOverBalls: [],
+        }).catch(console.error);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentInnings, battingTeam, myBalls, oppBalls, uid, matchId]);
 
   // Load notification preferences
   useEffect(() => {
@@ -448,7 +525,7 @@ export default function ScorecardScreen() {
       setIsOnStrike(rotated);
       
       const opponentIsBowling = battingTeam === 'my';
-      if (isPractice && opponentIsBowling) {
+      if (isAutomatedPractice && opponentIsBowling) {
         // Skip over-ended Alert for opponent bowlers!
         return { overCompleted: true, nextStrike: rotated };
       }
@@ -484,13 +561,13 @@ export default function ScorecardScreen() {
         const nextBattingPlayers = nextBattingTeam === 'my' ? initialMyPlayers : initialOppPlayers;
         const nextBowlingPlayers = nextBattingTeam === 'my' ? initialOppPlayers : initialMyPlayers;
         
-        const nextStriker = (isPractice && nextBattingTeam === 'opp')
+        const nextStriker = (isAutomatedPractice && nextBattingTeam === 'opp')
           ? 'Opp 1'
           : (nextBattingPlayers[0] || 'Batter 1');
-        const nextNonStriker = (isPractice && nextBattingTeam === 'opp')
+        const nextNonStriker = (isAutomatedPractice && nextBattingTeam === 'opp')
           ? 'Opp 2'
           : (nextBattingPlayers[1] || 'Batter 2');
-        const nextBowler = (isPractice && nextBattingTeam === 'my')
+        const nextBowler = (isAutomatedPractice && nextBattingTeam === 'my')
           ? 'Opp bowl 1'
           : (nextBowlingPlayers[0] || 'Bowler');
 
@@ -509,6 +586,10 @@ export default function ScorecardScreen() {
             isOnStrike: 'striker',
             dismissedPlayers: [],
             historySnapshotStack: nextHistory,
+            batterHistories: {},
+            bowlerHistories: {},
+            bowlerStats: {},
+            currentOverBalls: [],
           }).then(() => {
             router.replace({
               pathname: '/innings-break-timer',
@@ -631,7 +712,7 @@ export default function ScorecardScreen() {
         const nextBalls = prev + 1;
         const check = checkOverCompletion(nextBalls, nextStrike, myWickets, nextMyScore);
         
-        const nextBowlerName = (check.overCompleted && isPractice)
+        const nextBowlerName = (check.overCompleted && isAutomatedPractice)
           ? getNextOpponentBowlerName(currentBowlerName)
           : currentBowlerName;
 
@@ -653,7 +734,7 @@ export default function ScorecardScreen() {
           historySnapshotStack: nextHistory,
         });
 
-        if (check.overCompleted && isPractice) {
+        if (check.overCompleted && isAutomatedPractice) {
           setTimeout(() => {
             setCurrentBowlerName(nextBowlerName);
           }, 0);
@@ -858,7 +939,7 @@ export default function ScorecardScreen() {
         const nextBalls = prev + 1;
         const check = checkOverCompletion(nextBalls, isOnStrike, nextMyWickets, myScore, nextDismissed);
         
-        const nextBowlerName = (check.overCompleted && isPractice)
+        const nextBowlerName = (check.overCompleted && isAutomatedPractice)
           ? getNextOpponentBowlerName(currentBowlerName)
           : currentBowlerName;
 
@@ -881,7 +962,7 @@ export default function ScorecardScreen() {
           historySnapshotStack: nextHistory,
         });
 
-        if (check.overCompleted && isPractice) {
+        if (check.overCompleted && isAutomatedPractice) {
           setTimeout(() => {
             setCurrentBowlerName(nextBowlerName);
           }, 0);
@@ -918,7 +999,7 @@ export default function ScorecardScreen() {
         const nextBalls = prev + 1;
         const check = checkOverCompletion(nextBalls, isOnStrike, nextOppWickets, oppScore, nextDismissed);
         
-        const nextBatterName = isPractice ? getNextOpponentBatterName(nextDismissed.length) : (isOnStrike === 'striker' ? strikerName : nonStrikerName);
+        const nextBatterName = isAutomatedPractice ? getNextOpponentBatterName(nextDismissed.length) : (isOnStrike === 'striker' ? strikerName : nonStrikerName);
 
         const nextOverBallsState = check.overCompleted ? [] : nextOverBalls;
         setCurrentOverBalls(nextOverBallsState);
@@ -940,7 +1021,7 @@ export default function ScorecardScreen() {
           historySnapshotStack: nextHistory,
         });
 
-        if (!isFinished && isPractice) {
+        if (!isFinished && isAutomatedPractice) {
           setTimeout(() => {
             if (isOnStrike === 'striker') {
               setStrikerName(nextBatterName);
@@ -954,7 +1035,7 @@ export default function ScorecardScreen() {
       });
 
       if (!isFinished) {
-        if (isPractice) {
+        if (isAutomatedPractice) {
           // Bypassed opponent batter selection modal
         } else {
           setShowNewBatterModal(true);
@@ -986,6 +1067,10 @@ export default function ScorecardScreen() {
       setCurrentBowlerName(nextBowler);
       setIsOnStrike('striker');
       setDismissedPlayers([]);
+      setBatterHistories({});
+      setBowlerHistories({});
+      setBowlerStats({});
+      setCurrentOverBalls([]);
 
       if (notifPrefs.inningsBreakNotification) {
         triggerLocalNotification('Innings Break ⏸️', 'First innings completed. Switch over in progress.');
@@ -1001,6 +1086,10 @@ export default function ScorecardScreen() {
         isOnStrike: 'striker',
         dismissedPlayers: [],
         historySnapshotStack: nextHistory,
+        batterHistories: {},
+        bowlerHistories: {},
+        bowlerStats: {},
+        currentOverBalls: [],
       });
     } else {
       handleCompleteMatchDirectly();
@@ -1180,6 +1269,82 @@ export default function ScorecardScreen() {
     setShowNewBowlerModal(false);
   };
 
+  const handleAddCustomBowler = async () => {
+    const trimmed = customBowlerInput.trim();
+    if (!trimmed) return;
+
+    const bowlingTeamKey = battingTeam === 'my' ? 'opp' : 'my';
+    
+    let updatedPlayers: string[] = [];
+    if (bowlingTeamKey === 'my') {
+      updatedPlayers = [...initialMyPlayers, trimmed];
+      setDbMyPlayers(updatedPlayers);
+    } else {
+      updatedPlayers = [...initialOppPlayers, trimmed];
+      setDbOppPlayers(updatedPlayers);
+    }
+
+    const newRow = { name: trimmed, runs: '0', balls: '0', wickets: '0' };
+    if (bowlingTeamKey === 'my') {
+      setMyRoster([...myRoster, newRow]);
+    } else {
+      setOppRoster([...oppRoster, newRow]);
+    }
+
+    if (uid && matchId) {
+      try {
+        const matchRef = doc(db, 'users', uid, 'matches', matchId);
+        await updateDoc(matchRef, {
+          [bowlingTeamKey === 'my' ? 'myPlayers' : 'oppPlayers']: updatedPlayers,
+          [bowlingTeamKey === 'my' ? 'myRoster' : 'oppRoster']: bowlingTeamKey === 'my' ? [...myRoster, newRow] : [...oppRoster, newRow]
+        });
+      } catch (err) {
+        console.error('Error adding custom bowler:', err);
+      }
+    }
+
+    selectNewBowler(trimmed);
+    setCustomBowlerInput('');
+  };
+
+  const handleAddCustomBatter = async () => {
+    const trimmed = customBatterInput.trim();
+    if (!trimmed) return;
+
+    const battingTeamKey = battingTeam === 'my' ? 'my' : 'opp';
+    
+    let updatedPlayers: string[] = [];
+    if (battingTeamKey === 'my') {
+      updatedPlayers = [...initialMyPlayers, trimmed];
+      setDbMyPlayers(updatedPlayers);
+    } else {
+      updatedPlayers = [...initialOppPlayers, trimmed];
+      setDbOppPlayers(updatedPlayers);
+    }
+
+    const newRow = { name: trimmed, runs: '0', balls: '0', wickets: '0' };
+    if (battingTeamKey === 'my') {
+      setMyRoster([...myRoster, newRow]);
+    } else {
+      setOppRoster([...oppRoster, newRow]);
+    }
+
+    if (uid && matchId) {
+      try {
+        const matchRef = doc(db, 'users', uid, 'matches', matchId);
+        await updateDoc(matchRef, {
+          [battingTeamKey === 'my' ? 'myPlayers' : 'oppPlayers']: updatedPlayers,
+          [battingTeamKey === 'my' ? 'myRoster' : 'oppRoster']: battingTeamKey === 'my' ? [...myRoster, newRow] : [...oppRoster, newRow]
+        });
+      } catch (err) {
+        console.error('Error adding custom batter:', err);
+      }
+    }
+
+    selectNewBatter(trimmed);
+    setCustomBatterInput('');
+  };
+
   // Options bench
   const availableBatters = useMemo(() => {
     return battingPlayers.filter(
@@ -1326,7 +1491,17 @@ export default function ScorecardScreen() {
           <Text style={styles.headerTitle}>
             {isUserBowling ? 'Live Bowling' : 'Live Scorecard'}
           </Text>
-          <View style={{ width: s(40) }} />
+          {matchType === 'online' ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.shareQRBtn}
+              onPress={() => setShowQRModal(true)}
+            >
+              <Feather name="share-2" size={20} color={C.greenDark} />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: s(40) }} />
+          )}
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -1342,6 +1517,19 @@ export default function ScorecardScreen() {
                 <View style={styles.liveIndicatorBadge}>
                   <View style={styles.liveIndicatorDot} />
                   <Text style={styles.liveIndicatorText}>LIVE</Text>
+                </View>
+              )}
+
+              {matchType === 'online' && (
+                <View style={[
+                  styles.onlineIndicatorBadge,
+                  { backgroundColor: user2Uid ? 'rgba(89,199,73,0.08)' : 'rgba(212,175,55,0.08)',
+                    borderColor: user2Uid ? C.green : '#D4AF37' }
+                ]}>
+                  <View style={[styles.liveIndicatorDot, { backgroundColor: user2Uid ? C.green : '#D4AF37' }]} />
+                  <Text style={[styles.liveIndicatorText, { color: user2Uid ? C.greenDark : '#B58B00' }]}>
+                    {user2Uid ? 'ONLINE JOINED' : 'AWAITING SCORER'}
+                  </Text>
                 </View>
               )}
               <Text style={styles.inningsText}>
@@ -1565,108 +1753,153 @@ export default function ScorecardScreen() {
                 <View style={styles.scoringCard}>
                   <Text style={styles.scoringPanelLabel}>SCORING DIAL</Text>
                   
-                  {isUserBowling ? (
-                    /* Bowling Scoring Pad Dial (Second Drawing scoring buttons grid) */
-                    <>
-                      {/* Row 1: 0 (Dot), 1, 2, 3, 4 */}
-                      <View style={[styles.scoringRow, { gap: sp.xs }]}>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(0)}>
-                          <Text style={styles.dialBtnTxtMini}>Dot</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(1)}>
-                          <Text style={styles.dialBtnTxtMini}>1</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(2)}>
-                          <Text style={styles.dialBtnTxtMini}>2</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(3)}>
-                          <Text style={styles.dialBtnTxtMini}>3</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini, styles.dialBtnBoundaryMini]} onPress={() => handleRecordRuns(4)}>
-                          <Text style={[styles.dialBtnTxtMini, styles.dialBtnTxtBoundary]}>4</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Row 2: WKT, 6 */}
-                      <View style={styles.scoringRow}>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
-                          <Text style={styles.dialBtnTxtWkt}>WKT</Text>
-                          <Text style={styles.dialBtnSubWkt}>wicket</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
-                          <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
-                          <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
+                  {isScoringDisabled ? (
+                    <View style={styles.onlineStatusContainer}>
+                      <ActivityIndicator size="small" color={C.green} style={{ marginBottom: 12 }} />
+                      <Text style={styles.onlineStatusTitle}>Online Match Mode 🌐</Text>
+                      <Text style={styles.onlineStatusDesc}>
+                        {battingTeam === 'opp'
+                          ? (user2Uid
+                              ? "Waiting for opponent team to score this innings..."
+                              : "Waiting for opponent scorer to scan QR code and connect...")
+                          : "Waiting for host team to score this innings..."}
+                      </Text>
+                      
+                      {/* If Opponent team is batting but User 2 has not joined, display the QR Code directly here! */}
+                      {battingTeam === 'opp' && !user2Uid && (
+                        <View style={styles.inlineQRCard}>
+                          <Text style={styles.qrInfoText}>Scan to score Opponent innings:</Text>
+                          <View style={styles.qrWrapper}>
+                            <QRCode
+                              value={`crickstreet://online-match?matchId=${matchId}&uid=${ownerUid}`}
+                              size={140}
+                            />
+                          </View>
+                          <Text style={styles.qrCodeUrl}>crickstreet://online-match</Text>
+                        </View>
+                      )}
+                    </View>
                   ) : (
-                    /* Batting Scoring Pad Dial (First Drawing scoring buttons grid) */
-                    <>
-                      {/* Row 1: 0 (Dot), 1, 2, 3 */}
-                      <View style={styles.scoringRow}>
-                        <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(0)}>
-                          <Text style={styles.dialBtnTxt}>0</Text>
-                          <Text style={styles.dialBtnSub}>dot</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(1)}>
-                          <Text style={styles.dialBtnTxt}>1</Text>
-                          <Text style={styles.dialBtnSub}>runs</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(2)}>
-                          <Text style={styles.dialBtnTxt}>2</Text>
-                          <Text style={styles.dialBtnSub}>runs</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(3)}>
-                          <Text style={styles.dialBtnTxt}>3</Text>
-                          <Text style={styles.dialBtnSub}>runs</Text>
-                        </TouchableOpacity>
-                      </View>
+                    isUserBowling ? (
+                      /* Bowling Scoring Pad Dial (Second Drawing scoring buttons grid) */
+                      <>
+                        {/* Row 1: 0 (Dot), 1, 2, 3, 4 */}
+                        <View style={[styles.scoringRow, { gap: sp.xs }]}>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(0)}>
+                            <Text style={styles.dialBtnTxtMini}>Dot</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(1)}>
+                            <Text style={styles.dialBtnTxtMini}>1</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(2)}>
+                            <Text style={styles.dialBtnTxtMini}>2</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini]} onPress={() => handleRecordRuns(3)}>
+                            <Text style={styles.dialBtnTxtMini}>3</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnMini, styles.dialBtnBoundaryMini]} onPress={() => handleRecordRuns(4)}>
+                            <Text style={[styles.dialBtnTxtMini, styles.dialBtnTxtBoundary]}>4</Text>
+                          </TouchableOpacity>
+                        </View>
 
-                      {/* Row 2: 4, 6, WKT */}
-                      <View style={styles.scoringRow}>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(4)}>
-                          <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>4</Text>
-                          <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>boundary</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
-                          <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
-                          <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
-                          <Text style={styles.dialBtnTxtWkt}>WKT</Text>
-                          <Text style={styles.dialBtnSubWkt}>wicket</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
+                        {/* Row 2: WKT, 6 */}
+                        <View style={styles.scoringRow}>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
+                            <Text style={styles.dialBtnTxtWkt}>WKT</Text>
+                            <Text style={styles.dialBtnSubWkt}>wicket</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
+                            <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
+                            <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    ) : (
+                      /* Batting Scoring Pad Dial (First Drawing scoring buttons grid) */
+                      <>
+                        {/* Row 1: 0 (Dot), 1, 2, 3 */}
+                        <View style={styles.scoringRow}>
+                          <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(0)}>
+                            <Text style={styles.dialBtnTxt}>0</Text>
+                            <Text style={styles.dialBtnSub}>dot</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(1)}>
+                            <Text style={styles.dialBtnTxt}>1</Text>
+                            <Text style={styles.dialBtnSub}>runs</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(2)}>
+                            <Text style={styles.dialBtnTxt}>2</Text>
+                            <Text style={styles.dialBtnSub}>runs</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={styles.dialBtn} onPress={() => handleRecordRuns(3)}>
+                            <Text style={styles.dialBtnTxt}>3</Text>
+                            <Text style={styles.dialBtnSub}>runs</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Row 2: 4, 6, WKT */}
+                        <View style={styles.scoringRow}>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(4)}>
+                            <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>4</Text>
+                            <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>boundary</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnBoundary]} onPress={() => handleRecordRuns(6)}>
+                            <Text style={[styles.dialBtnTxt, styles.dialBtnTxtBoundary]}>6</Text>
+                            <Text style={[styles.dialBtnSub, styles.dialBtnSubBoundary]}>sixer</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.dialBtn, styles.dialBtnWkt]} onPress={handleRecordWicket}>
+                            <Text style={styles.dialBtnTxtWkt}>WKT</Text>
+                            <Text style={styles.dialBtnSubWkt}>wicket</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )
                   )}
 
-                  {/* Row 3 Extras: No Ball, Wide */}
-                  <View style={styles.extrasRow}>
-                    <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('noball')}>
-                      <Text style={styles.extraBtnTxt}>No Ball</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('wide')}>
-                      <Text style={styles.extraBtnTxt}>Wide</Text>
-                    </TouchableOpacity>
-                  </View>
+                  {!isScoringDisabled && (
+                    /* Row 3 Extras: No Ball, Wide */
+                    <View style={styles.extrasRow}>
+                      <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('noball')}>
+                        <Text style={styles.extraBtnTxt}>No Ball</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity activeOpacity={0.8} style={styles.extraBtn} onPress={() => handleRecordExtra('wide')}>
+                        <Text style={styles.extraBtnTxt}>Wide</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
 
               {/* Bottom Actions (Undo & Innings Break) */}
               <View style={styles.bottomActionsRow}>
-                <TouchableOpacity activeOpacity={0.8} style={styles.undoBtn} onPress={handleUndo}>
+                <TouchableOpacity
+                  activeOpacity={isScoringDisabled ? 1.0 : 0.8}
+                  disabled={isScoringDisabled}
+                  style={[styles.undoBtn, isScoringDisabled && { opacity: 0.5 }]}
+                  onPress={handleUndo}
+                >
                   <MaterialCommunityIcons name="undo" size={18} color={C.red} />
                   <Text style={styles.undoBtnTxt}>Undo</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity activeOpacity={0.8} style={styles.breakBtn} onPress={handleInningsBreak}>
+                <TouchableOpacity
+                  activeOpacity={isScoringDisabled ? 1.0 : 0.8}
+                  disabled={isScoringDisabled}
+                  style={[styles.breakBtn, isScoringDisabled && { opacity: 0.5 }]}
+                  onPress={handleInningsBreak}
+                >
                   <Text style={styles.breakBtnTxt}>Innings Break</Text>
                   <Feather name="arrow-right" size={16} color={C.white} />
                 </TouchableOpacity>
               </View>
 
               {/* Complete Match Button */}
-              <TouchableOpacity activeOpacity={0.8} style={styles.completeBtn} onPress={() => handleCompleteMatchDirectly()}>
+              <TouchableOpacity
+                activeOpacity={isScoringDisabled ? 1.0 : 0.8}
+                disabled={isScoringDisabled}
+                style={[styles.completeBtn, isScoringDisabled && { opacity: 0.5 }]}
+                onPress={() => handleCompleteMatchDirectly()}
+              >
                 <Text style={styles.completeBtnTxt}>Complete & Save Match</Text>
               </TouchableOpacity>
             </>
@@ -1675,12 +1908,69 @@ export default function ScorecardScreen() {
         </ScrollView>
       </SafeAreaView>
 
+      {/* MODAL: Share Match QR Code */}
+      <Modal visible={showQRModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: sp.sm }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Share Online Match 🌐</Text>
+                <Text style={styles.modalSubtitle}>Let the opponent scorer scan this QR code to join and score their innings!</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowQRModal(false)} style={styles.modalCloseIconBtn}>
+                <Feather name="x" size={20} color={C.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ alignItems: 'center', marginVertical: sp.lg }}>
+              <View style={{ padding: 16, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <QRCode
+                  value={`crickstreet://online-match?matchId=${matchId}&uid=${ownerUid}`}
+                  size={200}
+                />
+              </View>
+              <Text style={{ fontSize: fs.xs, color: C.textGray, marginTop: 12, textAlign: 'center' }}>
+                Match ID: {matchId}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.modalCloseBtn}
+              onPress={() => setShowQRModal(false)}
+            >
+              <Text style={styles.modalCloseBtnTxt}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* MODAL: Choose new batsman */}
       <Modal visible={showNewBatterModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select New Batsman</Text>
-            <Text style={styles.modalSubtitle}>Choose a player to resume batting</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: sp.sm }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Select New Batsman</Text>
+                <Text style={styles.modalSubtitle}>Choose a player to resume batting</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowNewBatterModal(false)} style={styles.modalCloseIconBtn}>
+                <Feather name="x" size={20} color={C.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.addCustomPlayerRow}>
+              <TextInput
+                style={styles.modalCustomInput}
+                placeholder="Add custom batter name..."
+                placeholderTextColor="rgba(0,0,0,0.3)"
+                value={customBatterInput}
+                onChangeText={setCustomBatterInput}
+              />
+              <TouchableOpacity style={styles.modalAddBtn} onPress={handleAddCustomBatter}>
+                <Text style={styles.modalAddBtnTxt}>+ Add</Text>
+              </TouchableOpacity>
+            </View>
             
             {availableBatters.length === 0 ? (
               <View style={styles.emptyWrap}>
@@ -1717,8 +2007,28 @@ export default function ScorecardScreen() {
       <Modal visible={showNewBowlerModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Bowler</Text>
-            <Text style={styles.modalSubtitle}>Select a bowler for the new over</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: sp.sm }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Select Bowler</Text>
+                <Text style={styles.modalSubtitle}>Select a bowler for the new over</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowNewBowlerModal(false)} style={styles.modalCloseIconBtn}>
+                <Feather name="x" size={20} color={C.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.addCustomPlayerRow}>
+              <TextInput
+                style={styles.modalCustomInput}
+                placeholder="Add custom bowler name..."
+                placeholderTextColor="rgba(0,0,0,0.3)"
+                value={customBowlerInput}
+                onChangeText={setCustomBowlerInput}
+              />
+              <TouchableOpacity style={styles.modalAddBtn} onPress={handleAddCustomBowler}>
+                <Text style={styles.modalAddBtnTxt}>+ Add</Text>
+              </TouchableOpacity>
+            </View>
             
             <FlatList
               data={availableBowlers}
@@ -2354,5 +2664,102 @@ const styles = StyleSheet.create({
     fontSize: fs.md,
     fontWeight: '800',
     color: C.white,
+  },
+  addCustomPlayerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: sp.md,
+    gap: sp.sm,
+  },
+  modalCustomInput: {
+    flex: 1,
+    height: s(40),
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: br.md,
+    paddingHorizontal: sp.md,
+    fontSize: fs.sm,
+    color: C.textDark,
+    backgroundColor: '#F8FAFC',
+  },
+  modalAddBtn: {
+    backgroundColor: C.green,
+    paddingHorizontal: sp.md,
+    height: s(40),
+    justifyContent: 'center',
+    borderRadius: br.md,
+  },
+  modalAddBtnTxt: {
+    color: C.white,
+    fontWeight: '800',
+    fontSize: fs.sm,
+  },
+  modalCloseIconBtn: {
+    padding: 6,
+  },
+  shareQRBtn: {
+    width: s(36),
+    height: s(36),
+    borderRadius: br.full,
+    backgroundColor: '#EAF7E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onlineIndicatorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: br.sm,
+    paddingHorizontal: sp.xs + 2,
+    paddingVertical: 2,
+    gap: 4,
+    marginLeft: sp.sm,
+  },
+  onlineStatusContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: sp.xl,
+    width: '100%',
+  },
+  onlineStatusTitle: {
+    fontSize: fs.md,
+    fontWeight: '800',
+    color: C.textDark,
+    marginBottom: 4,
+  },
+  onlineStatusDesc: {
+    fontSize: fs.xs,
+    color: C.textGray,
+    textAlign: 'center',
+    paddingHorizontal: sp.lg,
+    lineHeight: 16,
+  },
+  inlineQRCard: {
+    marginTop: sp.lg,
+    padding: sp.md,
+    backgroundColor: '#F8FAFC',
+    borderRadius: br.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+  },
+  qrInfoText: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: C.textDark,
+    marginBottom: 8,
+  },
+  qrWrapper: {
+    padding: 8,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  qrCodeUrl: {
+    fontSize: 9,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: C.textGray,
+    marginTop: 6,
   },
 });

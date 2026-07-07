@@ -14,6 +14,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { s, fs, sp, br, avatarSz, iconSz } from '../../theme/responsive';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { useAuth } from '../../hooks/useAuth';
 
 const CORNER_SIZE = 24;
 const CORNER_THICKNESS = 4;
@@ -27,6 +30,7 @@ export default function ScanPlayerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Scan-line animation
   const scanLineY = useRef(new Animated.Value(0)).current;
@@ -61,6 +65,35 @@ export default function ScanPlayerScreen() {
     if (scanned) return;
     setScanned(true);
 
+    // Check if it is an online match QR code
+    // Example: crickstreet://online-match?matchId=ABC&uid=XYZ
+    const onlineMatchMatch = data.match(/online-match\?matchId=([a-zA-Z0-9_-]+)&uid=([a-zA-Z0-9_-]+)/);
+    if (onlineMatchMatch && onlineMatchMatch[1] && onlineMatchMatch[2]) {
+      const matchId = onlineMatchMatch[1];
+      const ownerUid = onlineMatchMatch[2];
+      const loggedInUserUid = user?.uid || '';
+
+      const joinOnlineMatch = async () => {
+        try {
+          const matchRef = doc(db, 'users', ownerUid, 'matches', matchId);
+          await updateDoc(matchRef, {
+            user2Uid: loggedInUserUid
+          });
+          router.replace({
+            pathname: '/scorecard',
+            params: { matchId, uid: ownerUid }
+          });
+        } catch (err) {
+          console.error('Error joining online match:', err);
+          setScanError('Failed to join the online match. Please check your network.');
+          setScanned(false);
+        }
+      };
+
+      joinOnlineMatch();
+      return;
+    }
+
     // Expect URL: crickstreet://player/<uid> OR https://.../player?id=<uid>
     let playerId = '';
     const customSchemeMatch = data.match(/crickstreet:\/\/player\/([a-zA-Z0-9_-]+)/);
@@ -75,7 +108,7 @@ export default function ScanPlayerScreen() {
     if (playerId) {
       router.replace({ pathname: '/player-profile/[id]', params: { id: playerId } });
     } else {
-      setScanError('This QR code is not a valid Crickstreet player profile.');
+      setScanError('This QR code is not a valid Crickstreet player or match profile.');
     }
   };
 
