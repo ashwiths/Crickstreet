@@ -1,5 +1,6 @@
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,7 +16,6 @@ import {
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PrimaryButton } from '../components/PrimaryButton';
 import { Colors } from '../constants/colors';
 import { useAuth } from '../hooks/useAuth';
 import { s, fs, sp, br, iconSz, avatarSz } from '../theme/responsive';
@@ -43,17 +43,17 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Ambient soft glow background */}
+      {/* Ambient soft green glow background */}
       <View
         style={[
           styles.ambientGlow,
           {
-            top: screenHeight * 0.14,
-            width: screenHeight * 0.28,
-            height: screenHeight * 0.28,
-            borderRadius: (screenHeight * 0.28) / 2,
+            top: screenHeight * 0.1,
+            width: screenHeight * 0.35,
+            height: screenHeight * 0.35,
+            borderRadius: (screenHeight * 0.35) / 2,
           },
           { pointerEvents: 'none' } as any,
         ]}
@@ -67,7 +67,7 @@ export default function LoginScreen() {
             style={styles.backButton}
             activeOpacity={0.7}
           >
-            <AntDesign name="left" size={24} color={Colors.white} />
+            <AntDesign name="left" size={20} color="#111827" />
           </TouchableOpacity>
           <Text style={styles.topTitle}>Sign In</Text>
           <View style={{ width: 40 }} /> {/* Spacer to balance back button */}
@@ -76,7 +76,7 @@ export default function LoginScreen() {
         {/* ── Logo & Branding ──────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.brandContainer}>
           <View style={styles.iconCircle}>
-            <AntDesign name="lock" size={iconSz.md} color={Colors.background} />
+            <AntDesign name="lock" size={24} color="#59C749" />
           </View>
           <Text style={styles.brandTitle}>Welcome Back</Text>
           <Text style={styles.brandSubtitle}>Sign in to manage your matches and grounds.</Text>
@@ -92,14 +92,14 @@ export default function LoginScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Enter your email"
-                placeholderTextColor="#71717A"
+                placeholderTextColor="#9CA3AF"
                 style={styles.textInput}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <View style={styles.inputIcon}>
-                <Feather name="mail" size={18} color="#71717A" />
+                <Feather name="mail" size={18} color="#9CA3AF" />
               </View>
             </View>
           </View>
@@ -112,7 +112,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Enter your password"
-                placeholderTextColor="#71717A"
+                placeholderTextColor="#9CA3AF"
                 style={styles.textInput}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
@@ -123,7 +123,7 @@ export default function LoginScreen() {
                 style={styles.inputIcon}
                 activeOpacity={0.7}
               >
-                <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color="#71717A" />
+                <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -138,9 +138,18 @@ export default function LoginScreen() {
             </Animated.View>
           )}
 
-          {/* Submit Button */}
+          {/* Submit Button (Stunning Green Gradient) */}
           <View style={styles.submitButtonContainer}>
-            <PrimaryButton label="Sign In" onPress={handleSignIn} />
+            <TouchableOpacity onPress={handleSignIn} activeOpacity={0.8}>
+              <LinearGradient
+                colors={['#59C749', '#46B137']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitButton}
+              >
+                <Text style={styles.submitButtonText}>Sign In</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
           {/* Sign Up Redirect Link */}
@@ -156,7 +165,7 @@ export default function LoginScreen() {
       {/* Fullscreen Overlay Loading Spinner */}
       {loading && (
         <View style={styles.overlayLoader}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
+          <ActivityIndicator size="large" color="#59C749" />
         </View>
       )}
     </SafeAreaView>
@@ -166,7 +175,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FFFFFF',
     position: 'relative',
   },
   container: {
@@ -175,11 +184,11 @@ const styles = StyleSheet.create({
   },
   ambientGlow: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.01)',
-    shadowColor: Colors.white,
+    backgroundColor: 'rgba(89, 199, 73, 0.03)',
+    shadowColor: '#59C749',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 50,
+    shadowOpacity: 0.15,
+    shadowRadius: 60,
   },
   topBar: {
     flexDirection: 'row',
@@ -192,14 +201,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondaryButton,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    borderColor: Colors.secondaryButtonBorder,
+    borderColor: '#E5E7EB',
     borderWidth: 1,
   },
   topTitle: {
-    color: Colors.white,
+    color: '#111827',
     fontSize: fs.lg,
     fontWeight: '700',
   },
@@ -212,20 +221,20 @@ const styles = StyleSheet.create({
     width: avatarSz.sm,
     height: avatarSz.sm,
     borderRadius: avatarSz.sm / 2,
-    backgroundColor: Colors.white,
+    backgroundColor: 'rgba(89, 199, 73, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: sp.md,
   },
   brandTitle: {
-    color: Colors.white,
+    color: '#111827',
     fontSize: fs.hero,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: sp.xs,
   },
   brandSubtitle: {
-    color: Colors.subtitleGray,
+    color: '#4B5563',
     fontSize: fs.md,
     textAlign: 'center',
     paddingHorizontal: sp.lg,
@@ -239,7 +248,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputLabel: {
-    color: '#71717A',
+    color: '#6B7280',
     fontSize: fs.xs,
     fontWeight: '700',
     letterSpacing: 1.5,
@@ -248,8 +257,8 @@ const styles = StyleSheet.create({
   inputFieldContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.secondaryButton,
-    borderColor: Colors.secondaryButtonBorder,
+    backgroundColor: '#F9FAF9',
+    borderColor: '#E5E7EB',
     borderWidth: 1,
     borderRadius: br.lg,
     height: 52,
@@ -257,7 +266,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    color: Colors.white,
+    color: '#111827',
     fontSize: fs.md2,
     height: '100%',
   },
@@ -270,6 +279,23 @@ const styles = StyleSheet.create({
     marginTop: sp.sm,
     width: '100%',
   },
+  submitButton: {
+    height: 52,
+    borderRadius: br.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: fs.lg,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   redirectLinkContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -277,18 +303,18 @@ const styles = StyleSheet.create({
     marginTop: sp.sm,
   },
   redirectText: {
-    color: Colors.subtitleGray,
+    color: '#4B5563',
     fontSize: fs.md,
   },
   redirectLink: {
-    color: Colors.white,
+    color: '#59C749',
     fontSize: fs.md,
     fontWeight: '700',
     textDecorationLine: 'underline',
   },
   overlayLoader: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
