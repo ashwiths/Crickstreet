@@ -54,6 +54,7 @@ function RootLayoutNav() {
       <View style={styles.appContainer}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="intro" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create-matches" options={{ headerShown: false }} />

@@ -16,6 +16,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CricketAnimation } from '../components/CricketAnimation';
+import IntroScreen from '../../app/intro';
 import { useAuth } from '../hooks/useAuth';
 import { fs, sp, br, iconSz, avatarSz } from '../theme/responsive';
 
@@ -53,6 +54,7 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { signInWithGoogle, loading, error, clearError } = useAuth();
   const { height: screenHeight } = useWindowDimensions();
+  const [showIntro, setShowIntro] = React.useState(true);
 
   const handleEmail = useCallback(() => {
     router.push('/(auth)/email');
@@ -61,6 +63,10 @@ export default function WelcomeScreen() {
   const handleGoogle = useCallback(() => {
     signInWithGoogle();
   }, [signInWithGoogle]);
+
+  if (showIntro) {
+    return <IntroScreen onFinish={() => setShowIntro(false)} />;
+  }
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
