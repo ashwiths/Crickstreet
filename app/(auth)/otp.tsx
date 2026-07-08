@@ -115,7 +115,16 @@ export default function OtpScreen() {
       setSuccessMessage('Verification successful. Logging in...');
 
       // Authenticate with Firebase using the custom token
-      await signInWithOtpToken(result.customToken);
+      try {
+        await signInWithOtpToken(result.customToken);
+      } catch (authErr: any) {
+        if (result.customToken === 'mock-custom-token') {
+          setError('OTP verified successfully! [DEV MOCK SUCCESS] In development mock mode, mock tokens cannot authenticate with the live Firebase service. To establish a real persistent login session, please configure your real Firebase credentials in backend/.env.');
+          setLoading(false);
+          return;
+        }
+        throw authErr;
+      }
       
       // Router layout effect will auto redirect authenticated user to /(tabs)
     } catch (err: any) {

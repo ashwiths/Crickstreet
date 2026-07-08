@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { generateOtp, verifyOtpCode } from '../services/otpService';
 import { sendOtpEmail } from '../services/emailService';
-import { auth, db } from '../config/firebase';
+import { auth, db, isFirebaseMock } from '../config/firebase';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,7 +22,7 @@ export async function sendOtpHandler(req: Request, res: Response): Promise<void>
     // Generate secure OTP
     const rawOtp = await generateOtp(email);
     
-    // Send email using Nodemailer
+    // Send email using Nodemailer (or mock log to console)
     await sendOtpEmail(email, rawOtp);
     
     console.log(`[Auth Controller] OTP generated and sent successfully to: ${email}`);
@@ -84,63 +84,81 @@ export async function verifyOtpHandler(req: Request, res: Response): Promise<voi
     // 1. Verify code
     await verifyOtpCode(email, otp);
 
-    // 2. Fetch or create user in Firebase auth
+    // 2. Fetch or create user record
     let userRecord;
-    try {
-      userRecord = await auth.getUserByEmail(email);
-      console.log(`[Auth Controller] Found existing Firebase User: ${userRecord.uid}`);
-    } catch (err: any) {
-      // Code 'auth/user-not-found' means we create it
-      if (err.code === 'auth/user-not-found') {
-        console.log(`[Auth Controller] User not found. Creating new Firebase User account for: ${email}`);
-        userRecord = await auth.createUser({
-          email,
-          emailVerified: true,
-        });
-        console.log(`[Auth Controller] Successfully created new user: ${userRecord.uid}`);
-      } else {
-        throw err;
+    const defaultDisplayName = email.split('@')[0];
+
+    if (isFirebaseMock) {
+      console.log(`[Auth Controller MOCK] Creating mock session for user: ${email}`);
+      userRecord = {
+        uid: `mock-uid-${email.replace(/[^a-zA-Z0-9]/g, '-')}`,
+        email,
+        displayName: defaultDisplayName,
+        photoURL: '',
+      };
+    } else {
+      try {
+        userRecord = await auth.getUserByEmail(email);
+        console.log(`[Auth Controller] Found existing Firebase User: ${userRecord.uid}`);
+      } catch (err: any) {
+        if (err.code === 'auth/user-not-found') {
+          console.log(`[Auth Controller] User not found. Creating new Firebase User account for: ${email}`);
+          userRecord = await auth.createUser({
+            email,
+            emailVerified: true,
+          });
+          console.log(`[Auth Controller] Successfully created new user: ${userRecord.uid}`);
+        } else {
+          throw err;
+        }
       }
     }
 
     // 3. Sync User Profile in Firestore
-    const userRef = db.collection('users').doc(userRecord.uid);
-    const userSnap = await userRef.get();
-    
-    const now = new Date();
-    const defaultDisplayName = email.split('@')[0];
-    
-    if (!userSnap.exists) {
-      console.log(`[Auth Controller] Creating user document in Firestore for UID: ${userRecord.uid}`);
-      await userRef.set({
-        uid: userRecord.uid,
-        email,
-        displayName: userRecord.displayName || defaultDisplayName,
-        photoURL: userRecord.photoURL || '',
-        createdAt: now,
-        lastLogin: now,
-        provider: 'email',
-      });
-    } else {
-      console.log(`[Auth Controller] Updating user last login in Firestore for UID: ${userRecord.uid}`);
-      await userRef.set({
-        lastLogin: now,
-        provider: 'email',
-      }, { merge: true });
+    if (!isFirebaseMock) {
+      try {
+        const userRef = db.collection('users').doc(userRecord.uid);
+        const userSnap = await userRef.get();
+        const now = new Date();
+        if (!userSnap.exists) {
+          console.log(`[Auth Controller] Creating user document in Firestore for UID: ${userRecord.uid}`);
+          await userRef.set({
+            uid: userRecord.uid,
+            email,
+            displayName: userRecord.displayName || defaultDisplayName,
+            photoURL: userRecord.photoURL || '',
+            createdAt: now,
+            lastLogin: now,
+            provider: 'email',
+          });
+        } else {
+          console.log(`[Auth Controller] Updating user last login in Firestore for UID: ${userRecord.uid}`);
+          await userRef.set({
+            lastLogin: now,
+            provider: 'email',
+          }, { merge: true });
+        }
+      } catch (err: any) {
+        console.warn(`[Firebase Admin Warning] Firestore profile sync failed. Skipping profile write during local testing.`);
+      }
     }
 
     // 4. Generate custom auth token
-    console.log(`[Auth Controller] Generating Firebase Custom Token for UID: ${userRecord.uid}`);
-    let customToken;
-    try {
-      customToken = await auth.createCustomToken(userRecord.uid);
-    } catch (err: any) {
-      console.error(`[Firebase Admin Error] Failed to generate custom token:`, err.message);
-      res.status(500).json({
-        success: false,
-        message: 'OTP verified successfully, but the server failed to generate a Firebase login session. Please configure a valid private key in backend/.env to complete the setup.'
-      });
-      return;
+    let customToken = 'mock-custom-token';
+    if (isFirebaseMock) {
+      console.log(`[Auth Controller MOCK] Returning mock session token for UID: ${userRecord.uid}`);
+    } else {
+      console.log(`[Auth Controller] Generating Firebase Custom Token for UID: ${userRecord.uid}`);
+      try {
+        customToken = await auth.createCustomToken(userRecord.uid);
+      } catch (err: any) {
+        console.error(`[Firebase Admin Error] Failed to generate custom token:`, err.message);
+        res.status(500).json({
+          success: false,
+          message: 'OTP verified successfully, but the server failed to generate a Firebase login session. Please configure a valid private key in backend/.env to complete the setup.'
+        });
+        return;
+      }
     }
 
     res.status(200).json({
@@ -148,7 +166,7 @@ export async function verifyOtpHandler(req: Request, res: Response): Promise<voi
       customToken,
       user: {
         uid: userRecord.uid,
-        email: userRecord.email,
+        email: userRecord.email || email,
         displayName: userRecord.displayName || defaultDisplayName,
         photoURL: userRecord.photoURL || '',
       }
