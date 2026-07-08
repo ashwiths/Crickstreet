@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -14,52 +14,53 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAuth } from '../src/hooks/useAuth';
 
-const AnimatedLine = Animated.createAnimatedComponent(Line);
-
 export interface IntroScreenProps {
   onFinish?: () => void;
 }
 
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+
+// Approximate lengths of SVG digit paths
+const PATH_LENGTH_0 = 220;
+const PATH_LENGTH_4 = 180;
+const PATH_LENGTH_6 = 240;
+
 export default function IntroScreen({ onFinish }: IntroScreenProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
-  // Shared values for cricket animation
-  const progress = useSharedValue(0); // 0.0 to 1.0 animation timeline
-  const scoreProgress = useSharedValue(0); // 0 to 6 runs
-  const [currentScore, setCurrentScore] = useState(0);
-  const [runsStatus, setRunsStatus] = useState('');
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [runsStatus, setRunsStatus] = useState('WRITING SCORE...');
 
-  // Ball positions shared values
-  const ballX = useSharedValue(20);
-  const ballY = useSharedValue(125);
-  const ballOpacity = useSharedValue(0);
-  const ballScale = useSharedValue(1);
-
-  // Bat rotation shared value
-  const batRotation = useSharedValue(-65);
-
-  // Impact flare shared values
-  const impactScale = useSharedValue(0);
-  const impactOpacity = useSharedValue(0);
-
-  // Ball flight trail shared value
-  const trailOpacity = useSharedValue(0);
-
-  // Score text pop animation
-  const scoreScale = useSharedValue(1);
-
-  // Score status popup animation
-  const statusScale = useSharedValue(0);
-  const statusOpacity = useSharedValue(0);
-
-  // Final screen fade out
+  // Shared values for transitions
   const screenOpacity = useSharedValue(1);
 
+  // Chalk digits draw progress (1 = undrawn, 0 = fully drawn)
+  const drawProgress0 = useSharedValue(1);
+  const drawProgress4 = useSharedValue(1);
+  const drawProgress6 = useSharedValue(1);
+
+  // Opacities for digits
+  const opacity0 = useSharedValue(0);
+  const opacity4 = useSharedValue(0);
+  const opacity6 = useSharedValue(0);
+
+  // Chalk tip drawing pointer coordinates
+  const chalkX = useSharedValue(50);
+  const chalkY = useSharedValue(10);
+  const chalkOpacity = useSharedValue(0);
+
+  // Chalkboard Duster (Eraser) coordinates
+  const dusterX = useSharedValue(-100);
+  const dusterOpacity = useSharedValue(0);
+
+  // Dust particles shared values (10 particles)
+  const pTranslations = Array(10).fill(null).map(() => useSharedValue(0));
+  const pAngles = Array(10).fill(null).map((_, i) => (i * 36) * (Math.PI / 180));
+  const pOpacity = useSharedValue(0);
+
   useEffect(() => {
-    // 1. Loading bar simulation (0 to 100%)
+    // 1. Loading bar simulation
     let loadingInterval = setInterval(() => {
       setLoadingProgress((prev) => {
         if (prev >= 100) {
@@ -70,70 +71,133 @@ export default function IntroScreen({ onFinish }: IntroScreenProps) {
       });
     }, 25);
 
-    // 2. Start animation sequence
-    // Ball appears & pitches: starts bowler side (x=20, y=105)
-    ballOpacity.value = withTiming(1, { duration: 150 });
+    // 2. Timeline Sequence:
+    // --- Step A: Draw Digit '0' (0ms - 800ms) ---
+    opacity0.value = 1;
+    chalkOpacity.value = 1;
+    drawProgress0.value = withTiming(0, { duration: 800, easing: Easing.linear });
     
-    // Ball translation: Bowler -> pitch (bounce) -> Batsman
-    ballX.value = withSequence(
-      withTiming(55, { duration: 800, easing: Easing.linear }), // Move to bounce point
-      withTiming(90, { duration: 400, easing: Easing.out(Easing.quad) }) // Rise to bat contact
-    );
+    // Animate chalk tip around the oval path of '0'
+    chalkX.value = withTiming(20, { duration: 200 });
+    chalkY.value = withTiming(50, { duration: 200 });
+    
+    chalkX.value = withDelay(200, withTiming(50, { duration: 200 }));
+    chalkY.value = withDelay(200, withTiming(90, { duration: 200 }));
+    
+    chalkX.value = withDelay(400, withTiming(80, { duration: 200 }));
+    chalkY.value = withDelay(400, withTiming(50, { duration: 200 }));
+    
+    chalkX.value = withDelay(600, withTiming(50, { duration: 200 }));
+    chalkY.value = withDelay(600, withTiming(10, { duration: 200 }));
 
-    ballY.value = withSequence(
-      withTiming(155, { duration: 800, easing: Easing.quad }), // fall to bounce
-      withTiming(130, { duration: 400, easing: Easing.out(Easing.quad) }) // rise to bat contact
-    );
-
-    // Bat downswing: sync with ball arriving at contact point (at 1200ms mark)
-    batRotation.value = withDelay(
-      850,
-      withSequence(
-        withTiming(35, { duration: 350, easing: Easing.bezier(0.25, 0.1, 0.25, 1) }), // Impact swing
-        withTiming(80, { duration: 250, easing: Easing.out(Easing.quad) }), // Follow through
-        withTiming(-65, { duration: 400, easing: Easing.inOut(Easing.quad) }) // Return to stance
-      )
-    );
-
-    // Impact Flare, Ball flying high, Trail, Score Ticking (Triggered at 1200ms impact)
+    // --- Step B: Erase '0' (1000ms - 1300ms) ---
     setTimeout(() => {
-      // 1. Impact flare
-      impactScale.value = withSequence(
-        withTiming(1.8, { duration: 100 }),
-        withTiming(0, { duration: 150 })
-      );
-      impactOpacity.value = withSequence(
-        withTiming(1, { duration: 50 }),
-        withTiming(0, { duration: 200 })
-      );
+      chalkOpacity.value = withTiming(0, { duration: 100 });
+      setRunsStatus('ERASING...');
+      
+      // Slide Duster across
+      dusterOpacity.value = 1;
+      dusterX.value = withTiming(250, { duration: 400, easing: Easing.linear });
+      
+      // As duster crosses the center, fade out '0' and burst dust
+      setTimeout(() => {
+        opacity0.value = withTiming(0, { duration: 150 });
+        triggerDustBurst();
+      }, 150);
 
-      // 2. Ball flies off screen (top right)
-      ballX.value = withTiming(250, { duration: 1300, easing: Easing.out(Easing.quad) });
-      ballY.value = withTiming(15, { duration: 1300, easing: Easing.out(Easing.quad) });
-      ballScale.value = withTiming(0.4, { duration: 1300 });
-      ballOpacity.value = withDelay(1000, withTiming(0, { duration: 300 }));
+      // Hide duster
+      setTimeout(() => {
+        dusterOpacity.value = withTiming(0, { duration: 100 });
+      }, 350);
+    }, 1000);
 
-      // 3. Trajectory trail appears
-      trailOpacity.value = withSequence(
-        withTiming(0.6, { duration: 100 }),
-        withDelay(800, withTiming(0, { duration: 400 }))
-      );
+    // --- Step C: Draw Digit '4' (1600ms - 2400ms) ---
+    setTimeout(() => {
+      setRunsStatus('FOUR RUNS! 🏏');
+      dusterX.value = -100; // reset duster
+      opacity4.value = 1;
+      chalkOpacity.value = 1;
 
-      // 4. Trigger score ticking
-      triggerScoreTicking();
-    }, 1200);
+      // Animate chalk tip paths for '4'
+      chalkX.value = 65; chalkY.value = 10;
+      drawProgress4.value = withTiming(0, { duration: 800, easing: Easing.linear });
 
-    // End of Intro: Navigating away
+      // Chalk pointer path tracking for '4'
+      chalkX.value = withTiming(25, { duration: 250 });
+      chalkY.value = withTiming(70, { duration: 250 });
+      
+      chalkX.value = withDelay(250, withTiming(85, { duration: 250 }));
+      chalkY.value = withDelay(250, withTiming(70, { duration: 250 }));
+      
+      chalkX.value = withDelay(500, withTiming(65, { duration: 150 }));
+      chalkY.value = withDelay(500, withTiming(40, { duration: 150 }));
+      
+      chalkX.value = withDelay(650, withTiming(65, { duration: 150 }));
+      chalkY.value = withDelay(650, withTiming(90, { duration: 150 }));
+    }, 1600);
+
+    // --- Step D: Erase '4' (2600ms - 2900ms) ---
+    setTimeout(() => {
+      chalkOpacity.value = withTiming(0, { duration: 100 });
+      setRunsStatus('ERASING...');
+      dusterOpacity.value = 1;
+      dusterX.value = withTiming(250, { duration: 400, easing: Easing.linear });
+      
+      setTimeout(() => {
+        opacity4.value = withTiming(0, { duration: 150 });
+        triggerDustBurst();
+      }, 150);
+
+      setTimeout(() => {
+        dusterOpacity.value = withTiming(0, { duration: 100 });
+      }, 350);
+    }, 2600);
+
+    // --- Step E: Draw Digit '6' (3200ms - 4000ms) ---
+    setTimeout(() => {
+      setRunsStatus('SIXER! MAXIMUM! 🔥');
+      opacity6.value = 1;
+      chalkOpacity.value = 1;
+
+      chalkX.value = 70; chalkY.value = 10;
+      drawProgress6.value = withTiming(0, { duration: 800, easing: Easing.linear });
+
+      // Chalk pointer path tracking for '6'
+      chalkX.value = withTiming(30, { duration: 250 });
+      chalkY.value = withTiming(75, { duration: 250 });
+      
+      chalkX.value = withDelay(250, withTiming(50, { duration: 250 }));
+      chalkY.value = withDelay(250, withTiming(85, { duration: 250 }));
+      
+      chalkX.value = withDelay(500, withTiming(70, { duration: 300 }));
+      chalkY.value = withDelay(500, withTiming(50, { duration: 300 }));
+    }, 3200);
+
+    // Hide chalk tip at the end
+    setTimeout(() => {
+      chalkOpacity.value = withTiming(0, { duration: 150 });
+    }, 4000);
+
+    // Fade out whole screen and navigate (at 4.4 seconds)
     setTimeout(() => {
       screenOpacity.value = withTiming(0, { duration: 400 }, (finished) => {
         if (finished) {
           runOnJS(handleNavigation)();
         }
       });
-    }, 3800);
+    }, 4400);
 
     return () => clearInterval(loadingInterval);
   }, []);
+
+  const triggerDustBurst = () => {
+    pOpacity.value = 1;
+    pTranslations.forEach((pVal) => {
+      pVal.value = 0;
+      pVal.value = withTiming(70, { duration: 550, easing: Easing.out(Easing.quad) });
+    });
+    pOpacity.value = withDelay(350, withTiming(0, { duration: 200 }));
+  };
 
   const handleNavigation = () => {
     if (onFinish) {
@@ -147,164 +211,129 @@ export default function IntroScreen({ onFinish }: IntroScreenProps) {
     }
   };
 
-  const triggerScoreTicking = () => {
-    // Ticking 0 -> 1 -> 2 -> 4 -> 6
-    const ticks = [
-      { score: 1, delay: 150, status: 'SINGLE!' },
-      { score: 2, delay: 450, status: 'DOUBLE!' },
-      { score: 4, delay: 850, status: 'FOUR! 🏏' },
-      { score: 6, delay: 1250, status: 'SIXER! 🚀' },
-    ];
-
-    ticks.forEach((tick) => {
-      setTimeout(() => {
-        setCurrentScore(tick.score);
-        setRunsStatus(tick.status);
-
-        // Pop the score text
-        scoreScale.value = withSequence(
-          withTiming(1.3, { duration: 100 }),
-          withTiming(1, { duration: 150 })
-        );
-
-        // Pop the status label
-        statusScale.value = withSequence(
-          withTiming(1.2, { duration: 150, easing: Easing.out(Easing.back()) }),
-          withTiming(1, { duration: 100 })
-        );
-        statusOpacity.value = withTiming(1, { duration: 150 });
-      }, tick.delay);
-    });
-  };
-
-  // Animated Styles
+  // Reanimated Animated Props and Styles
   const animatedScreenStyle = useAnimatedStyle(() => ({
     opacity: screenOpacity.value,
   }));
 
-  const animatedBallStyle = useAnimatedStyle(() => ({
+  const animatedChalkProps0 = useAnimatedProps(() => ({
+    strokeDashoffset: drawProgress0.value * PATH_LENGTH_0,
+    opacity: opacity0.value,
+  }));
+
+  const animatedChalkProps4 = useAnimatedProps(() => ({
+    strokeDashoffset: drawProgress4.value * PATH_LENGTH_4,
+    opacity: opacity4.value,
+  }));
+
+  const animatedChalkProps6 = useAnimatedProps(() => ({
+    strokeDashoffset: drawProgress6.value * PATH_LENGTH_6,
+    opacity: opacity6.value,
+  }));
+
+  const animatedChalkTipStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: ballX.value },
-      { translateY: ballY.value },
-      { scale: ballScale.value },
+      { translateX: chalkX.value },
+      { translateY: chalkY.value },
     ],
-    opacity: ballOpacity.value,
+    opacity: chalkOpacity.value,
   }));
 
-  const animatedBatStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: -38 }, // Pivot offset
-      { rotate: `${batRotation.value}deg` },
-      { translateY: 38 },
-    ],
-  }));
-
-  const animatedImpactStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: impactScale.value }],
-    opacity: impactOpacity.value,
-  }));
-
-  const animatedTrailProps = useAnimatedProps(() => ({
-    opacity: trailOpacity.value,
-  }));
-
-  const animatedScoreStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scoreScale.value }],
-  }));
-
-  const animatedStatusStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: statusScale.value }],
-    opacity: statusOpacity.value,
+  const animatedDusterStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: dusterX.value }],
+    opacity: dusterOpacity.value,
   }));
 
   return (
     <Animated.View style={[styles.container, animatedScreenStyle]}>
-      {/* Ambient background glows */}
+      {/* Background soft ambient glows */}
       <View style={styles.glowGreen} pointerEvents="none" />
-      <View style={styles.glowOrange} pointerEvents="none" />
 
-      {/* Main Branding Header */}
+      {/* App Header */}
       <View style={styles.header}>
         <Text style={styles.appName}>CRICKSTREET</Text>
         <Text style={styles.appTagline}>LIVE MATCH SCORING PLATFORM</Text>
       </View>
 
-      {/* Dynamic Scoreboard Box */}
-      <View style={styles.scoreboardContainer}>
-        <Text style={styles.scoreLabel}>MATCH SCORE</Text>
-        <View style={styles.scoreRow}>
-          <Animated.Text style={[styles.scoreValue, animatedScoreStyle]}>
-            {currentScore}
-          </Animated.Text>
-          <Text style={styles.runsText}>runs</Text>
-        </View>
+      {/* Slate Green Chalkboard Scoring Widget */}
+      <View style={styles.boardWoodFrame}>
+        <View style={styles.slateBoard}>
+          {/* Decorative chalk border */}
+          <View style={styles.chalkBoardBorder} />
+          
+          <Text style={styles.boardHeader}>SCOREBOARD</Text>
 
-        {/* Dynamic score status text */}
-        <Animated.View style={[styles.statusBadge, animatedStatusStyle]}>
-          <Text style={styles.statusText}>{runsStatus}</Text>
-        </Animated.View>
-      </View>
+          {/* SVG Canvas for Chalk Writing digits */}
+          <View style={styles.svgWrapper}>
+            <Svg width="150" height="150" viewBox="0 0 100 100">
+              
+              {/* Digit '0' path */}
+              <AnimatedPath
+                d="M 50,10 A 30,40 0 1,0 50.1,10"
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeDasharray={PATH_LENGTH_0}
+                animatedProps={animatedChalkProps0}
+              />
 
-      {/* Cricket Field SVG and Bat Animation Overlay */}
-      <View style={styles.animationArea}>
-        <View style={styles.cricketContainer}>
-          {/* Static SVG Field, Wickets, Trajectory */}
-          <Svg width="220" height="220" viewBox="0 0 220 220" style={styles.svg}>
-            {/* Background field badge */}
-            <Circle cx="110" cy="110" r="95" fill="rgba(89, 199, 73, 0.05)" stroke="rgba(89, 199, 73, 0.1)" strokeWidth="1.5" />
+              {/* Digit '4' path */}
+              <AnimatedPath
+                d="M 65,10 L 25,70 L 85,70 M 65,30 L 65,90"
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeDasharray={PATH_LENGTH_4}
+                animatedProps={animatedChalkProps4}
+              />
 
-            {/* Stadium Roof Arch */}
-            <Path d="M 32,130 A 82,82 0 0,1 188,130" stroke="rgba(89, 199, 73, 0.18)" strokeWidth="2.5" strokeDasharray="5 5" fill="none" />
+              {/* Digit '6' path */}
+              <AnimatedPath
+                d="M 70,10 C 35,30 25,60 30,75 C 35,90 65,90 70,75 C 75,60 45,55 35,70"
+                fill="none"
+                stroke="#59C749" // Neon Green Chalk for the final sixer!
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeDasharray={PATH_LENGTH_6}
+                animatedProps={animatedChalkProps6}
+              />
+            </Svg>
 
-            {/* Ground / Pitch floor lines */}
-            <Line x1="15" y1="160" x2="205" y2="160" stroke="#374151" strokeWidth="2.5" strokeLinecap="round" />
-            <Line x1="75" y1="160" x2="160" y2="160" stroke="#59C749" strokeWidth="3" strokeLinecap="round" />
+            {/* Exploding chalk dust particles */}
+            <View style={styles.particlesContainer}>
+              {pAngles.map((angle, idx) => {
+                const pStyle = useAnimatedStyle(() => {
+                  const dist = pTranslations[idx].value;
+                  return {
+                    transform: [
+                      { translateX: dist * Math.cos(angle) },
+                      { translateY: dist * Math.sin(angle) },
+                    ],
+                    opacity: pOpacity.value,
+                  };
+                });
+                return (
+                  <Animated.View key={idx} style={[styles.dustParticle, pStyle]} />
+                );
+              })}
+            </View>
 
-            {/* Stumps / Wickets behind Batsman (at x = 135) */}
-            <Line x1="131" y1="90" x2="131" y2="160" stroke="#4B5563" strokeWidth="2.5" strokeLinecap="round" />
-            <Line x1="136" y1="90" x2="136" y2="160" stroke="#4B5563" strokeWidth="2.5" strokeLinecap="round" />
-            <Line x1="141" y1="90" x2="141" y2="160" stroke="#4B5563" strokeWidth="2.5" strokeLinecap="round" />
-            <Line x1="128" y1="90" x2="144" y2="90" stroke="#6B7280" strokeWidth="2" />
+            {/* Animated chalk pointer tip (drawing white circle dot) */}
+            <Animated.View style={[styles.chalkPointer, animatedChalkTipStyle]}>
+              <View style={styles.chalkPointerCore} />
+            </Animated.View>
 
-            {/* Batsman Silhouette Body */}
-            <Circle cx="100" cy="78" r="9" fill="#1F2937" />
-            {/* Torso */}
-            <Line x1="100" y1="87" x2="96" y2="122" stroke="#1F2937" strokeWidth="7" strokeLinecap="round" />
-            {/* Back Leg */}
-            <Line x1="96" y1="122" x2="108" y2="160" stroke="#4B5563" strokeWidth="6" strokeLinecap="round" />
-            {/* Front Leg */}
-            <Line x1="96" y1="122" x2="82" y2="160" stroke="#1F2937" strokeWidth="7" strokeLinecap="round" />
-            {/* Left Arm holding bat */}
-            <Line x1="100" y1="92" x2="72" y2="105" stroke="#1F2937" strokeWidth="5.5" strokeLinecap="round" />
-
-            {/* Dashed trajectory flight line */}
-            <AnimatedLine
-              x1="90"
-              y1="130"
-              x2="250"
-              y2="15"
-              stroke="#F59E0B"
-              strokeWidth="2.5"
-              strokeDasharray="4 4"
-              animatedProps={animatedTrailProps}
-            />
-          </Svg>
-
-          {/* Bat Overlay Container */}
-          <View style={[styles.pivotContainer, { left: 72 - 7, top: 105 - 38 }]}>
-            <Animated.View style={[styles.batWrapper, animatedBatStyle]}>
-              <View style={styles.batHandle} />
-              <View style={styles.batBlade} />
+            {/* Blackboard Duster Eraser Overlay */}
+            <Animated.View style={[styles.dusterEraser, animatedDusterStyle]}>
+              <View style={styles.dusterBody} />
+              <View style={styles.dusterHandle} />
             </Animated.View>
           </View>
 
-          {/* Impact Flare Overlay */}
-          <View style={[styles.impactContainer, { left: 90 - 20, top: 130 - 20 }]}>
-            <Animated.View style={[styles.impactRing, animatedImpactStyle]} />
-          </View>
-
-          {/* Cricket Ball Overlay */}
-          <Animated.View style={[styles.ball, animatedBallStyle]} />
+          {/* Chalk status subtext */}
+          <Text style={styles.boardStatus}>{runsStatus}</Text>
         </View>
       </View>
 
@@ -313,7 +342,7 @@ export default function IntroScreen({ onFinish }: IntroScreenProps) {
         <View style={styles.loadingTrack}>
           <View style={[styles.loadingFill, { width: `${loadingProgress}%` }]} />
         </View>
-        <Text style={styles.loadingText}>LOADING ASSETS... {loadingProgress}%</Text>
+        <Text style={styles.loadingText}>LOADING MATCH ASSETS... {loadingProgress}%</Text>
       </View>
     </Animated.View>
   );
@@ -330,22 +359,11 @@ const styles = StyleSheet.create({
   },
   glowGreen: {
     position: 'absolute',
-    top: '15%',
-    left: '10%',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(89, 199, 73, 0.05)',
-    filter: 'blur(60px)',
-  },
-  glowOrange: {
-    position: 'absolute',
-    bottom: '20%',
-    right: '10%',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(245, 158, 11, 0.04)',
+    top: '30%',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(89, 199, 73, 0.04)',
     filter: 'blur(60px)',
   },
   header: {
@@ -368,124 +386,125 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginTop: 6,
   },
-  scoreboardContainer: {
-    backgroundColor: '#F9FAFB',
-    borderColor: 'rgba(89, 199, 73, 0.25)',
-    borderWidth: 1.5,
-    borderRadius: 20,
-    paddingVertical: 18,
-    paddingHorizontal: 32,
+  boardWoodFrame: {
+    backgroundColor: '#8B5A2B', // Wooden frame color
+    borderRadius: 24,
+    padding: 12,
+    width: '90%',
+    maxWidth: 320,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  slateBoard: {
+    backgroundColor: '#1E2A22', // Dark slate green chalkboard
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    width: '80%',
-    maxWidth: 300,
-    shadowColor: '#59C749',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  scoreLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  scoreValue: {
-    fontSize: 54,
-    fontWeight: '900',
-    color: '#111827',
-  },
-  runsText: {
-    fontSize: 18,
-    color: '#59C749',
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  statusBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    borderColor: 'rgba(245, 158, 11, 0.25)',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    marginTop: 8,
-  },
-  statusText: {
-    color: '#D97706',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  animationArea: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  cricketContainer: {
-    width: 220,
-    height: 220,
     position: 'relative',
+    overflow: 'hidden',
   },
-  svg: {
+  chalkBoardBorder: {
     ...StyleSheet.absoluteFillObject,
+    margin: 4,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    pointerEvents: 'none',
   },
-  pivotContainer: {
-    position: 'absolute',
-    width: 14,
-    height: 76,
-    alignItems: 'center',
+  boardHeader: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontWeight: '800',
+    letterSpacing: 3,
+    marginBottom: 10,
   },
-  batWrapper: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-  },
-  batHandle: {
-    width: 3.5,
-    height: 22,
-    backgroundColor: '#374151',
-    borderRadius: 1.5,
-  },
-  batBlade: {
-    width: 9,
-    height: 54,
-    backgroundColor: '#D1A153',
-    borderColor: '#B4833B',
-    borderWidth: 0.5,
-    borderRadius: 2.5,
-  },
-  impactContainer: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
+  svgWrapper: {
+    width: 150,
+    height: 150,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  impactRing: {
-    width: '100%',
-    height: '100%',
-    borderColor: '#F59E0B',
-    borderWidth: 2.5,
-    borderRadius: 20,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-  },
-  ball: {
+  chalkPointer: {
     position: 'absolute',
-    left: -4,
-    top: -4,
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: '#EF4444',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.4,
-    shadowRadius: 2.5,
+    top: 25, // Align center to SVG space
+    left: 25,
+    width: 16,
+    height: 16,
+    marginLeft: -8,
+    marginTop: -8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 15,
+  },
+  chalkPointerCore: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  dusterEraser: {
+    position: 'absolute',
+    top: 40,
+    width: 50,
+    height: 70,
+    zIndex: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dusterBody: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#4B3621', // Dark felt block
+    borderColor: '#3D2B1F',
+    borderWidth: 1,
+    borderRadius: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  dusterHandle: {
+    position: 'absolute',
+    top: 10,
+    width: '60%',
+    height: 14,
+    backgroundColor: '#CD7F32', // wood handle
+    borderRadius: 3,
+  },
+  particlesContainer: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 12,
+  },
+  dustParticle: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+  },
+  boardStatus: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#F59E0B', // golden chalk text
+    letterSpacing: 1.5,
+    marginTop: 10,
+    textShadowColor: 'rgba(245, 158, 11, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   footer: {
     width: '80%',
