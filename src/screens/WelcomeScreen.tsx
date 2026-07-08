@@ -1,5 +1,6 @@
 import { AntDesign } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -15,9 +16,7 @@ import {
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedParticles } from '../components/AnimatedParticles';
-import { PrimaryButton } from '../components/PrimaryButton';
-import { SecondaryButton } from '../components/SecondaryButton';
+import { CricketAnimation } from '../components/CricketAnimation';
 import { Colors } from '../constants/colors';
 import { useAuth } from '../hooks/useAuth';
 import { s, fs, sp, br, iconSz, avatarSz } from '../theme/responsive';
@@ -53,7 +52,6 @@ function Footer() {
 export default function WelcomeScreen() {
   const router = useRouter();
   const { signInWithGoogle, loading, error, clearError } = useAuth();
-  // useWindowDimensions ensures proper re-layout on foldables / rotation
   const { height: screenHeight } = useWindowDimensions();
 
   const handleEmail = useCallback(() => {
@@ -66,9 +64,9 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Ambient soft glow background */}
+      {/* Ambient soft green glow background */}
       <View
         style={[
           styles.ambientGlow,
@@ -95,7 +93,7 @@ export default function WelcomeScreen() {
           style={styles.iconWrapper}
         >
           <View style={styles.iconCircle}>
-            <AntDesign name="user" size={iconSz.md2} color={Colors.background} />
+            <AntDesign name="user" size={24} color="#59C749" />
           </View>
         </Animated.View>
 
@@ -112,7 +110,7 @@ export default function WelcomeScreen() {
         entering={FadeIn.delay(300).duration(1000)}
         style={[styles.particleWrapper, { height: screenHeight * 0.28 }]}
       >
-        <AnimatedParticles />
+        <CricketAnimation />
       </Animated.View>
 
       {/* ── Welcome Text ──────────────────────────────────────────── */}
@@ -139,9 +137,25 @@ export default function WelcomeScreen() {
         entering={FadeInDown.delay(700).duration(800)}
         style={styles.buttonStack}
       >
-        <PrimaryButton label="Continue with Email" onPress={handleEmail} />
+        {/* Continue with Email (Green Gradient) */}
+        <TouchableOpacity onPress={handleEmail} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#59C749', '#46B137']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.emailButton}
+          >
+            <Text style={styles.emailButtonText}>Continue with Email</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
         <View style={styles.buttonSpacer} />
-        <SecondaryButton label="Continue with Google" onPress={handleGoogle} />
+
+        {/* Continue with Google (Light Premium Gray Button) */}
+        <TouchableOpacity onPress={handleGoogle} activeOpacity={0.8} style={styles.googleButton}>
+          <AntDesign name="google" size={18} color="#111827" style={{ marginRight: sp.sm }} />
+          <Text style={styles.googleButtonText}>Continue with Google</Text>
+        </TouchableOpacity>
       </Animated.View>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
@@ -155,7 +169,7 @@ export default function WelcomeScreen() {
       {/* ── Fullscreen Overlay Loading Spinner ── */}
       {loading && (
         <View style={styles.overlayLoader}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
+          <ActivityIndicator size="large" color="#59C749" />
         </View>
       )}
     </SafeAreaView>
@@ -167,7 +181,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     paddingHorizontal: sp.xxl,
     justifyContent: 'space-between',
@@ -176,10 +190,10 @@ const styles = StyleSheet.create({
 
   ambientGlow: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    shadowColor: Colors.white,
+    backgroundColor: 'rgba(89, 199, 73, 0.03)',
+    shadowColor: '#59C749',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.15,
     shadowRadius: 50,
   },
 
@@ -196,17 +210,12 @@ const styles = StyleSheet.create({
     width: avatarSz.sm,
     height: avatarSz.sm,
     borderRadius: avatarSz.sm / 2,
-    backgroundColor: Colors.white,
+    backgroundColor: 'rgba(89, 199, 73, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.white,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   brandingLabel: {
-    color: '#71717A',
+    color: '#4B5563',
     fontSize: fs.base,
     fontWeight: '700',
     letterSpacing: 4.5,
@@ -225,7 +234,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: sp.md,
   },
   heading: {
-    color: Colors.white,
+    color: '#111827',
     fontSize: fs.hero,
     fontWeight: '800',
     letterSpacing: -1.2,
@@ -233,7 +242,7 @@ const styles = StyleSheet.create({
     marginBottom: sp.sm,
   },
   subtitle: {
-    color: Colors.subtitleGray,
+    color: '#4B5563',
     fontSize: fs.md2,
     fontWeight: '500',
     textAlign: 'center',
@@ -249,23 +258,61 @@ const styles = StyleSheet.create({
     height: sp.md,
   },
 
+  emailButton: {
+    height: 52,
+    borderRadius: br.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    shadowColor: '#59C749',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  emailButtonText: {
+    color: '#FFFFFF',
+    fontSize: fs.lg,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
+  googleButton: {
+    flexDirection: 'row',
+    height: 52,
+    borderRadius: br.full,
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  googleButtonText: {
+    color: '#111827',
+    fontSize: fs.lg,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
   footerWrapper: {
     paddingBottom: sp.lg,
     paddingHorizontal: sp.sm,
     alignItems: 'center',
   },
   footerText: {
-    color: Colors.footerGray,
+    color: '#6B7280',
     fontSize: fs.sm,
     lineHeight: fs.sm * 1.6,
     textAlign: 'center',
   },
   footerLink: {
     textDecorationLine: 'underline',
+    color: '#59C749',
   },
   overlayLoader: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
