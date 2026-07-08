@@ -4,11 +4,49 @@ import {
   signOut,
   User as FirebaseUser,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 export { FirebaseUser };
+
+/**
+ * Signs in a user using Email and Password.
+ */
+export async function signInWithEmail(email: string, password: string): Promise<FirebaseUser> {
+  try {
+    console.log('[Email Auth] Initiating Firebase email sign-in for:', email);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    console.log('[Email Auth] Sign-in successful for UID:', userCredential.user.uid);
+    return userCredential.user;
+  } catch (error: any) {
+    throw new Error(mapFirebaseError(error));
+  }
+}
+
+/**
+ * Creates a new user using Email, Password, and Display Name.
+ */
+export async function signUpWithEmail(email: string, password: string, displayName: string): Promise<FirebaseUser> {
+  try {
+    console.log('[Email Auth] Initiating Firebase user creation for:', email);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    console.log('[Email Auth] User created. Updating profile display name:', displayName);
+    await updateProfile(user, { displayName });
+
+    console.log('[Email Auth] Profile updated. Syncing to Firestore...');
+    await syncUserProfile(user);
+
+    return user;
+  } catch (error: any) {
+    throw new Error(mapFirebaseError(error));
+  }
+}
 
 /**
  * Exchanges a Google ID Token for Firebase User Credentials and signs in.
@@ -85,12 +123,22 @@ export function mapFirebaseError(error: any): string {
   const code = error?.code || '';
   console.error('[Google Auth] Firebase error occurred. Code:', code, 'Message:', error.message);
   switch (code) {
-    case 'auth/invalid-credential':
-      return 'Authentication failed: Invalid credentials provided.';
+    case 'auth/invalid-email':
+      return 'Authentication failed: The email address is invalid.';
     case 'auth/user-disabled':
       return 'Authentication failed: This account has been disabled.';
+    case 'auth/user-not-found':
+      return 'Authentication failed: No user exists with this email address.';
+    case 'auth/wrong-password':
+      return 'Authentication failed: Incorrect password.';
+    case 'auth/email-already-in-use':
+      return 'Authentication failed: This email address is already registered.';
+    case 'auth/weak-password':
+      return 'Authentication failed: The password is too weak. Must be at least 6 characters.';
+    case 'auth/invalid-credential':
+      return 'Authentication failed: Invalid credentials provided.';
     case 'auth/operation-not-allowed':
-      return 'Authentication failed: Google sign-in is not enabled in the Firebase console.';
+      return 'Authentication failed: The requested authentication method is not enabled in Firebase.';
     case 'auth/network-request-failed':
       return 'Network Error: Please check your internet connection and try again.';
     default:

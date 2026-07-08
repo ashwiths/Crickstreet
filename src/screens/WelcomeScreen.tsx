@@ -56,9 +56,9 @@ export default function WelcomeScreen() {
   // useWindowDimensions ensures proper re-layout on foldables / rotation
   const { height: screenHeight } = useWindowDimensions();
 
-  const handlePhone = useCallback(() => {
-    // router.push('/(auth)/welcome');
-  }, []);
+  const handleEmail = useCallback(() => {
+    router.push('/(auth)/login');
+  }, [router]);
 
   const handleGoogle = useCallback(() => {
     signInWithGoogle();
@@ -139,7 +139,7 @@ export default function WelcomeScreen() {
         entering={FadeInDown.delay(700).duration(800)}
         style={styles.buttonStack}
       >
-        <PrimaryButton label="Continue with Phone" onPress={handlePhone} />
+        <PrimaryButton label="Continue with Email" onPress={handleEmail} />
         <View style={styles.buttonSpacer} />
         <SecondaryButton label="Continue with Google" onPress={handleGoogle} />
       </Animated.View>

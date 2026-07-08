@@ -5,6 +5,8 @@ import {
   syncUserProfile,
   logoutUser,
   subscribeToAuthState,
+  signInWithEmail as apiSignInWithEmail,
+  signUpWithEmail as apiSignUpWithEmail,
 } from '../services/authService';
 import { useGoogleAuth } from './useGoogleAuth';
 
@@ -13,6 +15,8 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -90,6 +94,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await apiSignInWithEmail(email, password);
+    } catch (err: any) {
+      setError(err.message || 'Email Sign-in failed.');
+      setLoading(false);
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string, displayName: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await apiSignUpWithEmail(email, password, displayName);
+    } catch (err: any) {
+      setError(err.message || 'Email Sign-up failed.');
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setLoading(true);
@@ -117,6 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading: isCombinedLoading,
         error,
         signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
         logout,
         clearError,
       }}
@@ -133,4 +161,3 @@ export function useAuth() {
   }
   return context;
 }
-
