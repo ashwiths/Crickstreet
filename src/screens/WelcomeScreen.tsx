@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
-  Linking,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -17,20 +16,21 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CricketAnimation } from '../components/CricketAnimation';
-import { Colors } from '../constants/colors';
 import { useAuth } from '../hooks/useAuth';
-import { s, fs, sp, br, iconSz, avatarSz } from '../theme/responsive';
+import { fs, sp, br, iconSz, avatarSz } from '../theme/responsive';
 
 // ─── Footer ──────────────────────────────────────────────────────────────────
 
 function Footer() {
+  const router = useRouter();
+
   const openTerms = useCallback(() => {
-    Linking.openURL('https://crickstreet.com/terms');
-  }, []);
+    router.push('/terms-of-service');
+  }, [router]);
 
   const openPrivacy = useCallback(() => {
-    Linking.openURL('https://crickstreet.com/privacy');
-  }, []);
+    router.push('/privacy-policy');
+  }, [router]);
 
   return (
     <Text style={styles.footerText}>
@@ -55,7 +55,7 @@ export default function WelcomeScreen() {
   const { height: screenHeight } = useWindowDimensions();
 
   const handleEmail = useCallback(() => {
-    router.push('/(auth)/login');
+    router.push('/(auth)/email');
   }, [router]);
 
   const handleGoogle = useCallback(() => {

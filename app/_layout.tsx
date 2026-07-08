@@ -68,6 +68,8 @@ function RootLayoutNav() {
           <Stack.Screen name="my-grounds" options={{ headerShown: false }} />
           <Stack.Screen name="ground-details/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="support" options={{ headerShown: false }} />
+          <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
+          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
           <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
           <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
           <Stack.Screen name="player-profile/[id]" options={{ headerShown: false }} />
