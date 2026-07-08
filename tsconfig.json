@@ -16,6 +16,8 @@
   ],
   "exclude": [
     "backend",
+    "backend_backup",
+    "functions",
     "node_modules"
   ]
 }

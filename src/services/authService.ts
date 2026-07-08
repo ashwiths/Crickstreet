@@ -10,12 +10,10 @@ import {
   signInWithCustomToken,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from './firebase';
 
 export { FirebaseUser };
-
-// Define base API URL for development. Can be configured via EXPO_PUBLIC_API_URL
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 export interface OtpResponse {
   success: boolean;
@@ -34,67 +32,49 @@ export interface VerifyOtpResponse {
 }
 
 /**
- * Requests backend to generate and mail verification code to email.
+ * Requests Firebase Cloud Function to generate and mail verification code to email.
  */
 export async function sendOtp(email: string): Promise<OtpResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to send OTP.');
-    }
-    return data;
+    console.log('[Email OTP Auth] Requesting OTP Cloud Function for:', email);
+    const sendOtpFn = httpsCallable<{ email: string }, OtpResponse>(functions, 'sendOtp');
+    const result = await sendOtpFn({ email });
+    return result.data;
   } catch (error: any) {
-    throw new Error(error.message || 'Network request to OTP service failed.');
+    throw new Error(error.message || 'Failed to send OTP verification code.');
   }
 }
 
 /**
- * Submits the OTP code to backend for verification.
+ * Submits the OTP code to Firebase Cloud Function for verification.
  */
 export async function verifyOtp(email: string, otp: string): Promise<VerifyOtpResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to verify OTP.');
-    }
-    return data;
+    console.log('[Email OTP Auth] Verifying OTP Cloud Function for:', email);
+    const verifyOtpFn = httpsCallable<{ email: string; otp: string }, VerifyOtpResponse>(functions, 'verifyOtp');
+    const result = await verifyOtpFn({ email, otp });
+    return result.data;
   } catch (error: any) {
-    throw new Error(error.message || 'OTP verification request failed.');
+    throw new Error(error.message || 'OTP verification failed.');
   }
 }
 
 /**
- * Triggers backend to regenerate and email a new verification code.
+ * Triggers Firebase Cloud Function to regenerate and email a new verification code.
  */
 export async function resendOtp(email: string): Promise<OtpResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to resend OTP.');
-    }
-    return data;
+    console.log('[Email OTP Auth] Resending OTP Cloud Function for:', email);
+    const resendOtpFn = httpsCallable<{ email: string }, OtpResponse>(functions, 'resendOtp');
+    const result = await resendOtpFn({ email });
+    return result.data;
   } catch (error: any) {
-    throw new Error(error.message || 'Resend OTP request failed.');
+    throw new Error(error.message || 'Failed to resend OTP verification code.');
   }
 }
 
 /**
- * Signs in a user using a Firebase Custom Token returned by the backend.
+ * Signs in a user using a Firebase Custom Token returned by the cloud functions.
  */
 export async function signInWithOtpToken(customToken: string): Promise<FirebaseUser> {
   try {

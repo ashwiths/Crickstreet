@@ -8,6 +8,7 @@ import {
   getReactNativePersistence,
 } from 'firebase/auth';
 import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 // Firebase configuration placeholders
 // Note: Replace these credentials with your Firebase Project Configuration from the Firebase Console.
@@ -33,8 +34,6 @@ try {
   auth = getAuth(app);
 }
 
-
-
 // Safely initialize Firestore Database with long polling to prevent QUIC errors and handle hot-reload duplication
 let db: any;
 try {
@@ -45,4 +44,13 @@ try {
   db = getFirestore(app);
 }
 
-export { app, auth, db };
+// Initialize Functions (targeting the us-central1 region)
+const functions = getFunctions(app, 'us-central1');
+
+// Connect to functions emulator during local development
+if (__DEV__) {
+  console.log('[Firebase Client] Running in dev mode. Connecting to Functions Emulator on localhost:5001...');
+  connectFunctionsEmulator(functions, 'localhost', 5001);
+}
+
+export { app, auth, db, functions };
