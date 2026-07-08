@@ -1,16 +1,16 @@
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
-import { Platform } from 'react-native';
-import { useState, useEffect } from 'react';
-
-// Complete WebBrowser redirect session handler for Auth Session
-WebBrowser.maybeCompleteAuthSession();
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { useState } from 'react';
 
 // Client IDs from Google Cloud Console
 export const WEB_CLIENT_ID = '461731506048-bi2g4kvn0mjue2c2dv3htljek599101n.apps.googleusercontent.com';
-export const IOS_CLIENT_ID = undefined;
 export const ANDROID_CLIENT_ID = '461731506048-utrameeu9h0b505pmlhempb6pdg87rcf.apps.googleusercontent.com';
+export const IOS_CLIENT_ID = undefined;
+
+// Configure the native Google Sign-in provider
+GoogleSignin.configure({
+  webClientId: WEB_CLIENT_ID,
+  offlineAccess: false,
+});
 
 export interface GoogleAuthResult {
   idToken: string | null;
@@ -25,104 +25,61 @@ export function useGoogleAuth(): GoogleAuthResult {
   const [error, setError] = useState<string | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
 
-  // Modern Expo SDK 54 direct deep-linking redirect URI (no proxy)
-  const redirectUri = makeRedirectUri({
-    scheme: 'crickstreet',
-    path: 'oauthredirect',
-  });
-
-  console.log("Platform:", Platform.OS);
-  console.log("Redirect URI:", redirectUri);
-  console.log("Android Client ID:", ANDROID_CLIENT_ID);
-  console.log("Web Client ID:", WEB_CLIENT_ID);
-
-  // Initialize the Google Auth Session Request hook
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: WEB_CLIENT_ID,
-    iosClientId: IOS_CLIENT_ID,
-    androidClientId: ANDROID_CLIENT_ID,
-    redirectUri,
-    responseType: 'id_token',
-  });
-
-  // Handle OAuth response updates and log details for debugging
-  useEffect(() => {
-    async function handleGoogleResponse() {
-      if (!response) return;
-
-      console.log('[Google Auth] Active Redirect URI:', redirectUri);
-      console.log('[Google Auth] OAuth Response:', JSON.stringify(response, null, 2));
-      console.log('[Google Auth] OAuth Result Type:', response.type);
-
-      if (response.type === 'success') {
-        const params = (response as any).params ?? {};
-        const authentication = (response.authentication as any) ?? {};
-
-        console.log('[Google Auth] Token Response:', JSON.stringify(authentication, null, 2));
-
-        const token =
-          authentication?.idToken ||
-          params?.id_token ||
-          params?.idToken;
-
-        if (!token) {
-          const errMsg = 'Google Sign-In failed: No ID Token was returned. Verify your redirect URI is registered in Google Console.';
-          console.error('[Google Auth]', errMsg);
-          setError(errMsg);
-          setLoading(false);
-          return;
-        }
-
-        setIdToken(token);
-        setLoading(false);
-      } else if (response.type === 'error') {
-        const oauthError = (response as any).error;
-        const errorDescription = oauthError?.description || oauthError?.message || '';
-        console.error('[Google Auth] OAuth Session error details:', oauthError);
-
-        let mappedError = 'Google Sign-In failed. Please try again.';
-        if (errorDescription.includes('disallowed_useragent')) {
-          mappedError =
-            'Access Blocked: Google has blocked this browser/environment. If you are using Expo Go on Android, please verify that you use a Development Build instead.';
-        } else if (errorDescription.includes('redirect_uri_mismatch')) {
-          mappedError = `Invalid Redirect URI: The URI "${redirectUri}" is not registered in your Google Cloud Console OAuth Client credentials.`;
-        } else if (oauthError?.message) {
-          mappedError = `Google OAuth Error: ${oauthError.message}`;
-        }
-
-        setError(mappedError);
-        setLoading(false);
-      } else if (response.type === 'cancel' || response.type === 'dismiss') {
-        console.log('[Google Auth] Auth session cancelled/dismissed by user. Response:', JSON.stringify(response, null, 2));
-        setError('User Cancelled Login: The sign-in flow was dismissed before completion.');
-        setLoading(false);
-      }
-    }
-
-    handleGoogleResponse();
-  }, [response, redirectUri]);
-
   const signIn = async () => {
     try {
       setLoading(true);
       setError(null);
       setIdToken(null);
 
-      // Verify request is initialized
-      if (!request && Platform.OS !== 'web') {
-        console.warn('[Google Auth] Authorization request is not ready yet. Generating direct scheme request...');
+      console.log('[Google Auth] Starting native Google Sign-In...');
+      
+      // Ensure Google Play Services are available
+      console.log('[Google Auth] Checking if Google Play Services are available...');
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+      // Clear any previous Google Sign-In session to force the account selector sheet to display every time
+      try {
+        console.log('[Google Auth] Clearing previous Google session to force account picker...');
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        console.log('[Google Auth] No active Google session found or signOut failed, proceeding...');
+      }
+      
+      // Perform native sign-in
+      console.log('[Google Auth] Launching native account selector...');
+      const response = await GoogleSignin.signIn();
+      
+      console.log('[Google Auth] Native OAuth Result:', JSON.stringify(response, null, 2));
+
+      // Extract ID Token (supports both newer v11+ response.data and legacy response shapes)
+      const token = response.data?.idToken || (response as any).idToken;
+
+      console.log('[Google Auth] Resolved Token:', token ? `${token.substring(0, 20)}...` : 'UNDEFINED');
+
+      if (!token) {
+        throw new Error('No ID Token returned from the native Google Sign-In SDK.');
       }
 
-      await promptAsync();
+      setIdToken(token);
+      setLoading(false);
     } catch (err: any) {
-      console.error('[Google Auth] promptAsync invocation error:', err);
-      let friendlyMessage = 'Failed to initialize Google Sign-in flow.';
-      if (err?.message?.includes('Network')) {
-        friendlyMessage = 'Network Error: Please check your internet connection and try again.';
-      } else if (err?.message) {
-        friendlyMessage = `Google initialization error: ${err.message}`;
+      console.error('[Google Auth] Native Sign-In Error Details:', err);
+      let friendlyError = 'Google Sign-In failed. Please try again.';
+
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        friendlyError = 'User Cancelled Login: The sign-in flow was dismissed before completion.';
+        console.log('[Google Auth] User cancelled login.');
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        friendlyError = 'Google Sign-In is already in progress.';
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        friendlyError = 'Network Error: Google Play Services are not available or outdated on this device.';
+      } else if (err.message) {
+        friendlyError = `Google OAuth Error: ${err.message}`;
+      } else {
+        friendlyError = `Google OAuth Error code: ${err.code || 'unknown'}`;
       }
-      setError(friendlyMessage);
+
+      setError(friendlyError);
       setLoading(false);
     }
   };
