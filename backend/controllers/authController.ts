@@ -131,7 +131,17 @@ export async function verifyOtpHandler(req: Request, res: Response): Promise<voi
 
     // 4. Generate custom auth token
     console.log(`[Auth Controller] Generating Firebase Custom Token for UID: ${userRecord.uid}`);
-    const customToken = await auth.createCustomToken(userRecord.uid);
+    let customToken;
+    try {
+      customToken = await auth.createCustomToken(userRecord.uid);
+    } catch (err: any) {
+      console.error(`[Firebase Admin Error] Failed to generate custom token:`, err.message);
+      res.status(500).json({
+        success: false,
+        message: 'OTP verified successfully, but the server failed to generate a Firebase login session. Please configure a valid private key in backend/.env to complete the setup.'
+      });
+      return;
+    }
 
     res.status(200).json({
       success: true,

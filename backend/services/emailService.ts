@@ -14,13 +14,20 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/**
- * Sends a premium-designed HTML verification OTP email.
- * 
- * @param to The target recipient email address.
- * @param code The 6-digit OTP code string.
- */
 export async function sendOtpEmail(to: string, code: string): Promise<void> {
+  // In development/testing, if SMTP variables are not configured, print OTP to console and succeed
+  if (
+    !process.env.SMTP_USER ||
+    process.env.SMTP_USER === 'your-email@gmail.com' ||
+    !process.env.SMTP_PASS ||
+    process.env.SMTP_PASS === 'your-app-specific-password'
+  ) {
+    console.log('\n==================================================');
+    console.log(` [DEV MODE MOCK EMAIL] OTP for ${to} is: ${code}`);
+    console.log('==================================================\n');
+    return;
+  }
+
   const mailOptions = {
     from: process.env.SMTP_FROM || '"Crickstreet" <no-reply@crickstreet.app>',
     to,

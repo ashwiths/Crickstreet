@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -71,6 +72,7 @@ export default function EmailScreen() {
 
       {/* Ambient soft green glow background */}
       <View
+        pointerEvents="none"
         style={[
           styles.ambientGlow,
           {
@@ -79,7 +81,6 @@ export default function EmailScreen() {
             height: screenHeight * 0.35,
             borderRadius: (screenHeight * 0.35) / 2,
           },
-          { pointerEvents: 'none' } as any,
         ]}
       />
 
@@ -267,11 +268,18 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: br.full,
     overflow: 'hidden',
-    shadowColor: '#59C749',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 4px 8px rgba(89, 199, 73, 0.2)',
+      },
+      default: {
+        shadowColor: '#59C749',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
   gradientButton: {
     flex: 1,
