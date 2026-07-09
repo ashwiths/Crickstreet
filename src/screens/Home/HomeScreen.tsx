@@ -28,6 +28,7 @@ import ProfileScreen from '../Profile/ProfileScreen';
 import TournamentScreen from '../Tournament/TournamentScreen';
 import ActiveMatchCard from './ActiveMatchCard';
 import HomeHeader from './HomeHeader';
+import ShareMatchModal from '../../components/ShareMatchModal';
 
 // ─── Greeting helper ─────────────────────────────────────────────────────────
 function getGreeting() {
@@ -55,6 +56,24 @@ export default function HomeScreen() {
   const [draftData, setDraftData] = useState<any>(null);
 
   const [tossChoice, setTossChoice] = useState<'bat' | 'bowl' | null>(null);
+
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareMatchData, setShareMatchData] = useState<{
+    id: string;
+    myTeamName: string;
+    oppTeamName: string;
+    format: string;
+  } | null>(null);
+
+  const handleShareActiveMatch = (match: any) => {
+    setShareMatchData({
+      id: match.id,
+      myTeamName: match.myTeamName || 'My Team',
+      oppTeamName: match.oppTeamName || 'Opp Team',
+      format: match.format || 'Overs',
+    });
+    setShareModalVisible(true);
+  };
 
   const { user } = useAuth();
   const [matches, setMatches] = useState<any[]>([]);
@@ -593,9 +612,25 @@ export default function HomeScreen() {
               <View style={styles.activeMatchStatusSection}>
                 <View style={styles.activeMatchStatusCard}>
                   <View style={styles.activeMatchHeader}>
-                    <View style={styles.liveBadge}>
-                      <View style={styles.liveBadgeDot} />
-                      <Text style={styles.liveBadgeText}>ACTIVE</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8) }}>
+                      <View style={styles.liveBadge}>
+                        <View style={styles.liveBadgeDot} />
+                        <Text style={styles.liveBadgeText}>ACTIVE</Text>
+                      </View>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => handleShareActiveMatch(unfinishedMatch)}
+                        style={{
+                          width: s(26),
+                          height: s(26),
+                          borderRadius: s(13),
+                          backgroundColor: 'rgba(89, 199, 73, 0.12)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Feather name="share-2" size={12} color="#59C749" />
+                      </TouchableOpacity>
                     </View>
                     <Text style={styles.formatText}>🏏 {unfinishedMatch.format || 'Overs'}</Text>
                   </View>
@@ -844,6 +879,18 @@ export default function HomeScreen() {
       )}
 
       <FloatingBottomNav activeTab={activeTab} onTabPress={setActiveTab} />
+
+      {shareMatchData && (
+        <ShareMatchModal
+          visible={shareModalVisible}
+          onClose={() => setShareModalVisible(false)}
+          matchId={shareMatchData.id}
+          ownerUid={user?.uid || ''}
+          myTeamName={shareMatchData.myTeamName}
+          oppTeamName={shareMatchData.oppTeamName}
+          format={shareMatchData.format}
+        />
+      )}
     </View>
   );
 }

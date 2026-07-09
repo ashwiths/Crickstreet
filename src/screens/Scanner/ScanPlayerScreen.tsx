@@ -65,6 +65,19 @@ export default function ScanPlayerScreen() {
     if (scanned) return;
     setScanned(true);
 
+    // Check if it is a live scorecard view QR code
+    // Example: crickstreet://live-score?matchId=ABC&uid=XYZ
+    const liveScoreMatch = data.match(/live-score\?matchId=([a-zA-Z0-9_-]+)&uid=([a-zA-Z0-9_-]+)/);
+    if (liveScoreMatch && liveScoreMatch[1] && liveScoreMatch[2]) {
+      const matchId = liveScoreMatch[1];
+      const ownerUid = liveScoreMatch[2];
+      router.replace({
+        pathname: '/scorecard',
+        params: { matchId, uid: ownerUid }
+      });
+      return;
+    }
+
     // Check if it is an online match QR code
     // Example: crickstreet://online-match?matchId=ABC&uid=XYZ
     const onlineMatchMatch = data.match(/online-match\?matchId=([a-zA-Z0-9_-]+)&uid=([a-zA-Z0-9_-]+)/);

@@ -11,6 +11,7 @@ import Animated, {
   withSequence,
   withTiming,
   runOnJS,
+  SharedValue,
 } from 'react-native-reanimated';
 import { useAuth } from '../src/hooks/useAuth';
 
@@ -24,6 +25,41 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 const PATH_LENGTH_0 = 220;
 const PATH_LENGTH_4 = 180;
 const PATH_LENGTH_6 = 240;
+
+const DustParticle = ({
+  angle,
+  translation,
+  opacity,
+}: {
+  angle: number;
+  translation: SharedValue<number>;
+  opacity: SharedValue<number>;
+}) => {
+  const pStyle = useAnimatedStyle(() => {
+    const dist = translation.value;
+    return {
+      transform: [
+        { translateX: dist * Math.cos(angle) },
+        { translateY: dist * Math.sin(angle) },
+      ],
+      opacity: opacity.value,
+    };
+  });
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          width: 4,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: 'rgba(255, 255, 255, 0.75)',
+        },
+        pStyle,
+      ]}
+    />
+  );
+};
 
 export default function IntroScreen({ onFinish }: IntroScreenProps) {
   const router = useRouter();
@@ -55,7 +91,7 @@ export default function IntroScreen({ onFinish }: IntroScreenProps) {
   const dusterOpacity = useSharedValue(0);
 
   // Dust particles shared values (10 particles)
-  const pTranslations = Array(10).fill(null).map(() => useSharedValue(0));
+  const pTranslation = useSharedValue(0);
   const pAngles = Array(10).fill(null).map((_, i) => (i * 36) * (Math.PI / 180));
   const pOpacity = useSharedValue(0);
 
@@ -192,10 +228,8 @@ export default function IntroScreen({ onFinish }: IntroScreenProps) {
 
   const triggerDustBurst = () => {
     pOpacity.value = 1;
-    pTranslations.forEach((pVal) => {
-      pVal.value = 0;
-      pVal.value = withTiming(70, { duration: 550, easing: Easing.out(Easing.quad) });
-    });
+    pTranslation.value = 0;
+    pTranslation.value = withTiming(70, { duration: 550, easing: Easing.out(Easing.quad) });
     pOpacity.value = withDelay(350, withTiming(0, { duration: 200 }));
   };
 
@@ -303,21 +337,14 @@ export default function IntroScreen({ onFinish }: IntroScreenProps) {
 
             {/* Exploding chalk dust particles */}
             <View style={styles.particlesContainer}>
-              {pAngles.map((angle, idx) => {
-                const pStyle = useAnimatedStyle(() => {
-                  const dist = pTranslations[idx].value;
-                  return {
-                    transform: [
-                      { translateX: dist * Math.cos(angle) },
-                      { translateY: dist * Math.sin(angle) },
-                    ],
-                    opacity: pOpacity.value,
-                  };
-                });
-                return (
-                  <Animated.View key={idx} style={[styles.dustParticle, pStyle]} />
-                );
-              })}
+              {pAngles.map((angle, idx) => (
+                <DustParticle
+                  key={idx}
+                  angle={angle}
+                  translation={pTranslation}
+                  opacity={pOpacity}
+                />
+              ))}
             </View>
 
             {/* Animated chalk pointer tip (drawing white circle dot) */}

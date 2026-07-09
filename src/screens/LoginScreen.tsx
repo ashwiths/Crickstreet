@@ -154,7 +154,7 @@ export default function LoginScreen() {
 
           {/* Sign Up Redirect Link */}
           <View style={styles.redirectLinkContainer}>
-            <Text style={styles.redirectText}>Don't have an account? </Text>
+            <Text style={styles.redirectText}>{"Don't have an account? "}</Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/signup')} activeOpacity={0.7}>
               <Text style={styles.redirectLink}>Sign Up</Text>
             </TouchableOpacity>

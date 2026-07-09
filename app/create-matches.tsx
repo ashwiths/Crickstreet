@@ -59,9 +59,9 @@ export default function CreateMatchesScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<number>(0);
-  const [matchFlow, setMatchFlow] = useState<'practice' | 'tournament' | 'online' | null>(null);
+  const [matchFlow, setMatchFlow] = useState<'practice' | 'tournament' | null>(null);
   const [hasMatches, setHasMatches] = useState<boolean>(true);
-  const [selectedCard, setSelectedCard] = useState<'practice' | 'tournament' | 'online' | null>(null);
+  const [selectedCard, setSelectedCard] = useState<'practice' | 'tournament' | null>(null);
 
   useEffect(() => {
     if (params.resume === 'true') {
@@ -123,9 +123,6 @@ export default function CreateMatchesScreen() {
   const btnOpacity      = useSharedValue(0);
   const card1Scale      = useSharedValue(1);
   const card2Scale      = useSharedValue(1);
-  const card3TranslateY = useSharedValue(60);
-  const card3Opacity    = useSharedValue(0);
-  const card3Scale      = useSharedValue(1);
   const floatY          = useSharedValue(0);
 
   // Entrance animation trigger
@@ -135,7 +132,6 @@ export default function CreateMatchesScreen() {
     headerOpacity.value   = 0;
     card1TranslateY.value = 60; card1Opacity.value = 0;
     card2TranslateY.value = 60; card2Opacity.value = 0;
-    card3TranslateY.value = 60; card3Opacity.value = 0;
     bannerOpacity.value   = 0;
     btnOpacity.value      = 0;
     // Play
@@ -144,10 +140,8 @@ export default function CreateMatchesScreen() {
     card1TranslateY.value = withDelay(120, withSpring(0, { damping: 18, stiffness: 120 }));
     card2Opacity.value    = withDelay(240, withTiming(1, { duration: 500 }));
     card2TranslateY.value = withDelay(240, withSpring(0, { damping: 18, stiffness: 120 }));
-    card3Opacity.value    = withDelay(360, withTiming(1, { duration: 500 }));
-    card3TranslateY.value = withDelay(360, withSpring(0, { damping: 18, stiffness: 120 }));
-    bannerOpacity.value   = withDelay(480, withTiming(1, { duration: 500 }));
-    btnOpacity.value      = withDelay(600, withTiming(1, { duration: 500 }));
+    bannerOpacity.value   = withDelay(360, withTiming(1, { duration: 500 }));
+    btnOpacity.value      = withDelay(480, withTiming(1, { duration: 500 }));
     // Subtle float loop
     floatY.value = withRepeat(
       withSequence(
@@ -163,7 +157,6 @@ export default function CreateMatchesScreen() {
   useEffect(() => {
     card1Scale.value = withSpring(selectedCard === 'practice'   ? 1.025 : 1, { damping: 15 });
     card2Scale.value = withSpring(selectedCard === 'tournament' ? 1.025 : 1, { damping: 15 });
-    card3Scale.value = withSpring(selectedCard === 'online'     ? 1.025 : 1, { damping: 15 });
   }, [selectedCard]);
 
   // Firestore user matches listener
@@ -368,20 +361,7 @@ export default function CreateMatchesScreen() {
     setCurrentStep(0);
   };
 
-  const handleSelectOnlineFlow = () => {
-    setOppTeamName('Online Opponent');
-    setOppCaptain('Opp Captain');
-    setOppViceCaptain('Opp Vice Captain');
-    setOppPlayers([
-      'Steve Smith', 'Travis Head', 'David Warner', 'Marnus Labuschagne', 'Glenn Maxwell',
-      'Marcus Stoinis', 'Alex Carey', 'Pat Cummins', 'Mitchell Starc',
-      'Josh Hazlewood', 'Adam Zampa'
-    ]);
-    setOppSubs(['Cameron Green', 'Nathan Lyon']);
-    setMatchType('online');
-    setMatchFlow('online');
-    setCurrentStep(0);
-  };
+
 
   const syncLocationDetails = async (lat: number, lng: number) => {
     setSelectedLat(lat);
@@ -1532,10 +1512,6 @@ export default function CreateMatchesScreen() {
     opacity: card2Opacity.value,
     transform: [{ translateY: card2TranslateY.value }, { scale: card2Scale.value }],
   }));
-  const aCard3Style    = useAnimatedStyle(() => ({
-    opacity: card3Opacity.value,
-    transform: [{ translateY: card3TranslateY.value }, { scale: card3Scale.value }],
-  }));
   const aBannerStyle   = useAnimatedStyle(() => ({ opacity: bannerOpacity.value }));
   const aBtnStyle      = useAnimatedStyle(() => ({ opacity: btnOpacity.value }));
   const aFloatStyle    = useAnimatedStyle(() => ({ transform: [{ translateY: floatY.value }] }));
@@ -1553,16 +1529,9 @@ export default function CreateMatchesScreen() {
       { icon: '📍', label: 'Venue' },
       { icon: '🎯', label: 'Full Scorecard' },
     ];
-    const onlineChips = [
-      { icon: '🌐', label: 'Remote Scoring' },
-      { icon: '🎮', label: 'Dual Controllers' },
-      { icon: '⚡', label: 'Live Sync' },
-      { icon: '📱', label: 'QR Share' },
-    ];
 
     const isPracticeSelected   = selectedCard === 'practice';
     const isTournamentSelected = selectedCard === 'tournament';
-    const isOnlineSelected     = selectedCard === 'online';
     const hasSelection         = selectedCard !== null;
 
     return (
@@ -1709,52 +1678,6 @@ export default function CreateMatchesScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* ── Online Card ── */}
-          <Animated.View style={[aCard3Style, { width: '100%', marginTop: 16 }]}>
-            <TouchableOpacity
-              activeOpacity={0.95}
-              onPress={() => setSelectedCard(isOnlineSelected ? null : 'online')}
-            >
-              <View style={[
-                choiceStyles.card,
-                isOnlineSelected && choiceStyles.cardSelectedOnline,
-              ]}>
-                {/* Header Badge & Radio Box */}
-                <View style={choiceStyles.badgeRow}>
-                  <View style={choiceStyles.onlineBadge}>
-                    <Text style={choiceStyles.onlineBadgeText}>🌐 ONLINE SYNC</Text>
-                  </View>
-                  <View style={isOnlineSelected ? choiceStyles.checkBadgeOnline : choiceStyles.checkBadgeEmpty}>
-                    {isOnlineSelected && <Feather name="check" size={12} color="#0A0D0A" />}
-                  </View>
-                </View>
-
-                {/* Icon + Title */}
-                <View style={choiceStyles.cardTopRow}>
-                  <View style={[
-                    choiceStyles.cardIconWrap,
-                    isOnlineSelected && choiceStyles.cardIconWrapOnlineSelected
-                  ]}>
-                    <Text style={choiceStyles.cardIcon}>🌐</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={choiceStyles.cardTitle}>Online Match</Text>
-                    <Text style={choiceStyles.cardDesc}>Score remotely. Each team updates their own batting innings.</Text>
-                  </View>
-                </View>
-
-                {/* Feature chips */}
-                <View style={choiceStyles.chipsRow}>
-                  {onlineChips.map((chip) => (
-                    <View key={chip.label} style={choiceStyles.chip}>
-                      <Text style={choiceStyles.chipIcon}>{chip.icon}</Text>
-                      <Text style={choiceStyles.chipLabel}>{chip.label}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
         </ScrollView>
 
         {/* ─── Sticky bottom continue button ─── */}
@@ -1769,7 +1692,6 @@ export default function CreateMatchesScreen() {
               if (!hasSelection) return;
               if (selectedCard === 'practice')   handleSelectPracticeFlow();
               if (selectedCard === 'tournament') handleSelectTournamentFlow();
-              if (selectedCard === 'online')     handleSelectOnlineFlow();
             }}
             style={{ borderRadius: 18, overflow: 'hidden' }}
           >
@@ -1780,7 +1702,7 @@ export default function CreateMatchesScreen() {
             >
               <Text style={[choiceStyles.continueBtnText, !hasSelection && { color: '#9CA3AF' }]}>
                 {hasSelection
-                  ? `Continue with ${selectedCard === 'practice' ? 'Practice' : selectedCard === 'tournament' ? 'Tournament' : 'Online'} Match`
+                  ? `Continue with ${selectedCard === 'practice' ? 'Practice' : 'Tournament'} Match`
                   : 'Select a Match Type to Continue'}
               </Text>
               {hasSelection && (

@@ -171,7 +171,7 @@ export default function SearchScreen() {
               </View>
               <Text style={styles.emptyTitle}>No Results Found</Text>
               <Text style={styles.emptyDesc}>
-                We couldn't find any players, teams or grounds matching "{searchQuery}".
+                {"We couldn't find any players, teams or grounds matching \"" + searchQuery + "\"."}
               </Text>
             </View>
           }

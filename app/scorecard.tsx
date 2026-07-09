@@ -1,6 +1,6 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { collection, doc, getDoc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, writeBatch, onSnapshot } from 'firebase/firestore';
 import React, { useState, useEffect, useMemo } from 'react';
 import QRCode from 'react-native-qrcode-svg';
 import {
@@ -198,9 +198,15 @@ export default function ScorecardScreen() {
 
   const isScoringDisabled = useMemo(() => {
     if (matchStatus === 'Completed') return true;
-    if (matchType !== 'online') return false;
     
     const loggedInUserUid = user?.uid || '';
+    // If a viewer is looking at the scorecard, they cannot score
+    if (uid && loggedInUserUid !== uid) {
+      return true;
+    }
+    
+    if (matchType !== 'online') return false;
+    
     if (battingTeam === 'my') {
       // User 1's team is batting -> only owner (User 1) can score
       return loggedInUserUid !== ownerUid;
@@ -208,7 +214,7 @@ export default function ScorecardScreen() {
       // Opponent's team is batting -> only opponent (User 2) can score
       return loggedInUserUid !== user2Uid;
     }
-  }, [matchStatus, matchType, battingTeam, user, ownerUid, user2Uid]);
+  }, [matchStatus, matchType, battingTeam, user, ownerUid, user2Uid, uid]);
 
   const isAutomatedPractice = useMemo(() => {
     return isPractice && (
@@ -251,76 +257,95 @@ export default function ScorecardScreen() {
     return roster.find(p => p.name === nonStrikerName) || { runs: '0', balls: '0' };
   }, [myRoster, oppRoster, battingTeam, nonStrikerName]);
 
-  // Load live match state from Firestore (resuming scorecard)
+  // Load live match state from Firestore (resuming scorecard / live viewing)
   useEffect(() => {
     if (!uid || !matchId) {
       setLoadingDb(false);
       return;
     }
 
-    async function loadMatchState() {
-      try {
-        const matchRef = doc(db, 'users', uid, 'matches', matchId);
-        const matchSnap = await getDoc(matchRef);
-        if (matchSnap.exists()) {
-          const data = matchSnap.data();
-          
-          if (data.status === 'live' || data.status === 'Live' || data.status === 'Innings Break' || data.status === 'completed' || data.status === 'Completed') {
-            if (data.myScoreRuns !== undefined) setMyScore(data.myScoreRuns);
-            if (data.myScoreWickets !== undefined) setMyWickets(data.myScoreWickets);
-            if (data.myScoreBalls !== undefined) setMyBalls(data.myScoreBalls);
-            if (data.myExtras !== undefined) setMyExtras(data.myExtras);
+    const matchRef = doc(db, 'users', uid, 'matches', matchId);
+    const isOwner = user?.uid === uid;
 
-            if (data.oppScoreRuns !== undefined) setOppScore(data.oppScoreRuns);
-            if (data.oppScoreWickets !== undefined) setOppWickets(data.oppScoreWickets);
-            if (data.oppScoreBalls !== undefined) setOppBalls(data.oppScoreBalls);
-            if (data.oppExtras !== undefined) setOppExtras(data.oppExtras);
+    const populateStates = (data: any) => {
+      if (data.status === 'live' || data.status === 'Live' || data.status === 'Innings Break' || data.status === 'completed' || data.status === 'Completed') {
+        if (data.myScoreRuns !== undefined) setMyScore(data.myScoreRuns);
+        if (data.myScoreWickets !== undefined) setMyWickets(data.myScoreWickets);
+        if (data.myScoreBalls !== undefined) setMyBalls(data.myScoreBalls);
+        if (data.myExtras !== undefined) setMyExtras(data.myExtras);
 
-            if (data.myRoster !== undefined) setMyRoster(data.myRoster);
-            if (data.oppRoster !== undefined) setOppRoster(data.oppRoster);
-            if (data.myPlayers !== undefined) setDbMyPlayers(data.myPlayers);
-            if (data.oppPlayers !== undefined) setDbOppPlayers(data.oppPlayers);
+        if (data.oppScoreRuns !== undefined) setOppScore(data.oppScoreRuns);
+        if (data.oppScoreWickets !== undefined) setOppWickets(data.oppScoreWickets);
+        if (data.oppScoreBalls !== undefined) setOppBalls(data.oppScoreBalls);
+        if (data.oppExtras !== undefined) setOppExtras(data.oppExtras);
 
-            if (data.strikerName !== undefined) setStrikerName(data.strikerName);
-            if (data.nonStrikerName !== undefined) setNonStrikerName(data.nonStrikerName);
-            if (data.isOnStrike !== undefined) setIsOnStrike(data.isOnStrike);
-            if (data.currentBowlerName !== undefined) setCurrentBowlerName(data.currentBowlerName);
-            if (data.dismissedPlayers !== undefined) setDismissedPlayers(data.dismissedPlayers);
-            if (data.currentInnings !== undefined) setCurrentInnings(data.currentInnings);
-            if (data.battingTeam !== undefined) setBattingTeam(data.battingTeam);
-            if (data.matchStatus !== undefined) setMatchStatus(data.matchStatus);
-            if (data.matchType !== undefined) setMatchType(data.matchType);
-            if (data.ownerUid !== undefined) setOwnerUid(data.ownerUid);
-            if (data.user2Uid !== undefined) setUser2Uid(data.user2Uid);
-            if (data.matchStatus === 'Innings Break') {
-              router.replace({
-                pathname: '/innings-break-timer',
-                params: { matchId, uid }
-              });
-              return;
-            }
-            if (data.status === 'completed' || data.status === 'Completed') {
-              setMatchStatus('Completed');
-            }
-            if (data.batterHistories !== undefined) setBatterHistories(data.batterHistories);
-            if (data.bowlerHistories !== undefined) setBowlerHistories(data.bowlerHistories);
-            if (data.bowlerStats !== undefined) setBowlerStats(data.bowlerStats);
-            if (data.currentOverBalls !== undefined) setCurrentOverBalls(data.currentOverBalls);
-            
-            if (data.historySnapshotStack !== undefined) {
-              setHistory(data.historySnapshotStack);
-            }
-          }
+        if (data.myRoster !== undefined) setMyRoster(data.myRoster);
+        if (data.oppRoster !== undefined) setOppRoster(data.oppRoster);
+        if (data.myPlayers !== undefined) setDbMyPlayers(data.myPlayers);
+        if (data.oppPlayers !== undefined) setDbOppPlayers(data.oppPlayers);
+
+        if (data.strikerName !== undefined) setStrikerName(data.strikerName);
+        if (data.nonStrikerName !== undefined) setNonStrikerName(data.nonStrikerName);
+        if (data.isOnStrike !== undefined) setIsOnStrike(data.isOnStrike);
+        if (data.currentBowlerName !== undefined) setCurrentBowlerName(data.currentBowlerName);
+        if (data.dismissedPlayers !== undefined) setDismissedPlayers(data.dismissedPlayers);
+        if (data.currentInnings !== undefined) setCurrentInnings(data.currentInnings);
+        if (data.battingTeam !== undefined) setBattingTeam(data.battingTeam);
+        if (data.matchStatus !== undefined) setMatchStatus(data.matchStatus);
+        if (data.matchType !== undefined) setMatchType(data.matchType);
+        if (data.ownerUid !== undefined) setOwnerUid(data.ownerUid);
+        if (data.user2Uid !== undefined) setUser2Uid(data.user2Uid);
+        
+        if (data.matchStatus === 'Innings Break') {
+          router.replace({
+            pathname: '/innings-break-timer',
+            params: { matchId, uid }
+          });
+          return;
         }
-      } catch (err) {
-        console.error('Error loading match state from Firestore:', err);
-      } finally {
-        setLoadingDb(false);
+        if (data.status === 'completed' || data.status === 'Completed') {
+          setMatchStatus('Completed');
+        }
+        if (data.batterHistories !== undefined) setBatterHistories(data.batterHistories);
+        if (data.bowlerHistories !== undefined) setBowlerHistories(data.bowlerHistories);
+        if (data.bowlerStats !== undefined) setBowlerStats(data.bowlerStats);
+        if (data.currentOverBalls !== undefined) setCurrentOverBalls(data.currentOverBalls);
+        
+        if (data.historySnapshotStack !== undefined) {
+          setHistory(data.historySnapshotStack);
+        }
       }
-    }
+    };
 
-    loadMatchState();
-  }, [uid, matchId]);
+    if (!isOwner) {
+      // Viewer: Subscribe to Firestore for real-time live score updates
+      const unsubscribe = onSnapshot(matchRef, (docSnap) => {
+        if (docSnap.exists()) {
+          populateStates(docSnap.data());
+        }
+        setLoadingDb(false);
+      }, (error) => {
+        console.error('Error listening to live match state:', error);
+        setLoadingDb(false);
+      });
+      return unsubscribe;
+    } else {
+      // Owner: Load once to resume, then mutate locally and write to DB
+      async function loadMatchState() {
+        try {
+          const matchSnap = await getDoc(matchRef);
+          if (matchSnap.exists()) {
+            populateStates(matchSnap.data());
+          }
+        } catch (err) {
+          console.error('Error loading match state from Firestore:', err);
+        } finally {
+          setLoadingDb(false);
+        }
+      }
+      loadMatchState();
+    }
+  }, [uid, matchId, user]);
 
   // Self-heal stale 1st innings stats at the start of 2nd innings
   useEffect(() => {
