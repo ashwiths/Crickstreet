@@ -48,13 +48,16 @@ function Footer() {
   );
 }
 
+// Module-level cache to ensure intro screen only plays once per app session
+let hasIntroPlayedGlobal = false;
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { signInWithGoogle, loading, error, clearError } = useAuth();
   const { height: screenHeight } = useWindowDimensions();
-  const [showIntro, setShowIntro] = React.useState(true);
+  const [showIntro, setShowIntro] = React.useState(!hasIntroPlayedGlobal);
 
   const handleEmail = useCallback(() => {
     router.push('/(auth)/email');
@@ -65,7 +68,14 @@ export default function WelcomeScreen() {
   }, [signInWithGoogle]);
 
   if (showIntro) {
-    return <IntroScreen onFinish={() => setShowIntro(false)} />;
+    return (
+      <IntroScreen
+        onFinish={() => {
+          hasIntroPlayedGlobal = true;
+          setShowIntro(false);
+        }}
+      />
+    );
   }
 
   return (

@@ -96,132 +96,49 @@ export default function IntroScreen({ onFinish }: IntroScreenProps) {
   const pOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // 1. Loading bar simulation
+    // 1. Loading bar simulation (1200ms total)
     let loadingInterval = setInterval(() => {
       setLoadingProgress((prev) => {
         if (prev >= 100) {
           clearInterval(loadingInterval);
           return 100;
         }
-        return prev + 1;
+        return prev + 2; // 50 steps * 24ms = 1200ms
       });
-    }, 25);
+    }, 24);
 
-    // 2. Timeline Sequence:
-    // --- Step A: Draw Digit '0' (0ms - 800ms) ---
-    opacity0.value = 1;
+    // 2. Timeline Sequence (1000ms smooth digit 6 draw):
+    // --- Draw Digit '6' immediately ---
+    setRunsStatus('SIXER! MAXIMUM! 🔥');
+    opacity6.value = 1;
     chalkOpacity.value = 1;
-    drawProgress0.value = withTiming(0, { duration: 800, easing: Easing.linear });
+
+    chalkX.value = 70; chalkY.value = 10;
+    drawProgress6.value = withTiming(0, { duration: 1000, easing: Easing.out(Easing.quad) });
+
+    // Chalk pointer path tracking for '6' (total 1000ms)
+    chalkX.value = withTiming(30, { duration: 350 });
+    chalkY.value = withTiming(75, { duration: 350 });
     
-    // Animate chalk tip around the oval path of '0'
-    chalkX.value = withTiming(20, { duration: 200 });
-    chalkY.value = withTiming(50, { duration: 200 });
+    chalkX.value = withDelay(350, withTiming(50, { duration: 350 }));
+    chalkY.value = withDelay(350, withTiming(85, { duration: 350 }));
     
-    chalkX.value = withDelay(200, withTiming(50, { duration: 200 }));
-    chalkY.value = withDelay(200, withTiming(90, { duration: 200 }));
-    
-    chalkX.value = withDelay(400, withTiming(80, { duration: 200 }));
-    chalkY.value = withDelay(400, withTiming(50, { duration: 200 }));
-    
-    chalkX.value = withDelay(600, withTiming(50, { duration: 200 }));
-    chalkY.value = withDelay(600, withTiming(10, { duration: 200 }));
+    chalkX.value = withDelay(700, withTiming(70, { duration: 300 }));
+    chalkY.value = withDelay(700, withTiming(50, { duration: 300 }));
 
-    // --- Step B: Erase '0' (1000ms - 1300ms) ---
-    setTimeout(() => {
-      chalkOpacity.value = withTiming(0, { duration: 100 });
-      setRunsStatus('ERASING...');
-      
-      // Slide Duster across
-      dusterOpacity.value = 1;
-      dusterX.value = withTiming(250, { duration: 400, easing: Easing.linear });
-      
-      // As duster crosses the center, fade out '0' and burst dust
-      setTimeout(() => {
-        opacity0.value = withTiming(0, { duration: 150 });
-        triggerDustBurst();
-      }, 150);
-
-      // Hide duster
-      setTimeout(() => {
-        dusterOpacity.value = withTiming(0, { duration: 100 });
-      }, 350);
-    }, 1000);
-
-    // --- Step C: Draw Digit '4' (1600ms - 2400ms) ---
-    setTimeout(() => {
-      setRunsStatus('FOUR RUNS! 🏏');
-      dusterX.value = -100; // reset duster
-      opacity4.value = 1;
-      chalkOpacity.value = 1;
-
-      // Animate chalk tip paths for '4'
-      chalkX.value = 65; chalkY.value = 10;
-      drawProgress4.value = withTiming(0, { duration: 800, easing: Easing.linear });
-
-      // Chalk pointer path tracking for '4'
-      chalkX.value = withTiming(25, { duration: 250 });
-      chalkY.value = withTiming(70, { duration: 250 });
-      
-      chalkX.value = withDelay(250, withTiming(85, { duration: 250 }));
-      chalkY.value = withDelay(250, withTiming(70, { duration: 250 }));
-      
-      chalkX.value = withDelay(500, withTiming(65, { duration: 150 }));
-      chalkY.value = withDelay(500, withTiming(40, { duration: 150 }));
-      
-      chalkX.value = withDelay(650, withTiming(65, { duration: 150 }));
-      chalkY.value = withDelay(650, withTiming(90, { duration: 150 }));
-    }, 1600);
-
-    // --- Step D: Erase '4' (2600ms - 2900ms) ---
-    setTimeout(() => {
-      chalkOpacity.value = withTiming(0, { duration: 100 });
-      setRunsStatus('ERASING...');
-      dusterOpacity.value = 1;
-      dusterX.value = withTiming(250, { duration: 400, easing: Easing.linear });
-      
-      setTimeout(() => {
-        opacity4.value = withTiming(0, { duration: 150 });
-        triggerDustBurst();
-      }, 150);
-
-      setTimeout(() => {
-        dusterOpacity.value = withTiming(0, { duration: 100 });
-      }, 350);
-    }, 2600);
-
-    // --- Step E: Draw Digit '6' (3200ms - 4000ms) ---
-    setTimeout(() => {
-      setRunsStatus('SIXER! MAXIMUM! 🔥');
-      opacity6.value = 1;
-      chalkOpacity.value = 1;
-
-      chalkX.value = 70; chalkY.value = 10;
-      drawProgress6.value = withTiming(0, { duration: 800, easing: Easing.linear });
-
-      // Chalk pointer path tracking for '6'
-      chalkX.value = withTiming(30, { duration: 250 });
-      chalkY.value = withTiming(75, { duration: 250 });
-      
-      chalkX.value = withDelay(250, withTiming(50, { duration: 250 }));
-      chalkY.value = withDelay(250, withTiming(85, { duration: 250 }));
-      
-      chalkX.value = withDelay(500, withTiming(70, { duration: 300 }));
-      chalkY.value = withDelay(500, withTiming(50, { duration: 300 }));
-    }, 3200);
-
-    // Hide chalk tip at the end
+    // Hide chalk tip at the end of drawing
     setTimeout(() => {
       chalkOpacity.value = withTiming(0, { duration: 150 });
-    }, 4000);
+    }, 1050);
 
-    // Fade out whole screen and navigate (at 4.4 seconds)
+    // Fade out whole screen and navigate when loading hits 100% (at 1200ms)
     setTimeout(() => {
-      screenOpacity.value = withTiming(0, { duration: 400 }, (finished) => {
+      screenOpacity.value = withTiming(0, { duration: 300 }, (finished) => {
         if (finished) {
           runOnJS(handleNavigation)();
         }
       });
-    }, 4400);
+    }, 1200);
 
     return () => clearInterval(loadingInterval);
   }, []);

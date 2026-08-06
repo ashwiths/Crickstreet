@@ -37,17 +37,17 @@ import { s, fs, sp, br, avatarSz, iconSz } from '../src/theme/responsive';
 const W = Math.min(s(375), 600);
 
 const C = {
-  hero:    '#1B3F14',
-  green:   '#59C749',
-  greenDim:'rgba(89,199,73,0.15)',
+  hero:    '#0D1F3C',
+  green:   '#A8CD55',
+  greenDim:'rgba(168,205,85,0.15)',
   milky:   '#FFFDF1',
-  navBg:   '#111510',
+  navBg:   '#0A1628',
   white:   '#FFFFFF',
-  black:   '#0A0A0A',
-  gray1:   '#F5F3E8',
-  gray2:   '#E8E4D4',
-  gray3:   '#9CA3AF',
-  gray4:   '#6B7280',
+  black:   '#0A1628',
+  gray1:   '#0D1F3C',
+  gray2:   '#111A2E',
+  gray3:   '#8A9BA8',
+  gray4:   '#4B5866',
 } as const;
 
 // Steps for wizard
@@ -1536,7 +1536,7 @@ export default function CreateMatchesScreen() {
 
     return (
       <View style={choiceStyles.root}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F5F3E8" />
+        <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
 
         {/* ─── Background radial deco layers ─── */}
         <View style={choiceStyles.bgDeco1} />
@@ -1555,7 +1555,7 @@ export default function CreateMatchesScreen() {
             onPress={() => router.replace('/(tabs)')}
             activeOpacity={0.7}
           >
-            <Feather name="chevron-left" size={22} color="#0A0A0A" />
+            <Feather name="chevron-left" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </Animated.View>
 
@@ -1696,17 +1696,17 @@ export default function CreateMatchesScreen() {
             style={{ borderRadius: 18, overflow: 'hidden' }}
           >
             <LinearGradient
-              colors={hasSelection ? [C.green, '#D4AF37'] : ['#E8E4D4', '#E8E4D4']}
+              colors={hasSelection ? [C.green, '#E3A85B'] : ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.08)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={[choiceStyles.continueBtn, !hasSelection && choiceStyles.continueBtnDisabled]}
             >
-              <Text style={[choiceStyles.continueBtnText, !hasSelection && { color: '#9CA3AF' }]}>
+              <Text style={[choiceStyles.continueBtnText, !hasSelection && { color: 'rgba(255, 255, 255, 0.3)' }]}>
                 {hasSelection
                   ? `Continue with ${selectedCard === 'practice' ? 'Practice' : 'Tournament'} Match`
                   : 'Select a Match Type to Continue'}
               </Text>
               {hasSelection && (
-                <Feather name="arrow-right" size={18} color="#0A0D0A" style={{ marginLeft: 8 }} />
+                <Feather name="arrow-right" size={18} color="#0A1628" style={{ marginLeft: 8 }} />
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -1780,7 +1780,7 @@ export default function CreateMatchesScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0A0D0A',
+    backgroundColor: '#0A1628',
   },
   quickTeamChip: {
     flexDirection: 'row',
@@ -1790,20 +1790,20 @@ const styles = StyleSheet.create({
     paddingVertical: sp.xs,
     borderRadius: br.full,
     borderWidth: 1,
-    borderColor: 'rgba(89,199,73,0.3)',
-    backgroundColor: 'rgba(89,199,73,0.05)',
+    borderColor: 'rgba(168,205,85,0.3)',
+    backgroundColor: 'rgba(168,205,85,0.05)',
   },
   quickTeamChipActive: {
-    backgroundColor: '#59C749',
-    borderColor: '#59C749',
+    backgroundColor: '#A8CD55',
+    borderColor: '#A8CD55',
   },
   quickTeamChipTxt: {
     fontSize: fs.xs,
     fontWeight: '700',
-    color: '#59C749',
+    color: '#A8CD55',
   },
   quickTeamChipTxtActive: {
-    color: '#0A0D0A',
+    color: '#0A1628',
   },
   hero: {
     backgroundColor: C.hero,
@@ -1831,7 +1831,7 @@ const styles = StyleSheet.create({
   },
   curve: {
     height: s(28),
-    backgroundColor: '#0A0D0A',
+    backgroundColor: '#0A1628',
     borderTopLeftRadius: s(28),
     borderTopRightRadius: s(28),
     marginTop: sp.xl,
@@ -1984,10 +1984,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: sp.md3,
     paddingHorizontal: sp.lg,
-    backgroundColor: 'rgba(89, 199, 73, 0.08)',
+    backgroundColor: 'rgba(168, 205, 85, 0.08)',
     borderRadius: br.md,
     borderWidth: 1,
-    borderColor: 'rgba(89, 199, 73, 0.2)',
+    borderColor: 'rgba(168, 205, 85, 0.2)',
     marginTop: sp.md,
   },
   sectionToggleTitle: {
@@ -2068,7 +2068,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   smallAddBtnTxt: {
-    color: '#0A0D0A',
+    color: '#0A1628',
     fontSize: fs.sm,
     fontWeight: '800',
   },
@@ -2089,7 +2089,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   overOptionActive: {
-    backgroundColor: 'rgba(89, 199, 73, 0.15)',
+    backgroundColor: 'rgba(168, 205, 85, 0.15)',
     borderColor: C.green,
   },
   overOptionText: {
@@ -2115,7 +2115,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
   },
   dropdownOptionActive: {
-    backgroundColor: 'rgba(89,199,73,0.12)',
+    backgroundColor: 'rgba(168,205,85,0.12)',
     borderColor: C.green,
   },
   dropdownOptionText: {
@@ -2145,7 +2145,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tossOptionBtnActive: {
-    backgroundColor: 'rgba(89, 199, 73, 0.15)',
+    backgroundColor: 'rgba(168, 205, 85, 0.15)',
     borderColor: C.green,
   },
   tossOptionBtnTxt: {
@@ -2194,7 +2194,7 @@ const styles = StyleSheet.create({
   },
   locationOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 13, 10, 0.9)',
+    backgroundColor: 'rgba(10, 22, 40, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: sp.sm2,
@@ -2208,7 +2208,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: sp.sm,
     right: sp.sm,
-    backgroundColor: 'rgba(89, 199, 73, 0.95)',
+    backgroundColor: 'rgba(168, 205, 85, 0.95)',
     borderRadius: br.xl,
     paddingVertical: sp.xs,
     paddingHorizontal: sp.md,
@@ -2221,7 +2221,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   mapClickOverlayTxt: {
-    color: '#0A0D0A',
+    color: '#0A1628',
     fontSize: fs.sm2,
     fontWeight: '800',
   },
@@ -2286,7 +2286,7 @@ const styles = StyleSheet.create({
     borderRadius: br.md,
   },
   useCurrentLocBtnTxt: {
-    color: '#0A0D0A',
+    color: '#0A1628',
     fontSize: fs.sm,
     fontWeight: '800',
   },
@@ -2329,7 +2329,7 @@ const styles = StyleSheet.create({
     borderRadius: br.lg,
     padding: sp.md3,
     borderWidth: 1,
-    borderColor: 'rgba(89, 199, 73, 0.15)',
+    borderColor: 'rgba(168, 205, 85, 0.15)',
     marginBottom: sp.lg,
   },
   searchResultHeader: {
@@ -2428,7 +2428,7 @@ const styles = StyleSheet.create({
     marginTop: sp.xs,
   },
   confirmVenueBtnActive: {
-    backgroundColor: 'rgba(89, 199, 73, 0.15)',
+    backgroundColor: 'rgba(168, 205, 85, 0.15)',
     borderColor: C.green,
   },
   confirmVenueBtnTxt: {
@@ -2439,7 +2439,7 @@ const styles = StyleSheet.create({
 
   // ── Match Summary Card ──
   summaryCard: {
-    backgroundColor: '#131713',
+    backgroundColor: '#0D1F3C',
     borderRadius: br.lg,
     padding: sp.md,
     borderWidth: 1,
@@ -2513,7 +2513,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   startScoringBtnTxt: {
-    color: '#0A0D0A',
+    color: '#0A1628',
     fontSize: fs.md2,
     fontWeight: '900',
     letterSpacing: 0.2,
@@ -2577,7 +2577,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   navNextBtnTxt: {
-    color: '#0A0D0A',
+    color: '#0A1628',
     fontSize: fs.md,
     fontWeight: '900',
   },
@@ -2587,7 +2587,7 @@ const styles = StyleSheet.create({
 const choiceStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F5F3E8', // Light background
+    backgroundColor: '#0A1628', // Dark background
   },
   // Background deco radial layers
   bgDeco1: {
@@ -2595,7 +2595,7 @@ const choiceStyles = StyleSheet.create({
     width: W * 1.4,
     height: W * 1.4,
     borderRadius: W * 0.7,
-    backgroundColor: 'rgba(89, 199, 73, 0.08)',
+    backgroundColor: 'rgba(168, 205, 85, 0.04)',
     top: -W * 0.5,
     left: -W * 0.2,
   },
@@ -2604,7 +2604,7 @@ const choiceStyles = StyleSheet.create({
     width: W * 0.9,
     height: W * 0.9,
     borderRadius: W * 0.45,
-    backgroundColor: 'rgba(212, 175, 55, 0.05)',
+    backgroundColor: 'rgba(227, 168, 91, 0.03)',
     bottom: W * 0.1,
     right: -W * 0.25,
   },
@@ -2613,14 +2613,14 @@ const choiceStyles = StyleSheet.create({
     width: W * 0.5,
     height: W * 0.5,
     borderRadius: W * 0.25,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    backgroundColor: 'rgba(255, 255, 255, 0.01)',
     bottom: -W * 0.1,
     left: W * 0.1,
   },
   watermark: {
     position: 'absolute',
     fontSize: 220,
-    opacity: 0.02,
+    opacity: 0.01,
     bottom: '15%',
     right: -30,
     transform: [{ rotate: '-20deg' }],
@@ -2639,26 +2639,21 @@ const choiceStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#0A0A0A',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#8A9BA8',
     marginTop: 6,
     lineHeight: 20,
   },
@@ -2669,10 +2664,10 @@ const choiceStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(212,175,55,0.06)',
+    backgroundColor: 'rgba(227,168,91,0.06)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.15)',
+    borderColor: 'rgba(227,168,91,0.15)',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -2693,33 +2688,20 @@ const choiceStyles = StyleSheet.create({
   // Card
   card: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0D1F3C',
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
+    borderColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
   },
   cardSelectedPractice: {
-    borderColor: '#59C749',
-    backgroundColor: 'rgba(89, 199, 73, 0.04)',
-    shadowColor: '#59C749',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    borderColor: '#A8CD55',
+    backgroundColor: 'rgba(168, 205, 85, 0.06)',
   },
   cardSelectedTournament: {
-    borderColor: '#D4AF37',
-    backgroundColor: 'rgba(212, 175, 55, 0.04)',
-    shadowColor: '#D4AF37',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    borderColor: '#E3A85B',
+    backgroundColor: 'rgba(227, 168, 91, 0.06)',
   },
   // Badge row
   badgeRow: {
@@ -2729,8 +2711,8 @@ const choiceStyles = StyleSheet.create({
     marginBottom: 16,
   },
   practiceBadge: {
-    backgroundColor: 'rgba(89, 199, 73, 0.08)',
-    borderColor: 'rgba(89, 199, 73, 0.2)',
+    backgroundColor: 'rgba(168, 205, 85, 0.1)',
+    borderColor: 'rgba(168, 205, 85, 0.25)',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 10,
@@ -2739,12 +2721,12 @@ const choiceStyles = StyleSheet.create({
   practiceBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#59C749',
+    color: '#A8CD55',
     letterSpacing: 0.5,
   },
   tournamentBadge: {
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    borderColor: 'rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'rgba(227, 168, 91, 0.1)',
+    borderColor: 'rgba(227, 168, 91, 0.25)',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 10,
@@ -2753,14 +2735,14 @@ const choiceStyles = StyleSheet.create({
   tournamentBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#D4AF37',
+    color: '#E3A85B',
     letterSpacing: 0.5,
   },
   checkBadgePractice: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#59C749',
+    backgroundColor: '#A8CD55',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2768,7 +2750,7 @@ const choiceStyles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#D4AF37',
+    backgroundColor: '#E3A85B',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2777,7 +2759,7 @@ const choiceStyles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   // Card top row: icon + title/desc
   cardTopRow: {
@@ -2790,19 +2772,19 @@ const choiceStyles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: '#F5F3E8',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardIconWrapPracticeSelected: {
-    backgroundColor: 'rgba(89, 199, 73, 0.12)',
-    borderColor: 'rgba(89, 199, 73, 0.3)',
+    backgroundColor: 'rgba(168, 205, 85, 0.12)',
+    borderColor: 'rgba(168, 205, 85, 0.3)',
   },
   cardIconWrapTournamentSelected: {
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'rgba(227, 168, 91, 0.12)',
+    borderColor: 'rgba(227, 168, 91, 0.3)',
   },
   cardIcon: {
     fontSize: 28,
@@ -2810,13 +2792,13 @@ const choiceStyles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0A0A0A',
+    color: '#FFFFFF',
     letterSpacing: -0.3,
     marginBottom: 4,
   },
   cardDesc: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#8A9BA8',
     lineHeight: 18,
   },
   // Feature chips
@@ -2832,9 +2814,9 @@ const choiceStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: '#F5F3E8',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   chipIcon: {
     fontSize: 12,
@@ -2842,7 +2824,7 @@ const choiceStyles = StyleSheet.create({
   chipLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#4B5563',
+    color: '#8A9BA8',
     letterSpacing: 0.1,
   },
   // Sticky bottom button
@@ -2853,9 +2835,9 @@ const choiceStyles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingTop: 16,
-    backgroundColor: 'rgba(245, 243, 232, 0.96)',
+    backgroundColor: 'rgba(10, 22, 40, 0.96)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.04)',
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   continueBtn: {
     height: 56,
@@ -2864,7 +2846,7 @@ const choiceStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    shadowColor: '#59C749',
+    shadowColor: '#A8CD55',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -2877,7 +2859,7 @@ const choiceStyles = StyleSheet.create({
   continueBtnText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0A0D0A',
+    color: '#0A1628',
     letterSpacing: 0.1,
   },
   cardSelectedOnline: {

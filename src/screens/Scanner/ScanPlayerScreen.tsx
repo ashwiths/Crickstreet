@@ -66,14 +66,19 @@ export default function ScanPlayerScreen() {
     setScanned(true);
 
     // Check if it is a live scorecard view QR code
-    // Example: crickstreet://live-score?matchId=ABC&uid=XYZ
+    // Example: crickstreet://live-score?matchId=ABC&uid=XYZ&mode=view
     const liveScoreMatch = data.match(/live-score\?matchId=([a-zA-Z0-9_-]+)&uid=([a-zA-Z0-9_-]+)/);
     if (liveScoreMatch && liveScoreMatch[1] && liveScoreMatch[2]) {
       const matchId = liveScoreMatch[1];
       const ownerUid = liveScoreMatch[2];
+      
+      // Parse mode parameter (view vs edit)
+      const modeMatch = data.match(/mode=([a-zA-Z]+)/);
+      const mode = modeMatch ? modeMatch[1] : 'view';
+
       router.replace({
         pathname: '/scorecard',
-        params: { matchId, uid: ownerUid }
+        params: { matchId, uid: ownerUid, mode }
       });
       return;
     }

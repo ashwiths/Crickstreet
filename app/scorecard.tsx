@@ -83,6 +83,8 @@ export default function ScorecardScreen() {
     openingBowler?: string;
     format?: string;
     customOvers?: string;
+    uid?: string;
+    mode?: string;
   }>();
 
   const myTeamName = params.myTeamName || 'Crickstreet CC';
@@ -114,7 +116,10 @@ export default function ScorecardScreen() {
   }, [params.oppPlayers, dbOppPlayers]);
 
   const { user } = useAuth();
-  const uid = user?.uid || '';
+  // uid represents the owner of the match document in Firestore.
+  // We check params.uid first (for shared scorecards scanned via QR) and fall back to the active user's UID.
+  const uid = params.uid || user?.uid || '';
+  const shareMode = params.mode || 'edit'; // Default to edit access if not explicitly view-only
 
   // Online Match Mode States
   const [ownerUid, setOwnerUid] = useState<string>('');
@@ -200,8 +205,18 @@ export default function ScorecardScreen() {
     if (matchStatus === 'Completed') return true;
     
     const loggedInUserUid = user?.uid || '';
-    // If a viewer is looking at the scorecard, they cannot score
+    
+    // If the share link/QR is view-only, disable scoring for anyone other than the match owner!
+    if (shareMode === 'view' && loggedInUserUid !== ownerUid) {
+      return true;
+    }
+
+    // Default co-scoring / viewer rules:
+    // If a viewer is looking at the scorecard, and it's not a shared co-scoring mode:
     if (uid && loggedInUserUid !== uid) {
+      if (shareMode === 'edit') {
+        return false;
+      }
       return true;
     }
     
@@ -214,7 +229,7 @@ export default function ScorecardScreen() {
       // Opponent's team is batting -> only opponent (User 2) can score
       return loggedInUserUid !== user2Uid;
     }
-  }, [matchStatus, matchType, battingTeam, user, ownerUid, user2Uid, uid]);
+  }, [matchStatus, matchType, battingTeam, user, ownerUid, user2Uid, uid, shareMode]);
 
   const isAutomatedPractice = useMemo(() => {
     return isPractice && (
@@ -361,7 +376,7 @@ export default function ScorecardScreen() {
       setBowlerStats({});
       setCurrentOverBalls([]);
 
-      if (uid && matchId) {
+      if (uid && matchId && !isScoringDisabled) {
         const matchRef = doc(db, 'users', uid, 'matches', matchId);
         updateDoc(matchRef, {
           batterHistories: {},
@@ -397,6 +412,7 @@ export default function ScorecardScreen() {
   // Firestore intermediate state sync function
   const syncMatchStateToDb = async (updates: Record<string, any>) => {
     if (!uid || !matchId) return;
+    if (isScoringDisabled) return; // Block database write for read-only viewer
     try {
       const matchRef = doc(db, 'users', uid, 'matches', matchId);
       await updateDoc(matchRef, updates);
@@ -599,7 +615,7 @@ export default function ScorecardScreen() {
 
         setMatchStatus('Innings Break');
 
-        if (uid && matchId) {
+        if (uid && matchId && !isScoringDisabled) {
           const matchRef = doc(db, 'users', uid, 'matches', matchId);
           updateDoc(matchRef, {
             currentInnings: 'Second Innings',
@@ -1781,28 +1797,40 @@ export default function ScorecardScreen() {
                   
                   {isScoringDisabled ? (
                     <View style={styles.onlineStatusContainer}>
-                      <ActivityIndicator size="small" color={C.green} style={{ marginBottom: 12 }} />
-                      <Text style={styles.onlineStatusTitle}>Online Match Mode 🌐</Text>
-                      <Text style={styles.onlineStatusDesc}>
-                        {battingTeam === 'opp'
-                          ? (user2Uid
-                              ? "Waiting for opponent team to score this innings..."
-                              : "Waiting for opponent scorer to scan QR code and connect...")
-                          : "Waiting for host team to score this innings..."}
-                      </Text>
-                      
-                      {/* If Opponent team is batting but User 2 has not joined, display the QR Code directly here! */}
-                      {battingTeam === 'opp' && !user2Uid && (
-                        <View style={styles.inlineQRCard}>
-                          <Text style={styles.qrInfoText}>Scan to score Opponent innings:</Text>
-                          <View style={styles.qrWrapper}>
-                            <QRCode
-                              value={`crickstreet://online-match?matchId=${matchId}&uid=${ownerUid}`}
-                              size={140}
-                            />
-                          </View>
-                          <Text style={styles.qrCodeUrl}>crickstreet://online-match</Text>
-                        </View>
+                      {shareMode === 'view' ? (
+                        <>
+                          <Feather name="eye" size={24} color={C.green} style={{ marginBottom: 12 }} />
+                          <Text style={styles.onlineStatusTitle}>Live Viewer Mode 👁️</Text>
+                          <Text style={styles.onlineStatusDesc}>
+                            You are viewing this match scorecard in real-time. Action buttons and scoring dials are disabled.
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <ActivityIndicator size="small" color={C.green} style={{ marginBottom: 12 }} />
+                          <Text style={styles.onlineStatusTitle}>Online Match Mode 🌐</Text>
+                          <Text style={styles.onlineStatusDesc}>
+                            {battingTeam === 'opp'
+                              ? (user2Uid
+                                  ? "Waiting for opponent team to score this innings..."
+                                  : "Waiting for opponent scorer to scan QR code and connect...")
+                              : "Waiting for host team to score this innings..."}
+                          </Text>
+                          
+                          {/* If Opponent team is batting but User 2 has not joined, display the QR Code directly here! */}
+                          {battingTeam === 'opp' && !user2Uid && (
+                            <View style={styles.inlineQRCard}>
+                              <Text style={styles.qrInfoText}>Scan to score Opponent innings:</Text>
+                              <View style={styles.qrWrapper}>
+                                <QRCode
+                                  value={`crickstreet://online-match?matchId=${matchId}&uid=${ownerUid}`}
+                                  size={140}
+                                />
+                              </View>
+                              <Text style={styles.qrCodeUrl}>crickstreet://online-match</Text>
+                            </View>
+                          )}
+                        </>
                       )}
                     </View>
                   ) : (
@@ -1897,37 +1925,38 @@ export default function ScorecardScreen() {
               )}
 
               {/* Bottom Actions (Undo & Innings Break) */}
-              <View style={styles.bottomActionsRow}>
-                <TouchableOpacity
-                  activeOpacity={isScoringDisabled ? 1.0 : 0.8}
-                  disabled={isScoringDisabled}
-                  style={[styles.undoBtn, isScoringDisabled && { opacity: 0.5 }]}
-                  onPress={handleUndo}
-                >
-                  <MaterialCommunityIcons name="undo" size={18} color={C.red} />
-                  <Text style={styles.undoBtnTxt}>Undo</Text>
-                </TouchableOpacity>
+              {!isScoringDisabled && (
+                <View style={styles.bottomActionsRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.undoBtn}
+                    onPress={handleUndo}
+                  >
+                    <MaterialCommunityIcons name="undo" size={18} color={C.red} />
+                    <Text style={styles.undoBtnTxt}>Undo</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  activeOpacity={isScoringDisabled ? 1.0 : 0.8}
-                  disabled={isScoringDisabled}
-                  style={[styles.breakBtn, isScoringDisabled && { opacity: 0.5 }]}
-                  onPress={handleInningsBreak}
-                >
-                  <Text style={styles.breakBtnTxt}>Innings Break</Text>
-                  <Feather name="arrow-right" size={16} color={C.white} />
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.breakBtn}
+                    onPress={handleInningsBreak}
+                  >
+                    <Text style={styles.breakBtnTxt}>Innings Break</Text>
+                    <Feather name="arrow-right" size={16} color={C.white} />
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Complete Match Button */}
-              <TouchableOpacity
-                activeOpacity={isScoringDisabled ? 1.0 : 0.8}
-                disabled={isScoringDisabled}
-                style={[styles.completeBtn, isScoringDisabled && { opacity: 0.5 }]}
-                onPress={() => handleCompleteMatchDirectly()}
-              >
-                <Text style={styles.completeBtnTxt}>Complete & Save Match</Text>
-              </TouchableOpacity>
+              {!isScoringDisabled && (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.completeBtn}
+                  onPress={() => handleCompleteMatchDirectly()}
+                >
+                  <Text style={styles.completeBtnTxt}>Complete & Save Match</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 

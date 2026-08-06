@@ -2,7 +2,6 @@ import FloatingBottomNav from '@/src/components/FloatingBottomNav';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import QuickActions from './QuickActions';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, deleteDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -569,9 +568,6 @@ export default function HomeScreen() {
                 Your local cricket companion. Score games, track squads, and ask our custom AI for tips & rules! ⚡
               </Text>
             </View>
-
-            {/* Quick Actions Grid */}
-            <QuickActions />
 
             {/* Tournament Mode Promotion Banner - Only shown when no active match is ongoing */}
             {!unfinishedMatch && (

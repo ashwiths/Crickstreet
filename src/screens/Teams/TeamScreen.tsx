@@ -269,6 +269,7 @@ export default function TeamScreen() {
 
   // Create Team (Initial Setup)
   const handleSaveForm = async () => {
+    console.log('[TeamScreen] handleSaveForm invoked. TeamName:', formTeamName, 'UID:', uid);
     if (!formTeamName.trim()) {
       Alert.alert('Form Error', 'Please enter a valid Team Name.');
       return;
@@ -284,22 +285,26 @@ export default function TeamScreen() {
     };
 
     try {
+      if (!uid) {
+        throw new Error('User UID is empty. Please ensure you are logged in.');
+      }
+      
       const colRef = collection(db, 'users', uid, 'teams');
       const docRef = doc(colRef); // Client-side generated ID!
       const teamId = docRef.id;
 
-      // Save document asynchronously to prevent modal loading hangs
-      setDoc(docRef, payload).catch(err => {
-        console.error('Async save team failed:', err);
-      });
+      console.log('[TeamScreen] Saving to path:', docRef.path);
+      // Save document and wait for database write to prevent race conditions
+      await setDoc(docRef, payload);
+      console.log('[TeamScreen] setDoc completed successfully.');
 
       setModalVisible(false);
       setSaving(false);
       // Redirect to Details editor screen immediately
       router.push(`/team-details/${teamId}` as any);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving team to Firestore:', err);
-      Alert.alert('Database Error', 'Could not create team. Try again.');
+      Alert.alert('Database Error', `Could not create team: ${err?.message || err}`);
       setSaving(false);
     }
   };

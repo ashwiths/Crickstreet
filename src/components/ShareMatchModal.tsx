@@ -31,11 +31,13 @@ export default function ShareMatchModal({
   oppTeamName,
   format,
 }: ShareMatchModalProps) {
-  const shareUrl = `crickstreet://live-score?matchId=${matchId}&uid=${ownerUid}`;
+  const [accessMode, setAccessMode] = React.useState<'view' | 'edit'>('view');
+  const shareUrl = `crickstreet://live-score?matchId=${matchId}&uid=${ownerUid}&mode=${accessMode}`;
 
   const handleNativeShare = async () => {
     try {
-      const messageText = `Follow the live cricket match score on Crickstreet!\n\n🏏 ${myTeamName} vs ${oppTeamName}\nFormat: ${format}\n\nScan QR code or click the link to join live scorecard:\n${shareUrl}`;
+      const modeText = accessMode === 'edit' ? 'Co-Scorer (Edit Access)' : 'Viewer (Only See)';
+      const messageText = `Follow the live cricket match score on Crickstreet!\n\n🏏 ${myTeamName} vs ${oppTeamName}\nFormat: ${format}\nAccess: ${modeText}\n\nScan QR code or click the link to join live scorecard:\n${shareUrl}`;
       await Share.share({
         message: messageText,
         title: 'Crickstreet Live Match Scorecard',
@@ -83,6 +85,58 @@ export default function ShareMatchModal({
             <Text style={styles.cardSubtitle}>
               Let another player scan this QR code using their Crickstreet app scanner to track live ball-by-ball score!
             </Text>
+
+            {/* Permission Selector */}
+            <View style={styles.selectorContainer}>
+              <Text style={styles.selectorTitle}>Access Permission</Text>
+              <View style={styles.selectorRow}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[
+                    styles.selectorOption,
+                    accessMode === 'view' && styles.selectorOptionActive,
+                  ]}
+                  onPress={() => setAccessMode('view')}
+                >
+                  <Feather
+                    name="eye"
+                    size={14}
+                    color={accessMode === 'view' ? '#FFFFFF' : '#4B5563'}
+                  />
+                  <Text
+                    style={[
+                      styles.selectorOptionText,
+                      accessMode === 'view' && styles.selectorOptionTextActive,
+                    ]}
+                  >
+                    Only See
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[
+                    styles.selectorOption,
+                    accessMode === 'edit' && styles.selectorOptionActive,
+                  ]}
+                  onPress={() => setAccessMode('edit')}
+                >
+                  <Feather
+                    name="edit"
+                    size={13}
+                    color={accessMode === 'edit' ? '#FFFFFF' : '#4B5563'}
+                  />
+                  <Text
+                    style={[
+                      styles.selectorOptionText,
+                      accessMode === 'edit' && styles.selectorOptionTextActive,
+                    ]}
+                  >
+                    Can Edit
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             {/* QR Code Container */}
             <View style={styles.qrCodeWrapper}>
@@ -298,5 +352,48 @@ const styles = StyleSheet.create({
     fontSize: fs.md,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  selectorContainer: {
+    width: '100%',
+    marginBottom: sp.md,
+  },
+  selectorTitle: {
+    fontSize: fs.xs,
+    fontWeight: '800',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: sp.xs,
+    textAlign: 'left',
+    width: '100%',
+    paddingLeft: sp.xs,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: br.lg,
+    padding: 3,
+    gap: 4,
+  },
+  selectorOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.xs,
+    paddingVertical: sp.sm,
+    borderRadius: br.md,
+  },
+  selectorOptionActive: {
+    backgroundColor: '#0A0D0A',
+  },
+  selectorOptionText: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  selectorOptionTextActive: {
+    color: '#59C749',
+    fontWeight: '800',
   },
 });

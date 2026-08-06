@@ -640,30 +640,33 @@ export default function ProfileScreen({ onBack }: { onBack?: () => void } = {}) 
           {/* ── Menu Items ── */}
           <View style={styles.menuContainer}>
             {/* Scan Player QR — highlighted item */}
-            <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/qr-scanner')}>
-              <LinearGradient
-                colors={['rgba(168,205,85,0.18)', 'rgba(227,168,91,0.12)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.menuIconContainer, { backgroundColor: undefined }]}
-              >
-                <Feather name="camera" size={20} color="#A8CD55" />
-              </LinearGradient>
-              <Text style={[styles.menuLabel, { color: '#2D5016' }]}>Scan Player QR</Text>
-              <View style={styles.newBadge}>
-                <Text style={styles.newBadgeText}>NEW</Text>
-              </View>
-              <Feather name="chevron-right" size={20} color="#A8CD55" style={styles.menuChevron} />
-            </TouchableOpacity>
+            <TourHighlight id="scan-player">
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/qr-scanner')}>
+                <LinearGradient
+                  colors={['rgba(168,205,85,0.18)', 'rgba(227,168,91,0.12)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.menuIconContainer, { backgroundColor: undefined }]}
+                >
+                  <Feather name="camera" size={20} color="#A8CD55" />
+                </LinearGradient>
+                <Text style={[styles.menuLabel, { color: '#2D5016' }]}>Scan Player QR</Text>
+                <View style={styles.newBadge}>
+                  <Text style={styles.newBadgeText}>NEW</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color="#A8CD55" style={styles.menuChevron} />
+              </TouchableOpacity>
+            </TourHighlight>
 
             <View style={styles.divider} />
-            <MenuItem icon="users" label="My Players" onPress={() => router.push('/my-players')} />
+            <TourHighlight id="ai-chat">
+              <MenuItem icon="message-square" label="AI Assistant" onPress={() => router.push('/ai-chat')} />
+            </TourHighlight>
+
             <View style={styles.divider} />
             <MenuItem icon="user" label="My Teams" onPress={() => router.push('/my-teams')} />
             <View style={styles.divider} />
             <MenuItem icon="map-pin" label="My Ground" onPress={() => router.push('/my-grounds')} />
-            <View style={styles.divider} />
-            <MenuItem icon="smartphone" label="Step Counter" onPress={() => router.push('/step-counter' as any)} />
             <View style={styles.divider} />
             <TourHighlight id="notification-menu">
               <MenuItem icon="heart" label="Notification" onPress={() => router.push('/notification-settings' as any)} />

@@ -41,15 +41,29 @@ export const TOUR_STEPS: TourStep[] = [
     tab: 'home',
   },
   {
+    id: 'scan-player',
+    title: 'Scan Player & Match QR',
+    description: 'Scan player QR codes to view profiles, or match QR codes to follow live scores and co-score.',
+    route: '/(tabs)?tab=profile',
+    tab: 'profile',
+  },
+  {
+    id: 'ai-chat',
+    title: 'AI Chat Assistant',
+    description: 'Ask the AI about rules, scorecard queries, match history, and cricket stats analysis.',
+    route: '/(tabs)?tab=profile',
+    tab: 'profile',
+  },
+  {
     id: 'matches-tab',
-    title: 'Matches',
+    title: 'Stats',
     description: 'View all current, upcoming, and completed matches.',
     route: '/(tabs)?tab=matches',
     tab: 'matches',
   },
   {
     id: 'tournament-tab',
-    title: 'Tournament',
+    title: 'History',
     description: 'Create and manage cricket tournaments.',
     route: '/(tabs)?tab=tournament',
     tab: 'tournament',
@@ -57,7 +71,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 'profile-tab',
     title: 'Profile',
-    description: 'Manage your account, teams, players, grounds, and settings.',
+    description: 'Manage your account, teams, grounds, and settings.',
     route: '/(tabs)?tab=profile',
     tab: 'profile',
   },
@@ -72,6 +86,12 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'live-score',
     title: 'Live Scoring',
     description: 'Update runs, wickets, and overs during a match.',
+    route: '/scorecard',
+  },
+  {
+    id: 'share-match',
+    title: 'Share Match QR',
+    description: 'Generate scorecard QR codes so others can scan and follow ball-by-ball scores in real-time.',
     route: '/scorecard',
   },
 ];
@@ -132,7 +152,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setCurrentStep(0);
     setIsActive(true);
     // Automatically navigate to Home Page
-    router.replace('/(tabs)?tab=home' as any);
+    router.replace({ pathname: '/', params: { tab: 'home' } } as any);
   }, [router]);
 
   const navigateToStep = useCallback((stepIndex: number) => {
@@ -140,8 +160,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     const step = TOUR_STEPS[stepIndex];
     console.log(`[Tour] Navigating to Step ${stepIndex + 1}: ${step.title}`);
 
-    if (step.route === '/(tabs)?tab=profile' || step.route === '/(tabs)?tab=matches' || step.route === '/(tabs)?tab=tournament' || step.route === '/(tabs)?tab=home') {
-      router.replace(step.route as any);
+    if (step.route.startsWith('/(tabs)')) {
+      const tabName = step.tab || 'home';
+      router.replace({ pathname: '/', params: { tab: tabName } } as any);
     } else {
       router.replace(step.route as any);
     }

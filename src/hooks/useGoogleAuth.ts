@@ -1,5 +1,8 @@
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useState } from 'react';
+import { Platform } from 'react-native';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 // Client IDs from Google Cloud Console
 export const WEB_CLIENT_ID = '461731506048-bi2g4kvn0mjue2c2dv3htljek599101n.apps.googleusercontent.com';
@@ -30,6 +33,15 @@ export function useGoogleAuth(): GoogleAuthResult {
       setLoading(true);
       setError(null);
       setIdToken(null);
+
+      if (Platform.OS === 'web') {
+        console.log('[Google Auth] Web environment detected. Using Firebase signInWithPopup...');
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await signInWithPopup(auth, provider);
+        setLoading(false);
+        return;
+      }
 
       console.log('[Google Auth] Starting native Google Sign-In...');
       
