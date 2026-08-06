@@ -165,8 +165,13 @@ export async function syncUserProfile(user: FirebaseUser): Promise<void> {
       console.log('[Google Auth] Firestore User document already exists. No creation required.');
     }
   } catch (error: any) {
-    console.error('[Google Auth] Firestore sync error details:', error);
-    throw new Error(error.message || 'Failed to sync user profile with database.');
+    console.warn('[Google Auth] Firestore profile sync warning:', error?.message || error);
+    // If it's a permission error or Firestore rules restriction, don't crash user login session
+    if (error?.code === 'permission-denied' || error?.message?.includes('permissions')) {
+      console.warn('[Google Auth] Firestore security rules block access to users collection. Profile sync skipped.');
+      return;
+    }
+    // For other unexpected errors, log and suppress so user session remains intact
   }
 }
 

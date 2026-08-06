@@ -205,7 +205,7 @@ export default function SupportCenterScreen() {
       }
       setLoading(false);
     }, (err) => {
-      console.error('Error loading role:', err);
+      console.warn('Firestore role check skipped:', err.message);
       setLoading(false);
     });
 
@@ -244,6 +244,8 @@ export default function SupportCenterScreen() {
       // Sort client side by date descending to ensure chronological listing
       fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setUserTickets(fetched);
+    }, (err) => {
+      console.warn('Firestore user support tickets sync skipped:', err.message);
     });
 
     return () => unsubscribe();
@@ -277,6 +279,8 @@ export default function SupportCenterScreen() {
       // Sort all tickets chronologically desc
       fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setAdminTickets(fetched);
+    }, (err) => {
+      console.warn('Firestore admin support tickets sync skipped:', err.message);
     });
 
     return () => unsubscribe();
@@ -310,8 +314,8 @@ export default function SupportCenterScreen() {
           );
         }
       });
-    }, (error) => {
-      console.log('Notification listener error:', error);
+    }, (err) => {
+      console.warn('Firestore ticket alerts sync skipped:', err.message);
     });
 
     return () => unsubscribe();

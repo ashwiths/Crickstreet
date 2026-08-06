@@ -69,14 +69,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (firebaseUser) {
           setLoading(true);
           setError(null);
-          // Sync user info (UID, displayName, email, photoURL) to Firestore
-          await syncUserProfile(firebaseUser);
           setUser(firebaseUser);
+          // Sync user info (UID, displayName, email, photoURL) to Firestore in background
+          try {
+            await syncUserProfile(firebaseUser);
+          } catch (syncErr: any) {
+            console.warn('[Auth] Non-fatal user profile sync error:', syncErr.message);
+          }
         } else {
           setUser(null);
         }
       } catch (err: any) {
-        setError(err.message || 'Firestore database synchronization failed.');
+        setError(err.message || 'Authentication failed.');
       } finally {
         setLoading(false);
       }

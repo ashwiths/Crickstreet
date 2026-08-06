@@ -109,7 +109,7 @@ export default function HomeScreen() {
       setMatches(fetchedMatches);
       setLoadingDb(false);
     }, (err) => {
-      console.error('Error loading matches:', err);
+      console.warn('Firestore matches sync skipped:', err.message);
       setLoadingDb(false);
     });
 
@@ -119,6 +119,8 @@ export default function HomeScreen() {
         const data = docSnap.data();
         setUserStats(data.stats || null);
       }
+    }, (err) => {
+      console.warn('Firestore user stats sync skipped:', err.message);
     });
 
     const unsubTeams = onSnapshot(collection(db, 'users', user.uid, 'teams'), (snapshot) => {
@@ -127,6 +129,8 @@ export default function HomeScreen() {
         fetched.push({ id: docSnap.id, ...docSnap.data() });
       });
       setTeams(fetched);
+    }, (err) => {
+      console.warn('Firestore teams sync skipped:', err.message);
     });
 
     const unsubGrounds = onSnapshot(collection(db, 'users', user.uid, 'grounds'), (snapshot) => {
@@ -135,6 +139,8 @@ export default function HomeScreen() {
         fetched.push({ id: docSnap.id, ...docSnap.data() });
       });
       setGrounds(fetched);
+    }, (err) => {
+      console.warn('Firestore grounds sync skipped:', err.message);
     });
 
     const unsubPlayers = onSnapshot(collection(db, 'users', user.uid, 'players'), (snapshot) => {
@@ -143,6 +149,8 @@ export default function HomeScreen() {
         fetched.push({ id: docSnap.id, ...docSnap.data() });
       });
       setPlayers(fetched);
+    }, (err) => {
+      console.warn('Firestore players sync skipped:', err.message);
     });
 
     return () => {
