@@ -1,5 +1,6 @@
 import { Feather, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -22,6 +23,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -35,22 +37,42 @@ import { useAuth } from '../src/hooks/useAuth';
 import { db } from '../src/services/firebase';
 import { s, fs, sp, br, avatarSz, iconSz } from '../src/theme/responsive';
 
+const getSupportApiUrl = (path: string) => {
+  if (process.env.EXPO_PUBLIC_SUPPORT_API_URL) {
+    const baseUrl = process.env.EXPO_PUBLIC_SUPPORT_API_URL.replace(/\/$/, '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${baseUrl}${cleanPath}`;
+  }
+  const cleanPath = path === '/send-support-ticket' ? '/api/support/send' : path;
+  if (Platform.OS === 'web') return cleanPath;
+
+  const debuggerHost = Constants.expoConfig?.hostUri;
+  if (!debuggerHost) {
+    return `http://localhost:8081${cleanPath}`;
+  }
+  return `http://${debuggerHost}${cleanPath}`;
+};
+
 
 
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface SupportTicket {
   id: string;
+  ticketId?: string;
+  ticketRef: string;
   userId: string;
   userName: string;
   userEmail: string;
+  category?: string;
   complaintType: string;
   subject: string;
+  message?: string;
   description: string;
   screenshotUrl: string;
   status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  emailStatus?: 'pending' | 'sent' | 'failed';
   createdAt: string;
-  ticketRef: string;
   adminComment?: string;
   adminCommentedAt?: string;
 }
@@ -168,27 +190,26 @@ export default function SupportCenterScreen() {
   const [replyText, setReplyText] = useState('');
   const [adminStatus, setAdminStatus] = useState<'Open' | 'In Progress' | 'Resolved' | 'Closed'>('Open');
 
-  // Theme support
-  const isDark = systemScheme === 'dark';
+  // Theme support - unified to signature Crickstreet Home theme
   const theme = useMemo(() => {
     return {
-      bg: isDark ? '#0A1628' : '#F3F4F1',
-      bgMid: isDark ? '#0D1F3C' : '#FFFFFF',
-      cardBg: isDark ? 'rgba(255, 255, 255, 0.04)' : '#FFFFFF',
-      cardBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)',
-      text: isDark ? '#FFFFFF' : '#1A1A1A',
-      textSecondary: isDark ? '#8A9BA8' : '#666666',
+      bg: '#F3F4F1',
+      bgMid: '#FFFFFF',
+      cardBg: '#FFFFFF',
+      cardBorder: '#E8E4D4',
+      text: '#1A1A1A',
+      textSecondary: '#64748B',
       green: '#A8CD55',
-      greenText: isDark ? '#A8CD55' : '#4CAF50',
-      greenLight: isDark ? 'rgba(168,205,85,0.12)' : 'rgba(76,175,80,0.1)',
-      red: isDark ? '#FF6B6B' : '#D32F2F',
-      redLight: isDark ? 'rgba(255,107,107,0.1)' : 'rgba(211,47,47,0.08)',
-      inputBg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-      inputBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-      gold: '#E3A85B',
-      blue: '#54A8FF',
+      greenText: '#2D5016',
+      greenLight: '#F0FDF4',
+      red: '#EF4444',
+      redLight: '#FEF2F2',
+      inputBg: '#FAFAFA',
+      inputBorder: '#CBD5E1',
+      gold: '#D97706',
+      blue: '#2563EB',
     };
-  }, [isDark]);
+  }, []);
 
   // 1. Sync User Role (Check Admin rights)
   useEffect(() => {
@@ -321,7 +342,38 @@ export default function SupportCenterScreen() {
     return () => unsubscribe();
   }, [uid, activeTab]);
 
-  // 5. Submit Support Ticket Form via EmailJS
+  const handlePickScreenshot = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your photo gallery to attach a screenshot.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.base64) {
+          setScreenshotUrl(`data:image/jpeg;base64,${asset.base64}`);
+        } else if (asset.uri) {
+          setScreenshotUrl(asset.uri);
+        }
+      }
+    } catch (err) {
+      console.error('Error picking screenshot:', err);
+    }
+  };
+
+  // 5. Submit Support Ticket Form via Firestore + Serverless Resend Pipeline
   const handleSubmitTicket = async () => {
     if (!uid) {
       showToast('Authentication required.', 'error');
@@ -338,81 +390,76 @@ export default function SupportCenterScreen() {
 
     setSubmitting(true);
 
-    const ticketRef = 'CRK' + Math.floor(1000 + Math.random() * 9000);
+    const ticketRef = 'SUP-' + Math.floor(1000 + Math.random() * 9000);
     const createdAt = new Date().toISOString();
-    
-    // Format timestamp in local IST style
-    const formattedTime = new Date(createdAt).toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      dateStyle: 'medium',
-      timeStyle: 'medium',
-    });
 
-    const emailJsPayload = {
-      service_id: 'service_kkrg6ud',
-      template_id: 'template_pqs46a9',
-      user_id: '-hsu_e4K7ntVUa-z2',
-      template_params: {
-        name: userName || 'Crickstreet User',
-        email: userEmail || 'no-email@crickstreet.com',
-        complaint_type: complaintType,
-        subject: subject.trim(),
-        message: description.trim(),
-        time: `${formattedTime} (Ref: #${ticketRef})`,
-      },
+    const payload = {
+      userId: uid,
+      userName: userName || 'Crickstreet User',
+      userEmail: userEmail || 'no-email@crickstreet.com',
+      category: complaintType,
+      complaintType: complaintType,
+      subject: subject.trim(),
+      message: description.trim(),
+      description: description.trim(),
+      screenshotUrl: screenshotUrl.trim(),
+      status: 'Open' as const,
+      emailStatus: 'pending' as const,
+      createdAt,
+      ticketRef,
+      ticketId: ticketRef,
     };
 
+    let docRef: any = null;
+
+    // 1. Save to Firestore First (Guarantees zero data loss even if network or email service blips)
     try {
-      console.log('Sending email via EmailJS REST API...');
-      const emailResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      docRef = await addDoc(collection(db, 'supportTickets'), payload);
+    } catch (firestoreErr: any) {
+      console.error('Firestore ticket creation failed:', firestoreErr);
+      showToast('Failed to save ticket to database. Please try again.', 'error');
+      setSubmitting(false);
+      return;
+    }
+
+    // 2. Dispatch Email via Secure Serverless Resend API
+    try {
+      console.log('[Support] Dispatching ticket email via serverless endpoint...');
+      const response = await fetch(getSupportApiUrl('/send-support-ticket'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(emailJsPayload),
+        body: JSON.stringify(payload),
       });
 
-      const responseText = await emailResponse.text();
+      const data = await response.json();
+      console.log('[Support] Serverless response:', data);
 
-      if (!emailResponse.ok) {
-        console.error('EmailJS api response error:', responseText);
-        throw new Error(responseText || 'EmailJS rejected email delivery.');
+      if (docRef?.id && data.success) {
+        await setDoc(doc(db, 'supportTickets', docRef.id), { emailStatus: 'sent' }, { merge: true });
       }
 
-      console.log('EmailJS sent successfully:', responseText);
-
-      // Save a copy in Firestore for history tracking
-      try {
-        const payload = {
-          userId: uid,
-          userName: userName || 'Crickstreet User',
-          userEmail: userEmail || 'no-email@crickstreet.com',
-          complaintType,
-          subject: subject.trim(),
-          description: description.trim(),
-          screenshotUrl: screenshotUrl.trim(),
-          status: 'Open',
-          createdAt,
-          ticketRef,
-        };
-        await addDoc(collection(db, 'supportTickets'), payload);
-      } catch (firestoreErr) {
-        console.error('Firestore backup storage failed:', firestoreErr);
+      if (data.warning) {
+        showToast(`Ticket #${ticketRef} submitted successfully! 🎟️`, 'success');
+      } else {
+        showToast(`Ticket #${ticketRef} submitted successfully! 🎟️`, 'success');
       }
-
-      // Show success toast
-      showToast('Support ticket sent successfully!', 'success');
-
-      // Clear the form after successful submission
+    } catch (apiErr: any) {
+      console.warn('[Support] Serverless email dispatch warning:', apiErr.message);
+      if (docRef?.id) {
+        try {
+          await setDoc(doc(db, 'supportTickets', docRef.id), { emailStatus: 'failed' }, { merge: true });
+        } catch (_) {}
+      }
+      // Confirms ticket is safely in user's history
+      showToast(`Ticket #${ticketRef} created in your history! 🎟️`, 'success');
+    } finally {
+      // Clear the form
       setSubject('');
       setDescription('');
       setScreenshotUrl('');
       setComplaintType('Bug Report');
-    } catch (err: any) {
-      console.error('EmailJS submission error:', err);
-      // Show error toast if sending fails
-      showToast(err.message || 'Failed to deliver support ticket email.', 'error');
-    } finally {
       setSubmitting(false);
     }
   };
@@ -514,7 +561,18 @@ export default function SupportCenterScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: '#F3F4F1' }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
+      {/* Signature Top Header Gradient matching HomeScreen */}
+      <LinearGradient
+        colors={['#E5F2D9', '#F9E5C8', '#F3F4F1']}
+        locations={[0, 0.35, 0.7]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      />
+
       {toast.visible && (
         <Animated.View
           style={[
@@ -522,35 +580,28 @@ export default function SupportCenterScreen() {
             {
               opacity: toastOpacity,
               transform: [{ translateY: toastTranslateY }],
-              backgroundColor: toast.type === 'success' ? theme.green : theme.red,
+              backgroundColor: toast.type === 'success' ? '#2D5016' : theme.red,
             },
           ]}
         >
           <Ionicons
             name={toast.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
             size={20}
-            color="#050A08"
+            color="#FFFFFF"
             style={{ marginRight: 8 }}
           />
-          <Text style={styles.toastText}>{toast.message}</Text>
+          <Text style={[styles.toastText, { color: '#FFFFFF' }]}>{toast.message}</Text>
         </Animated.View>
       )}
 
-      {isDark && (
-        <LinearGradient
-          colors={['#0A1628', '#0D1F3C', '#111A2E']}
-          style={StyleSheet.absoluteFillObject}
-        />
-      )}
-
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.inputBg }]} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={22} color={theme.text} />
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back" size={20} color="#1A1A1A" />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Support Center</Text>
-          <View style={{ width: 44 }} />
+          <Text style={[styles.headerTitle, { color: '#1A1A1A' }]}>Support Center</Text>
+          <View style={{ width: 38 }} />
         </View>
 
         {loading ? (
@@ -651,7 +702,7 @@ export default function SupportCenterScreen() {
                       <TextInput
                         style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
                         placeholder="Brief title of the issue"
-                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
+                        placeholderTextColor="#64748B"
                         value={subject}
                         onChangeText={setSubject}
                       />
@@ -665,27 +716,42 @@ export default function SupportCenterScreen() {
                           { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text },
                         ]}
                         placeholder="Write your support message details, query, or steps to reproduce..."
-                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
+                        placeholderTextColor="#64748B"
                         multiline
                         numberOfLines={5}
                         value={description}
                         onChangeText={setDescription}
                       />
 
-                      {/* Screenshot URL */}
-                      <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>SCREENSHOT URL (OPTIONAL)</Text>
+                      {/* Screenshot */}
+                      <View style={styles.rowBetween}>
+                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>SCREENSHOT (OPTIONAL)</Text>
+                        <TouchableOpacity onPress={handlePickScreenshot} style={styles.attachBtn} activeOpacity={0.7}>
+                          <Feather name="paperclip" size={13} color="#2D5016" style={{ marginRight: 4 }} />
+                          <Text style={styles.attachBtnTxt}>Attach from Gallery</Text>
+                        </TouchableOpacity>
+                      </View>
                       <TextInput
                         style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-                        placeholder="Paste image link/URL here"
-                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
+                        placeholder="Paste image link or tap attach above"
+                        placeholderTextColor="#64748B"
                         autoCapitalize="none"
-                        value={screenshotUrl}
-                        onChangeText={setScreenshotUrl}
+                        value={screenshotUrl.startsWith('data:image') ? '[Attached Image from Device]' : screenshotUrl}
+                        onChangeText={(text) => {
+                          if (text !== '[Attached Image from Device]') {
+                            setScreenshotUrl(text);
+                          }
+                        }}
                       />
 
-                      {screenshotUrl.trim().startsWith('http') && (
+                      {screenshotUrl.trim().length > 0 && (
                         <View style={styles.imagePreviewContainer}>
-                          <Text style={[styles.imagePreviewLabel, { color: theme.textSecondary }]}>Screenshot Preview:</Text>
+                          <View style={styles.rowBetween}>
+                            <Text style={[styles.imagePreviewLabel, { color: theme.textSecondary }]}>Screenshot Preview:</Text>
+                            <TouchableOpacity onPress={() => setScreenshotUrl('')}>
+                              <Text style={styles.removeImgTxt}>Remove</Text>
+                            </TouchableOpacity>
+                          </View>
                           <Image source={{ uri: screenshotUrl }} style={styles.imagePreview} resizeMode="contain" />
                         </View>
                       )}
@@ -699,7 +765,7 @@ export default function SupportCenterScreen() {
                           end={{ x: 1, y: 1 }}
                         >
                           {submitting ? (
-                            <ActivityIndicator size="small" color="#050A08" />
+                            <ActivityIndicator size="small" color="#1A1A1A" />
                           ) : (
                             <Text style={styles.btnText}>Submit Support Ticket</Text>
                           )}
@@ -936,7 +1002,7 @@ export default function SupportCenterScreen() {
                         { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text },
                       ]}
                       placeholder="Write response to user..."
-                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'}
+                      placeholderTextColor="#64748B"
                       multiline
                       value={replyText}
                       onChangeText={setReplyText}
@@ -951,7 +1017,7 @@ export default function SupportCenterScreen() {
                         end={{ x: 1, y: 1 }}
                       >
                         {updating ? (
-                          <ActivityIndicator size="small" color="#050A08" />
+                          <ActivityIndicator size="small" color="#1A1A1A" />
                         ) : (
                           <Text style={styles.btnText}>Apply Admin Updates</Text>
                         )}
@@ -972,6 +1038,14 @@ export default function SupportCenterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F3F4F1',
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
   },
   centerContainer: {
     flex: 1,
@@ -987,20 +1061,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: sp.lg,
-    paddingTop: sp.md2,
-    paddingBottom: sp.lg,
+    paddingTop: sp.sm,
+    paddingBottom: sp.md,
   },
   backBtn: {
-    width: avatarSz.md2,
-    height: avatarSz.md2,
-    borderRadius: avatarSz.md2 / 2,
+    width: s(38),
+    height: s(38),
+    borderRadius: s(19),
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
   headerTitle: {
     fontSize: fs.lg,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 
   // Tabs
@@ -1047,6 +1129,14 @@ const styles = StyleSheet.create({
     paddingVertical: sp.md2,
     borderRadius: br.full,
     gap: sp.sm2,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E4D4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   subTabTxt: {
     fontSize: fs.sm,
@@ -1064,6 +1154,13 @@ const styles = StyleSheet.create({
     padding: sp.lg,
     borderRadius: br.xl,
     borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E8E4D4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   formTitle: {
     fontSize: fs.md2,
@@ -1079,11 +1176,14 @@ const styles = StyleSheet.create({
   },
   textInput: {
     height: s(48),
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: br.md,
     paddingHorizontal: sp.md3,
-    fontSize: fs.md2,
+    fontSize: fs.base,
     marginBottom: sp.sm2,
+    backgroundColor: '#FAFAFA',
+    borderColor: '#CBD5E1',
+    color: '#0F172A',
   },
   textAreaInput: {
     height: s(100),
@@ -1106,6 +1206,33 @@ const styles = StyleSheet.create({
     fontSize: fs.sm,
     fontWeight: '700',
   },
+  rowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  attachBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: sp.sm,
+    paddingVertical: sp.px2,
+    borderRadius: br.sm,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    marginTop: sp.md,
+    marginBottom: sp.sm,
+  },
+  attachBtnTxt: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: '#2D5016',
+  },
+  removeImgTxt: {
+    fontSize: fs.xs,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
   imagePreviewContainer: {
     marginTop: sp.sm2,
     marginBottom: sp.md,
@@ -1119,12 +1246,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: s(150),
     borderRadius: br.md,
-    backgroundColor: '#151715',
+    backgroundColor: '#F1F5F9',
   },
   submitBtn: {
     borderRadius: br.full,
     overflow: 'hidden',
     marginTop: sp.lg2,
+    shadowColor: '#A8CD55',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 3,
   },
   btnGradient: {
     paddingVertical: sp.md3,
@@ -1132,7 +1264,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnText: {
-    color: '#050A08',
+    color: '#1A1A1A',
     fontSize: fs.md,
     fontWeight: '900',
   },
@@ -1143,6 +1275,13 @@ const styles = StyleSheet.create({
     borderRadius: br.lg,
     borderWidth: 1,
     marginBottom: sp.md,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E8E4D4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   ticketHeader: {
     flexDirection: 'row',

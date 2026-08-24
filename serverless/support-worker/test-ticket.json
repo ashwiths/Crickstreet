@@ -1,0 +1,9 @@
+{
+  "ticketId": "SUP-9999",
+  "userName": "Test User",
+  "userEmail": "test@crickstreet.com",
+  "category": "Bug Report",
+  "subject": "Testing Worker Integration",
+  "message": "This is a test message to verify the Cloudflare Worker and Resend setup.",
+  "createdAt": "2026-08-25T00:20:00.000Z"
+}

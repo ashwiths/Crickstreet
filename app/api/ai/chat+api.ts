@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     // Basic timeout implementation
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out')), 15000)
+      setTimeout(() => reject(new Error('Request timed out')), 25000)
     );
 
     const aiPromise = generateCricketResponse(message, userStats);

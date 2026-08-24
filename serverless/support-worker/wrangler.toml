@@ -1,0 +1,7 @@
+name = "crickstreet-support-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+SUPPORT_EMAIL = "infantashil55@gmail.com"
+RESEND_SENDER_EMAIL = "onboarding@resend.dev"

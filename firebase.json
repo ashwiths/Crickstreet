@@ -11,12 +11,30 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "functions": {
-    "source": "functions",
-    "codeTransform": true,
-    "ignore": [
-      "node_modules",
-      ".git"
-    ]
-  }
+  "functions": [
+    {
+      "codebase": "default",
+      "codeTransform": true,
+      "ignore": [
+        "node_modules",
+        ".git"
+      ],
+      "source": "functions"
+    },
+    {
+      "source": "support",
+      "codebase": "support",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
 }
