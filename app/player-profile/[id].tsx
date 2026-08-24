@@ -156,9 +156,13 @@ export default function PlayerProfileScreen() {
         } else {
           setError('Player not found in database.');
         }
-      } catch (err) {
-        console.error('Error fetching player data:', err);
-        setError('Error connecting to database.');
+      } catch (err: any) {
+        console.warn('Error fetching player data:', err?.message || err);
+        if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
+          setError('Access restricted: Please update Firestore security rules in Firebase Console.');
+        } else {
+          setError('Player profile could not be loaded.');
+        }
       } finally {
         setLoading(false);
       }

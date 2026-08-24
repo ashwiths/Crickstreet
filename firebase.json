@@ -8,6 +8,9 @@
     ],
     "cleanUrls": true
   },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "functions": {
     "source": "functions",
     "codeTransform": true,

@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { updateProfile } from 'firebase/auth';
@@ -82,7 +83,7 @@ function QRModal({
         message: `Check out my Crickstreet player profile! 🏏\n${qrValue}`,
         title: `${displayName}'s Cricket Profile`,
       });
-    } catch (_) { }
+    } catch (_) {}
   };
 
   return (
@@ -173,22 +174,23 @@ function QRModal({
 }
 
 // ── Edit Profile Modal ────────────────────────────────────────────────────────
+
 function EditProfileModal({
   visible,
   onClose,
-  profileData,
   displayName,
   photoURL,
-  user,
   uid,
+  profileData,
+  user,
 }: {
   visible: boolean;
   onClose: () => void;
-  profileData: any;
   displayName: string;
   photoURL: string;
-  user: any;
   uid: string;
+  profileData: any;
+  user?: any;
 }) {
   const [formName, setFormName] = useState('');
   const [formPhoto, setFormPhoto] = useState('');
@@ -199,6 +201,7 @@ function EditProfileModal({
   const [formMatches, setFormMatches] = useState('');
   const [formHighestScore, setFormHighestScore] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pickingImage, setPickingImage] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -219,6 +222,74 @@ function EditProfileModal({
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
     'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200',
   ];
+
+  const handlePickImage = async () => {
+    try {
+      setPickingImage(true);
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant access to your photo library to select a profile picture.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.base64) {
+          setFormPhoto(`data:image/jpeg;base64,${asset.base64}`);
+        } else if (asset.uri) {
+          setFormPhoto(asset.uri);
+        }
+      }
+    } catch (err) {
+      console.error('Error picking image:', err);
+      Alert.alert('Error', 'Failed to pick image from your local device.');
+    } finally {
+      setPickingImage(false);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      setPickingImage(true);
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera access to take a photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.base64) {
+          setFormPhoto(`data:image/jpeg;base64,${asset.base64}`);
+        } else if (asset.uri) {
+          setFormPhoto(asset.uri);
+        }
+      }
+    } catch (err) {
+      console.error('Error capturing photo:', err);
+      Alert.alert('Error', 'Failed to capture photo from camera.');
+    } finally {
+      setPickingImage(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!formName.trim()) {
@@ -299,15 +370,50 @@ function EditProfileModal({
               onChangeText={setFormName}
             />
 
-            {/* Photo URL */}
-            <Text style={styles.editInputLabel}>PHOTO URL</Text>
-            <TextInput
-              style={styles.editTextInput}
-              placeholder="Image URL"
-              value={formPhoto}
-              onChangeText={setFormPhoto}
-              autoCapitalize="none"
-            />
+            {/* Profile Photo Section */}
+            <Text style={styles.editInputLabel}>PROFILE PHOTO</Text>
+            <View style={styles.photoUploadContainer}>
+              <View style={styles.avatarPreviewWrapper}>
+                <Image
+                  source={{
+                    uri:
+                      formPhoto.trim() ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        formName.trim() || 'Player'
+                      )}&background=0D1F3C&color=A8CD55&size=150&bold=true`,
+                  }}
+                  style={styles.avatarPreviewImg}
+                />
+              </View>
+
+              <View style={styles.photoUploadActions}>
+                <TouchableOpacity
+                  style={styles.insertPhotoBtn}
+                  onPress={handlePickImage}
+                  disabled={pickingImage}
+                  activeOpacity={0.7}
+                >
+                  {pickingImage ? (
+                    <ActivityIndicator size="small" color="#2D5016" />
+                  ) : (
+                    <>
+                      <Feather name="image" size={16} color="#2D5016" style={{ marginRight: 6 }} />
+                      <Text style={styles.insertPhotoBtnText}>Insert Photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cameraPhotoBtn}
+                  onPress={handleTakePhoto}
+                  disabled={pickingImage}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="camera" size={14} color="#4A5568" style={{ marginRight: 6 }} />
+                  <Text style={styles.cameraPhotoBtnText}>Take Photo</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             {/* Preset Avatars */}
             <Text style={styles.editInputLabelSub}>CHOOSE PRESET AVATAR</Text>
@@ -328,6 +434,20 @@ function EditProfileModal({
                 <Text style={styles.initialsAvatarTxt}>Initials</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Custom Photo URL input */}
+            <Text style={styles.editInputLabelSub}>OR PASTE PHOTO URL</Text>
+            <TextInput
+              style={styles.editTextInput}
+              placeholder="https://..."
+              value={formPhoto.startsWith('data:image') ? '[Local Uploaded Photo]' : formPhoto}
+              onChangeText={(text) => {
+                if (text !== '[Local Uploaded Photo]') {
+                  setFormPhoto(text);
+                }
+              }}
+              autoCapitalize="none"
+            />
 
             {/* Role selector (Chips) */}
             <Text style={styles.editInputLabel}>PLAYER ROLE</Text>
@@ -940,6 +1060,66 @@ const styles = StyleSheet.create({
     fontSize: fs.md,
     color: '#1A1A1A',
     backgroundColor: '#FAFAFA',
+  },
+  photoUploadContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: br.lg,
+    padding: sp.md,
+    marginBottom: sp.sm,
+    gap: sp.md,
+  },
+  avatarPreviewWrapper: {
+    width: s(62),
+    height: s(62),
+    borderRadius: s(31),
+    borderWidth: 2,
+    borderColor: '#A8CD55',
+    overflow: 'hidden',
+    backgroundColor: '#EAEAEA',
+  },
+  avatarPreviewImg: {
+    width: '100%',
+    height: '100%',
+  },
+  photoUploadActions: {
+    flex: 1,
+    gap: sp.xs,
+  },
+  insertPhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F4EC',
+    borderWidth: 1,
+    borderColor: 'rgba(168,205,85,0.6)',
+    borderRadius: br.md,
+    paddingVertical: sp.sm2,
+    paddingHorizontal: sp.sm,
+  },
+  insertPhotoBtnText: {
+    fontSize: fs.sm,
+    fontWeight: '700',
+    color: '#2D5016',
+  },
+  cameraPhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: br.md,
+    paddingVertical: sp.xs,
+    paddingHorizontal: sp.sm,
+  },
+  cameraPhotoBtnText: {
+    fontSize: fs.sm2,
+    fontWeight: '600',
+    color: '#4A5568',
   },
   presetAvatarsRow: {
     flexDirection: 'row',
